@@ -1,0 +1,13 @@
+{
+  "itemGroup.fpscompress": "Example Mod Tab",
+  "block.fpscompress.example_block": "Example Block",
+  "item.fpscompress.example_item": "Example Item",
+
+  "fpscompress.configuration.title": "FPSCompress Configs",
+  "fpscompress.configuration.section.fpscompress.common.toml": "FPSCompress Configs",
+  "fpscompress.configuration.section.fpscompress.common.toml.title": "FPSCompress Configs",
+  "fpscompress.configuration.items": "Item List",
+  "fpscompress.configuration.logDirtBlock": "Log Dirt Block",
+  "fpscompress.configuration.magicNumberIntroduction": "Magic Number Text",
+  "fpscompress.configuration.magicNumber": "Magic Number"
+}
