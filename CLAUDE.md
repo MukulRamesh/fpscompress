@@ -116,6 +116,105 @@ Each module will expose an interface that other modules consume:
 - **Scanner → Logic**: Validates that factory isn't cheating with hidden batteries
 - **DataGen**: Standalone, generates assets for registered blocks
 
+## The Central Integrator: FactoryIntegrator
+
+**CRITICAL**: The `FactoryIntegrator` class is the "central nervous system" of the mod. It holds **NO logic of its own**. Its entire job is to translate and pass data between the APIs of Devs 1, 3, 4, and 5.
+
+### Architecture Pattern
+
+```
+┌─────────────────────────────────────────────────┐
+│          FactoryIntegrator (Glue Code)          │
+│  - Coordinates state transitions                │
+│  - Passes data between isolated modules         │
+│  - NO business logic of its own                 │
+└──────────────────┬──────────────────────────────┘
+                   │
+      ┌────────────┼────────────┬─────────────┐
+      │            │            │             │
+      ▼            ▼            ▼             ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│  Dev 1   │ │  Dev 3   │ │  Dev 4   │ │  Dev 5   │
+│ IVirtual │ │   ICM    │ │ IMachine │ │ IAnti    │
+│ Machine  │ │Interceptor│ │  Logic   │ │  Cheat   │
+│  Data    │ │          │ │          │ │ Scanner  │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘
+```
+
+### Interface Contracts
+
+The `FactoryIntegrator` depends on these four interfaces:
+
+1. **`IVirtualMachineData`** (Dev 1): Virtual buffers in Overworld block
+   - `hasTpsUpgrade()`: Check if TPS upgrade installed
+   - `addToBuffer()`: Add resources to virtual buffer
+   - `extractFromBuffer()`: Remove resources from virtual buffer
+   - Location: `com.mukulramesh.fpscompress.portal.IVirtualMachineData`
+
+2. **`ICMInterceptor`** (Dev 3): Chunk loading control in CM dimension
+   - `setRoomChunkState()`: Load/unload chunks
+   - `setRoutingState()`: Toggle physical vs virtual routing
+   - Location: `com.mukulramesh.fpscompress.spatial.ICMInterceptor`
+
+3. **`IMachineLogic`** (Dev 4): Pure Java state machine with fractional math
+   - `getCurrentState()`: Get current state (BUILDING/SIMULATING/CACHED/HALTED)
+   - `startSimulation()`: Begin rate calculation
+   - `finishSimulation()`: Complete rate calculation and enter CACHED mode
+   - `tick()`: Update fractional production during CACHED mode
+   - `pushInput()/pullOutput()`: Feed resources to/from math logic
+   - Location: `com.mukulramesh.fpscompress.logic.IMachineLogic`
+
+4. **`IAntiCheatScanner`** (Dev 5): Anti-cheat validation
+   - `takeSnapshot()`: Capture BlockEntity capabilities state
+   - `validateLoop()`: Compare snapshots to detect cheating
+   - Location: `com.mukulramesh.fpscompress.scanner.IAntiCheatScanner`
+
+### State Flow Through Integrator
+
+```
+BUILDING (player sets up)
+    │
+    │ [Player clicks "Start Simulation"]
+    │ → takeSnapshot() [Dev 5]
+    │ → startSimulation() [Dev 4]
+    ▼
+SIMULATING (observing rates)
+    │
+    │ [Player clicks "Finish Simulation"]
+    │ → takeSnapshot() [Dev 5]
+    │ → validateLoop() [Dev 5]
+    │ → finishSimulation() [Dev 4]
+    │ → setRoomChunkState(false) [Dev 3]
+    │ → setRoutingState(true) [Dev 3]
+    ▼
+CACHED (math-only mode)
+    │
+    │ [Every tick]
+    │ → tick() [Dev 4]
+    │ → extractFromBuffer() [Dev 1] → pushInput() [Dev 4]
+    │ → pullOutput() [Dev 4] → addToBuffer() [Dev 1]
+    │
+    │ [If starved or blocked]
+    │ → setRoomChunkState(true) [Dev 3]
+    │ → setRoutingState(false) [Dev 3]
+    ▼
+HALTED (cache broke, needs player fix)
+```
+
+### Blame Assignment (Debugging)
+
+When issues occur, the integrator's simple design makes debugging trivial:
+
+| Problem | Responsible Developer |
+|---------|----------------------|
+| Chunk loading crashes | Dev 3 (ICMInterceptor) |
+| Anti-cheat false positives | Dev 5 (IAntiCheatScanner) |
+| Wrong production rates | Dev 4 (IMachineLogic) |
+| Virtual buffer routing issues | Dev 1 (IVirtualMachineData) |
+| Integration logic errors | Integration Team (FactoryIntegrator) |
+
+No developer steps on anyone else's toes. Each module is isolated and testable.
+
 ## Implementation Strategy
 
 When implementing the architecture:
