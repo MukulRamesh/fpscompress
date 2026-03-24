@@ -134,6 +134,38 @@ Dev 5 (IAntiCheatScanner) ←→ Dev 4 (IMachineLogic)
 Dev 2 (DataGen) → All modules (generates assets)
 ```
 
+### Player Control: Simulation Wrench
+
+**Control Mechanism**: Physical tool (no GUI required)
+
+Players use a **Simulation Wrench** to control simulation phases:
+- Right-click `machine_portal` in **BUILDING** state → Start simulation
+- Right-click `machine_portal` in **SIMULATING** state → End simulation & enter CACHED mode
+
+**Implementation Tasks**:
+
+**Dev 1 Responsibilities**:
+- Create `SimulationWrenchItem` class in `portal` package
+- Implement `useOn()` method to call `FactoryIntegrator` methods
+- Register item in `DeferredRegister<Item>`
+- Add `getIntegrator()` method to `MachinePortalBlockEntity`
+- Wire to `beginSimulation()` / `endSimulation()` in integrator
+
+**Dev 2 Responsibilities**:
+- Create `simulation_wrench.png` texture (16x16)
+  - Design: Gold wrench with wooden/black handle
+  - Style: Minecraft vanilla aesthetic
+- Generate item model JSON
+- Add localization: `"item.fpscompress.simulation_wrench": "Simulation Wrench"`
+- Optional: Add tooltip text
+
+**Recipe** (data/fpscompress/recipes/):
+```json
+2 Gold Ingots + 2 Sticks → Simulation Wrench
+```
+
+**See**: `SIMULATION_CONTROLS.md` for complete implementation guide with code examples.
+
 ### Cross-Module Dependencies
 
 If your module needs to use another module's interface:

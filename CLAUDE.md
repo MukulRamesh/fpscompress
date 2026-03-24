@@ -215,6 +215,25 @@ When issues occur, the integrator's simple design makes debugging trivial:
 
 No developer steps on anyone else's toes. Each module is isolated and testable.
 
+### Player Control Mechanism: Simulation Wrench
+
+**Control Tool**: `SimulationWrenchItem` (Physical tool, no GUI required)
+
+Players use a handheld "Simulation Wrench" to control simulation phases:
+- **Right-click machine_portal in BUILDING state**: Start simulation
+- **Right-click machine_portal in SIMULATING state**: End simulation and enter CACHED mode
+
+**Implementation** (See `SIMULATION_CONTROLS.md` for complete guide):
+- Dev 1: Create `SimulationWrenchItem` with `useOn()` logic
+- Dev 2: Create 16x16 wrench texture and localization
+- Recipe: 2 Gold Ingots + 2 Sticks → Simulation Wrench
+
+**Benefits**:
+- No GUI programming required (~30 lines of code)
+- No client/server sync complexity
+- Intuitive UX (right-click = action)
+- Can be upgraded to full GUI in v2.0 if desired
+
 ## Implementation Strategy
 
 When implementing the architecture:
