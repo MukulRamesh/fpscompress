@@ -1,0 +1,73 @@
+# Gradle
+.gradle/
+build/
+out/
+bin/
+
+# Java
+*.class
+*.jar
+!gradle-wrapper.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Eclipse
+.metadata
+
+# IntelliJ IDEA
+*.iml
+.idea/
+
+# VS Code
+.vscode/
+
+# Minecraft / NeoForge runtime
+run/
+logs/
+crash-reports/
+config/
+
+# Mod development
+libs/META-INF/
+libs/dev/
+
+# Local scripts (customize as needed)
+create_branches.sh
+sync_branches.sh
+update_all_branches.sh
+update_branches.sh
+test_java.bat
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Archives
+*.zip
+*.gz
+*.tar
+
+# Exclude local Claude plans (optional - remove if you want to commit them)
+.claude/plans/
