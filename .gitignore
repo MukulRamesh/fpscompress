@@ -42,8 +42,8 @@ crash-reports/
 config/
 
 # Mod development
-libs/META-INF/
-libs/dev/
+**/libs/META-INF/
+**/libs/dev/
 
 # Local scripts (customize as needed)
 create_branches.sh
