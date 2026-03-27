@@ -87,14 +87,19 @@ public class FactoryIntegrator {
      * The behavior changes based on the current state from Dev 4's state machine.
      */
     public void tick() {
-        if (!virtualData.hasTpsUpgrade()) return;
+        if (!virtualData.hasTpsUpgrade()) {
+            return;
+        }
 
         IMachineLogic.State currentState = logic.getCurrentState();
 
         switch (currentState) {
             case BUILDING:
-                // Normal Compact Machine behavior. Chunks are loaded, physical routing is active.
-                // The player can interact with the factory interior normally.
+            case HALTED:
+                // BUILDING: Normal Compact Machine behavior. Chunks are loaded, physical routing is active.
+                //           The player can interact with the factory interior normally.
+                // HALTED: The machine broke the cache loop (ran out of inputs or output is full).
+                //         Wake the physical chunks back up so the player can fix it.
                 chunkManager.setRoomChunkState(cmDimension, roomCode, true);
                 chunkManager.setRoutingState(false);
                 break;
@@ -114,25 +119,22 @@ public class FactoryIntegrator {
                 // 2. Feed inputs from Dev 1's Virtual Buffers into Dev 4's Math Logic
                 // Example: Loop through virtualData.getVirtualBuffer(ITEM)
                 // This is pseudo-code - actual implementation depends on Dev 1's API
-                int itemsAccepted = logic.pushInput("minecraft:iron_ingot", 1);
-                // Then remove 'itemsAccepted' from Dev 1's buffer
+                // TODO: Uncomment when Dev 1 and Dev 4 APIs are fully implemented
+                // int itemsAccepted = logic.pushInput("minecraft:iron_ingot", 1);
                 // virtualData.extractFromBuffer(ResourceType.ITEM, "minecraft:iron_ingot", itemsAccepted);
 
                 // 3. Extract outputs from Dev 4's Math Logic into Dev 1's Virtual Buffers
-                int itemsProduced = logic.pullOutput("minecraft:iron_block", 64);
-                // Then add 'itemsProduced' to Dev 1's buffer
+                // TODO: Uncomment when Dev 1 and Dev 4 APIs are fully implemented
+                // int itemsProduced = logic.pullOutput("minecraft:iron_block", 64);
                 // virtualData.addToBuffer(ResourceType.ITEM, "minecraft:iron_block", itemsProduced);
 
                 // 4. If the math logic starves or fills up, it handles its own transition to HALTED.
                 //    Dev 4 is responsible for detecting input starvation or output blockage.
                 break;
 
-            case HALTED:
-                // The machine broke the cache loop (ran out of inputs or output is full).
-                // Wake the physical chunks back up so the player can fix it.
-                chunkManager.setRoomChunkState(cmDimension, roomCode, true);
-                chunkManager.setRoutingState(false);
-                break;
+            default:
+                // Unknown state - should never happen
+                throw new IllegalStateException("Unknown machine state: " + currentState);
         }
     }
 
@@ -142,7 +144,9 @@ public class FactoryIntegrator {
      * This begins the calibration phase where the factory runs physically to calculate its rates.
      */
     public void beginSimulation() {
-        if (logic.getCurrentState() != IMachineLogic.State.BUILDING) return;
+        if (logic.getCurrentState() != IMachineLogic.State.BUILDING) {
+            return;
+        }
 
         // 1. Use Dev 5 to snapshot the room before the simulation starts
         this.preSimSnapshot = scanner.takeSnapshot(cmDimension, roomBounds);
@@ -159,7 +163,9 @@ public class FactoryIntegrator {
      * This completes the calibration phase and transitions to cached mode if validation passes.
      */
     public void endSimulation() {
-        if (logic.getCurrentState() != IMachineLogic.State.SIMULATING) return;
+        if (logic.getCurrentState() != IMachineLogic.State.SIMULATING) {
+            return;
+        }
 
         // 1. Use Dev 5 to snapshot the room after the simulation
         IAntiCheatScanner.Snapshot postSimSnapshot = scanner.takeSnapshot(cmDimension, roomBounds);

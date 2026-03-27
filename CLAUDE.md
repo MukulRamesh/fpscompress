@@ -56,6 +56,54 @@ cd "fpscompress-template-1.21.11"
 ./gradlew runData
 ```
 
+## Code Quality & Linting
+
+**IMPORTANT**: Run all three linters after making code changes to catch issues early.
+
+### Quick Lint Check (Run All)
+```bash
+cd "fpscompress-template-1.21.11"
+./gradlew clean compileJava checkstyleMain spotbugsMain
+```
+
+### Individual Linters
+
+**1. Java Compiler Warnings** (Strictest - catches compilation errors and warnings)
+```bash
+./gradlew compileJava --warning-mode all
+```
+- Enabled flags: `-Xlint:all` with `-Werror` (warnings treated as errors)
+- Catches: deprecated API usage, unchecked operations, missing overrides, etc.
+
+**2. Checkstyle** (Style and code conventions)
+```bash
+./gradlew checkstyleMain
+```
+- Configuration: `config/checkstyle/checkstyle.xml`
+- Checks: naming conventions, import order, whitespace, block structure, etc.
+- Report: `build/reports/checkstyle/main.html`
+
+**3. SpotBugs** (Bug detection and potential issues)
+```bash
+./gradlew spotbugsMain
+```
+- Detects: null pointer bugs, resource leaks, concurrency issues, security vulnerabilities
+- Report: `build/reports/spotbugs/main.html`
+
+### Fixing Common Issues
+
+- **Compilation errors**: Fix immediately - code won't build
+- **Checkstyle violations**: Follow Java conventions for consistency
+- **SpotBugs warnings**: Review carefully - often indicates real bugs
+
+### IDE Integration
+
+**VS Code**: Java extension shows real-time linting in the "Problems" panel
+
+**IntelliJ IDEA**:
+- Checkstyle plugin: Settings → Plugins → Install "CheckStyle-IDEA"
+- SpotBugs plugin: Settings → Plugins → Install "SpotBugs"
+
 ## Running the Mod
 
 **Gradle tasks:**

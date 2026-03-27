@@ -11,13 +11,15 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 // This class will not load on dedicated servers. Accessing client side code from here is safe.
+// CHECKSTYLE.OFF: HideUtilityClassConstructor - Not a utility class, instantiated by NeoForge
 @Mod(value = FPSCompress.MODID, dist = Dist.CLIENT)
-// You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
+// You can use EventBusSubscriber to automatically register all static methods in the class
+// annotated with @SubscribeEvent
 @EventBusSubscriber(modid = FPSCompress.MODID, value = Dist.CLIENT)
 public class FPSCompressClient {
     public FPSCompressClient(ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
-        // The config screen is accessed by going to the Mods screen > clicking on your mod > clicking on config.
+        // The config screen is accessed by going to the Mods screen > clicking on your mod > config.
         // Do not forget to add translations for your config options to the en_us.json file.
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
     }
