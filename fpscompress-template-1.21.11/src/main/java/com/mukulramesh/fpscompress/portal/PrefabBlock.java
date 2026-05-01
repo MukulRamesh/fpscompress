@@ -56,6 +56,9 @@ public class PrefabBlock extends Block implements EntityBlock {
         if (!level.isClientSide()) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof PrefabBlockEntity prefab) {
+                // Phase 1: Debug adjacent blocks
+                prefab.debugAdjacentBlocks(player);
+
                 // Show storage stats in chat
                 displayStorageStats(player, prefab);
                 return InteractionResult.SUCCESS;

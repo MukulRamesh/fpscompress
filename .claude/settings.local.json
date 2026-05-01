@@ -5,7 +5,9 @@
       "Bash(./gradlew spotbugsMain)",
       "Bash(./gradlew jar *)",
       "Bash(./gradlew prepareRuns)",
-      "Bash(./gradlew compileJava --console=plain)"
+      "Bash(./gradlew compileJava --console=plain)",
+      "Bash(git push *)",
+      "Bash(git add *)"
     ]
   }
 }
