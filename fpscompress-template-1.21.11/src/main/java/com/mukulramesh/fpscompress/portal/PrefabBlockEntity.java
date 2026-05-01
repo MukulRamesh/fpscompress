@@ -1,6 +1,7 @@
 package com.mukulramesh.fpscompress.portal;
 
 import com.mukulramesh.fpscompress.FPSCompress;
+import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -8,7 +9,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -30,7 +34,7 @@ import java.util.Map;
  * - Face configurations (6 independent face settings)
  * - Cached production rates (for CACHED mode fractional math)
  */
-public class PrefabBlockEntity extends BlockEntity {
+public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // Room linkage
     @Nullable
@@ -262,5 +266,17 @@ public class PrefabBlockEntity extends BlockEntity {
                 cachedRates.put(id, rate);
             }
         }
+    }
+
+    // ===== MenuProvider Implementation =====
+
+    @Override
+    public Component getDisplayName() {
+        return Component.literal("PreFab Configuration");
+    }
+
+    @Override
+    public AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
+        return new PreFabConfigMenu(containerId, playerInventory, this.getBlockPos());
     }
 }
