@@ -3,6 +3,8 @@ package com.mukulramesh.fpscompress.portal;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,33 +13,13 @@ import java.util.Map;
  * Virtual buffer storage for Items, Fluids, and Energy.
  *
  * This class manages the "headless" storage that replaces physical factory blocks
- * when a Compact Machine enters CACHED mode. All operations enforce hard capacity limits.
- *
- * Capacities (from CLAUDE.md):
- * - Items: 27 slots × 64 items/slot = 1,728 items total
- * - Fluids: 50,000 mB total
- * - Energy: 1,000,000 FE total
+ * when a Compact Machine enters CACHED mode. Storage is unlimited (constrained only by JVM memory).
  *
  * @author Dev 1 - Core Registry Team
  */
 public class VirtualBufferStorage {
 
-    // ===== Hard Capacity Constants =====
-
-    /** Maximum item slots (matches a double chest) */
-    public static final int MAX_ITEM_SLOTS = 27;
-
-    /** Maximum items per slot (standard stack size) */
-    public static final int MAX_STACK_SIZE = 64;
-
-    /** Maximum total items across all slots */
-    public static final int MAX_TOTAL_ITEMS = MAX_ITEM_SLOTS * MAX_STACK_SIZE;
-
-    /** Maximum fluid capacity in millibuckets */
-    public static final int MAX_FLUID_MB = 50_000;
-
-    /** Maximum energy capacity in Forge Energy */
-    public static final long MAX_ENERGY_FE = 1_000_000L;
+    private static final Logger LOGGER = LoggerFactory.getLogger(VirtualBufferStorage.class);
 
     // ===== Storage Maps =====
 
@@ -70,22 +52,20 @@ public class VirtualBufferStorage {
      *
      * @param itemId The item resource ID (e.g., "minecraft:iron_ingot")
      * @param amount The number of items to add
-     * @return The amount actually added (may be less if buffer is full)
+     * @return The amount actually added (always the full amount - unlimited storage)
      */
     public int addItem(String itemId, int amount) {
         if (amount <= 0) {
             return 0;
         }
 
-        int spaceLeft = MAX_TOTAL_ITEMS - currentItemCount;
-        int toAdd = Math.min(amount, spaceLeft);
+        itemBuffer.merge(itemId, amount, Integer::sum);
+        currentItemCount += amount;
 
-        if (toAdd > 0) {
-            itemBuffer.merge(itemId, toAdd, Integer::sum);
-            currentItemCount += toAdd;
-        }
+        LOGGER.debug("Added {} x{} to virtual buffer (total items: {})",
+            itemId, amount, currentItemCount);
 
-        return toAdd;
+        return amount;
     }
 
     /**
@@ -138,10 +118,10 @@ public class VirtualBufferStorage {
     /**
      * Get the remaining item capacity.
      *
-     * @return The number of items that can still be added
+     * @return Always Integer.MAX_VALUE (unlimited storage)
      */
     public int getItemSpaceRemaining() {
-        return MAX_TOTAL_ITEMS - currentItemCount;
+        return Integer.MAX_VALUE;
     }
 
     // ===== Fluid Operations =====
@@ -151,22 +131,20 @@ public class VirtualBufferStorage {
      *
      * @param fluidId The fluid resource ID (e.g., "minecraft:water")
      * @param amount The amount in millibuckets to add
-     * @return The amount actually added (may be less if buffer is full)
+     * @return The amount actually added (always the full amount - unlimited storage)
      */
     public int addFluid(String fluidId, int amount) {
         if (amount <= 0) {
             return 0;
         }
 
-        int spaceLeft = MAX_FLUID_MB - currentFluidAmount;
-        int toAdd = Math.min(amount, spaceLeft);
+        fluidBuffer.merge(fluidId, amount, Integer::sum);
+        currentFluidAmount += amount;
 
-        if (toAdd > 0) {
-            fluidBuffer.merge(fluidId, toAdd, Integer::sum);
-            currentFluidAmount += toAdd;
-        }
+        LOGGER.debug("Added {} {} mB to virtual buffer (total fluid: {} mB)",
+            fluidId, amount, currentFluidAmount);
 
-        return toAdd;
+        return amount;
     }
 
     /**
@@ -219,10 +197,10 @@ public class VirtualBufferStorage {
     /**
      * Get the remaining fluid capacity.
      *
-     * @return The amount of fluid (in mB) that can still be added
+     * @return Always Integer.MAX_VALUE (unlimited storage)
      */
     public int getFluidSpaceRemaining() {
-        return MAX_FLUID_MB - currentFluidAmount;
+        return Integer.MAX_VALUE;
     }
 
     // ===== Energy Operations =====
@@ -231,18 +209,19 @@ public class VirtualBufferStorage {
      * Add energy to the virtual buffer.
      *
      * @param amount The amount in Forge Energy to add
-     * @return The amount actually added (may be less if buffer is full)
+     * @return The amount actually added (always the full amount - unlimited storage)
      */
     public long addEnergy(long amount) {
         if (amount <= 0) {
             return 0;
         }
 
-        long spaceLeft = MAX_ENERGY_FE - energyBuffer;
-        long toAdd = Math.min(amount, spaceLeft);
+        energyBuffer += amount;
 
-        energyBuffer += toAdd;
-        return toAdd;
+        LOGGER.debug("Added {} FE to virtual buffer (total energy: {} FE)",
+            amount, energyBuffer);
+
+        return amount;
     }
 
     /**
@@ -273,10 +252,10 @@ public class VirtualBufferStorage {
     /**
      * Get the remaining energy capacity.
      *
-     * @return The amount of energy (in FE) that can still be added
+     * @return Always Long.MAX_VALUE (unlimited storage)
      */
     public long getEnergySpaceRemaining() {
-        return MAX_ENERGY_FE - energyBuffer;
+        return Long.MAX_VALUE;
     }
 
     // ===== Utility Methods =====
@@ -387,10 +366,11 @@ public class VirtualBufferStorage {
      */
     @Override
     public String toString() {
-        return String.format("VirtualBufferStorage[Items: %d/%d, Fluids: %d/%d mB, Energy: %d/%d FE]",
-            currentItemCount, MAX_TOTAL_ITEMS,
-            currentFluidAmount, MAX_FLUID_MB,
-            energyBuffer, MAX_ENERGY_FE);
+        return String.format(
+            "VirtualBufferStorage[Items: %d (unlimited), Fluids: %d mB (unlimited), Energy: %d FE (unlimited)]",
+            currentItemCount,
+            currentFluidAmount,
+            energyBuffer);
     }
 
     /**

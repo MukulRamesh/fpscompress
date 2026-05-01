@@ -31,8 +31,8 @@ public class VirtualItemHandler implements IItemHandler {
 
     @Override
     public int getSlots() {
-        // Return max slots (27 for double chest equivalent)
-        return VirtualBufferStorage.MAX_ITEM_SLOTS;
+        // Unlimited virtual storage
+        return Integer.MAX_VALUE;
     }
 
     @Override

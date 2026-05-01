@@ -4,6 +4,8 @@ import dev.compactmods.machines.machine.block.BoundCompactMachineBlockEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.util.Map;
+
 /**
  * Implementation of IVirtualMachineData that wraps a Compact Machine BlockEntity
  * and provides virtual buffer storage.
@@ -112,11 +114,18 @@ public class VirtualMachineDataImpl implements IVirtualMachineData {
 
     @Override
     public int getBufferCapacity(ResourceType type) {
-        return switch (type) {
-            case ITEM -> VirtualBufferStorage.MAX_ITEM_SLOTS;
-            case FLUID -> VirtualBufferStorage.MAX_FLUID_MB;
-            case ENERGY -> (int) VirtualBufferStorage.MAX_ENERGY_FE;
-        };
+        // Unlimited virtual storage for all types
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public Map<String, Integer> getItemSnapshot() {
+        return storage.getItemSnapshot();
+    }
+
+    @Override
+    public Map<String, Integer> getFluidSnapshot() {
+        return storage.getFluidSnapshot();
     }
 
     // ===== Additional Helper Methods =====

@@ -68,8 +68,8 @@ public class VirtualEnergyStorage implements IEnergyStorage {
 
     @Override
     public int getMaxEnergyStored() {
-        // Return max capacity (1,000,000 FE)
-        return (int) VirtualBufferStorage.MAX_ENERGY_FE;
+        // Unlimited virtual storage
+        return Integer.MAX_VALUE;
     }
 
     @Override
@@ -107,18 +107,18 @@ public class VirtualEnergyStorage implements IEnergyStorage {
     /**
      * Check if the storage is full.
      *
-     * @return true if at maximum capacity
+     * @return Always false (unlimited storage)
      */
     public boolean isFull() {
-        return storage.getEnergySpaceRemaining() == 0;
+        return false;
     }
 
     /**
      * Get the fill percentage.
      *
-     * @return A value from 0.0 (empty) to 1.0 (full)
+     * @return Always 0.0 (unlimited storage means never full)
      */
     public double getFillPercentage() {
-        return (double) storage.getEnergyAmount() / VirtualBufferStorage.MAX_ENERGY_FE;
+        return 0.0;
     }
 }

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileJava --warning-mode all)",
+      "Bash(./gradlew spotbugsMain)",
+      "Bash(./gradlew jar *)",
+      "Bash(./gradlew prepareRuns)",
+      "Bash(./gradlew compileJava --console=plain)"
+    ]
+  }
+}

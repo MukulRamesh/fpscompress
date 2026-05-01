@@ -74,8 +74,8 @@ public class VirtualFluidHandler implements IFluidHandler {
             return 0;
         }
 
-        // Return max capacity
-        return VirtualBufferStorage.MAX_FLUID_MB;
+        // Unlimited virtual storage
+        return Integer.MAX_VALUE;
     }
 
     @Override

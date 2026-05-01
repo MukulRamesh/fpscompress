@@ -4,20 +4,66 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compression system with virtual dimensions. The mod is designed with a modular architecture split across 5 development domains that integrate through defined API contracts.
+FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compression system with virtual dimensions. The mod caches factory production rates to run factories "virtually" without chunk loading, dramatically improving server performance.
 
 **Mod ID**: `fpscompress`
 **Package**: `com.mukulramesh.fpscompress`
 **Working Directory**: `fpscompress-template-1.21.11/` (relative to repository root)
 
+### Core Concept: PreFabs
+
+**PreFabs** (Prefabricated Factories) are cross-dimensional conduits that enable **factory input/output caching**. The mod's primary purpose is to cache production rates so factories can run "virtually" without chunk loading.
+
+**Three-Block System**:
+1. **PreFab Block** (Overworld) - Routes resources, controls state machine
+2. **Importer Block** (CM dimension) - Input gates where resources enter factory
+3. **Exporter Block** (CM dimension) - Output gates where resources exit factory
+
+**How It Works**:
+- Player places Importers/Exporters inside CM factory room
+- PreFab faces link to specific Importers/Exporters (UUID-based)
+- PULL face: Overworld chest → PreFab → Importer → Factory machines
+- PUSH face: Factory machines → Exporter → PreFab → Overworld chest
+- During SIMULATING: Measure actual rates while CM chunks loaded
+- During CACHED: Simulate production using fractional math, CM chunks **unloaded**
+
+**Player Experience**:
+1. Build factory inside a Compact Machine room
+2. **Place Importer/Exporter blocks** inside CM room (input/output gates)
+3. Right-click CM block with "TPS Upgrade" item → becomes PreFab
+4. Shift+Right-click PreFab with Simulation Wrench → Open face config GUI
+5. Configure each face:
+   - Set mode (PULL/PUSH/DISABLED)
+   - Set filter (ITEMS/FLUIDS/ENERGY)
+   - **Link to specific Importer/Exporter** (select from dropdown)
+6. Connect chests/hoppers to PreFab faces in Overworld
+7. Start SIMULATION: PreFab observes actual production rates (CM chunks loaded)
+8. Finish SIMULATION: PreFab calculates rates, enters CACHED mode (CM chunks **unload**)
+9. CACHED mode: PreFab uses math to simulate production based on cached rates
+
+**Key Design Principles**:
+- **PreFabs are conduits, not storage** - resources transport instantly between dimensions
+- **Caching is the primary goal** - Everything else exists to enable the caching system
+- **Importer/Exporter clarity** - Clear input/output points (no complex coordinate math)
+- **Vanilla-only for MVP** - No AE2, no Controller block, no external mod integrations until caching works
+- **No internal storage** - Players could cheat (Importer → Chest → Exporter), but that's post-MVP validation
+
 ### Current State
 
-The repository currently contains the NeoForge template structure with example code:
-- `FPSCompress.java` - Template main mod class with example blocks/items/creative tab
-- `FPSCompressClient.java` - Template client-side setup
-- `Config.java` - Template configuration with example config values
+**Codebase Status**: Cleaned up, deprecated code archived
+- Active source: 19 Java files in `src/main/java/`
+- Deprecated code: Moved to `deprecated/` folder (old virtual buffer system)
+- Documentation: Complete, organized (see START_HERE.md)
 
-**The 5-module architecture described below is the planned design from `notes.md` and has not yet been implemented.**
+**Implementation Status**: Architecture defined, ready for Phase 1
+- Phase 1: Face configuration + adjacent block detection (DE-RISK)
+- Phase 2: Importer/Exporter blocks
+- Phase 3-6: Transport → Rate measurement → Caching → Wrench control
+- Phase 7-8: Enhanced GUI + Dynamic capabilities (optional)
+
+**See TODO_NEW.md for complete implementation roadmap.**
+
+---
 
 ## Environment Setup
 
@@ -35,6 +81,8 @@ If Java 21 is not installed:
 - Ensure Java 21 is first in your `PATH`
 
 Gradle is configured to use Java 21 toolchain (see `build.gradle` line 29), but the system Java must also be 21.
+
+---
 
 ## Build Commands
 
@@ -55,6 +103,8 @@ cd "fpscompress-template-1.21.11"
 # Run data generators (creates block states, models, loot tables, lang files)
 ./gradlew runData
 ```
+
+---
 
 ## Code Quality & Linting
 
@@ -104,6 +154,8 @@ cd "fpscompress-template-1.21.11"
 - Checkstyle plugin: Settings → Plugins → Install "CheckStyle-IDEA"
 - SpotBugs plugin: Settings → Plugins → Install "SpotBugs"
 
+---
+
 ## Running the Mod
 
 **Gradle tasks:**
@@ -121,197 +173,127 @@ cd "fpscompress-template-1.21.11"
 
 Launch configs are in `fpscompress-template-1.21.11/.vscode/launch.json`.
 
-## Planned Architecture
+---
 
-The project will follow a modular design with 5 independent but integrated components (see `notes.md` for detailed developer assignments):
+## Architecture: Conduit-Based Caching System
 
-### 1. Core Registry & Block Shell (`IPortalRouter`)
-- **Purpose**: Physical Overworld blocks with NeoForge 1.21 capabilities
-- **Blocks**: `machine_portal` (with BlockEntity), `input_proxy`, `output_proxy`
-- **API**: `IPortalRouter` interface for routing resources to dimensions or internal virtual buffers
-- **Tech**: `DeferredRegister`, custom Data Components (Codec/StreamCodec), `RegisterCapabilitiesEvent`
-- **Capabilities**: `IItemHandler` (27 slots), `IFluidHandler` (50,000 mB), `IEnergyStorage` (1,000,000 FE)
+**Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
-### 2. Client Assets & DataGen
-- **Purpose**: Textures and JSON data generation
-- **Location**: `src/main/resources/assets/fpscompress/`
-- **DataGen Providers**: `BlockStateProvider`, `ItemModelProvider`, `LanguageProvider`, `BlockLootSubProvider`
-- **Textures**: 16x16 PNGs in `textures/block/` for machine_portal, input_proxy, output_proxy
+### Three-Block System
 
-### 3. Spatial & Dimension Manager (`ISpaceManager`)
-- **Purpose**: Custom void dimension with non-overlapping factory zones
-- **API**: `ISpaceManager` interface for spiral grid allocation
-- **Mechanics**: Spiral expansion (Right→Down→Left→Up), 1,000-block spacing, `SavedData` persistence
-- **Chunk Loading**: 3x3 area force-loading via `TicketHelper` on void dimension's `ServerLevel`
+**1. PreFab Block** (Overworld only)
+- Upgraded CM block with face configuration
+- 6 independently configurable faces (PULL/PUSH/DISABLED per face)
+- Routes resources between Overworld and CM dimension via Importers/Exporters
+- Controls state machine (BUILDING/SIMULATING/CACHED/HALTED)
+- No internal storage - just a router
 
-### 4. State Machine & Fractional Logic (`IMachineLogic`)
-- **Purpose**: Pure Java state management and fractional production math
-- **States**: `BUILDING` → `SIMULATING` → `CACHED` / `HALTED`
-- **Math**: Fractional accumulator for sub-tick production rates: `Rate_per_tick = Total_Output / Sim_Time`
-- **No Minecraft Dependencies**: Unit-testable pure Java
+**2. Importer Block** (CM dimension only)
+- Placed inside CM room by player
+- Acts as **input gate**: Receives resources from PreFab PULL faces
+- Exposes IItemHandler/IFluidHandler/IEnergyStorage to adjacent machines
+- Has unique UUID for PreFab linking
+- Example: Place Importer next to furnace, furnace pulls from Importer
 
-### 5. Spatial Capability Scanner (`IAntiCheatScanner`)
-- **Purpose**: Anti-cheat validation via BlockEntity resource scanning
-- **Mechanics**: Scans 15×15×15 volume, compares pre/post simulation snapshots
-- **Performance**: Only scans BlockEntities (not all 3,375 blocks), queries capabilities efficiently
-- **Config**: NeoForge `ModConfig.Type.SERVER` for block whitelist/blacklist
+**3. Exporter Block** (CM dimension only)
+- Placed inside CM room by player
+- Acts as **output gate**: Sends resources to PreFab PUSH faces
+- Queries adjacent machines for resources to extract
+- Has unique UUID for PreFab linking
+- Example: Place Exporter next to furnace output, Exporter pulls from furnace
 
-## Key Integration Points
+**Why Importers/Exporters?**
+- ✅ Clear input/output points (player places them)
+- ✅ No coordinate mapping math (UUID-based linking)
+- ✅ Flexible factory layout (place gates anywhere)
+- ✅ Visible to player (can see where resources enter/exit)
 
-Each module will expose an interface that other modules consume:
-- **Router → Logic**: Portal routes resources based on state machine decisions
-- **Space Manager → Router**: Provides dimension coordinates for routing
-- **Scanner → Logic**: Validates that factory isn't cheating with hidden batteries
-- **DataGen**: Standalone, generates assets for registered blocks
+### State Machine
 
-## The Central Integrator: FactoryIntegrator
+**BUILDING**:
+- Player configures PreFab faces (which face → which Importer/Exporter)
+- Places Importers/Exporters inside CM room
+- Factory not running yet
 
-**CRITICAL**: The `FactoryIntegrator` class is the "central nervous system" of the mod. It holds **NO logic of its own**. Its entire job is to translate and pass data between the APIs of Devs 1, 3, 4, and 5.
+**SIMULATING** (CM chunks LOADED):
+- PreFab measures actual resource flow rates
+- Counts items/fluids/energy transported per tick
+- Records: `Rate = Total_Transported / Time_Elapsed`
+- Example: 128 iron ingots in 600 ticks = 0.213 iron/tick
 
-### Architecture Pattern
+**CACHED** (CM chunks UNLOADED ← Performance gain!):
+- PreFab uses fractional math to simulate production
+- Accumulates fractional rates: `accumulator += rate`
+- When `accumulator >= 1.0`: Transport whole units
+- Example: 0.213 iron/tick → every ~4.7 ticks, push 1 iron ingot
+- **This is the entire point of the mod!**
 
+**HALTED** (Cache broke):
+- Input starved (can't pull from Overworld chest)
+- Output blocked (can't push to Overworld chest)
+- **CM chunks STAY UNLOADED** (don't reload!)
+- Player fixes Overworld side (add inputs, clear outputs)
+- Wrench click to resume → back to SIMULATING
+
+### Face Configuration
+
+**Each PreFab face** configures:
+- **Mode**: DISABLED, PULL (Overworld→Importer), PUSH (Exporter→Overworld)
+- **Filter**: ALL, ITEMS, FLUIDS, ENERGY
+- **Target UUID**: Which Importer/Exporter to link to
+
+**Example setup**:
 ```
-┌─────────────────────────────────────────────────┐
-│          FactoryIntegrator (Glue Code)          │
-│  - Coordinates state transitions                │
-│  - Passes data between isolated modules         │
-│  - NO business logic of its own                 │
-└──────────────────┬──────────────────────────────┘
-                   │
-      ┌────────────┼────────────┬─────────────┐
-      │            │            │             │
-      ▼            ▼            ▼             ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│  Dev 1   │ │  Dev 3   │ │  Dev 4   │ │  Dev 5   │
-│ IVirtual │ │   ICM    │ │ IMachine │ │ IAnti    │
-│ Machine  │ │Interceptor│ │  Logic   │ │  Cheat   │
-│  Data    │ │          │ │          │ │ Scanner  │
-└──────────┘ └──────────┘ └──────────┘ └──────────┘
-```
+Overworld:
+  [Coal Chest] → [PreFab NORTH=PULL ITEMS → Importer #1]
 
-### Interface Contracts
-
-The `FactoryIntegrator` depends on these four interfaces:
-
-1. **`IVirtualMachineData`** (Dev 1): Virtual buffers in Overworld block
-   - `hasTpsUpgrade()`: Check if TPS upgrade installed
-   - `addToBuffer()`: Add resources to virtual buffer
-   - `extractFromBuffer()`: Remove resources from virtual buffer
-   - Location: `com.mukulramesh.fpscompress.portal.IVirtualMachineData`
-
-2. **`ICMInterceptor`** (Dev 3): Chunk loading control in CM dimension
-   - `setRoomChunkState()`: Load/unload chunks
-   - `setRoutingState()`: Toggle physical vs virtual routing
-   - Location: `com.mukulramesh.fpscompress.spatial.ICMInterceptor`
-
-3. **`IMachineLogic`** (Dev 4): Pure Java state machine with fractional math
-   - `getCurrentState()`: Get current state (BUILDING/SIMULATING/CACHED/HALTED)
-   - `startSimulation()`: Begin rate calculation
-   - `finishSimulation()`: Complete rate calculation and enter CACHED mode
-   - `tick()`: Update fractional production during CACHED mode
-   - `pushInput()/pullOutput()`: Feed resources to/from math logic
-   - Location: `com.mukulramesh.fpscompress.logic.IMachineLogic`
-
-4. **`IAntiCheatScanner`** (Dev 5): Anti-cheat validation
-   - `takeSnapshot()`: Capture BlockEntity capabilities state
-   - `validateLoop()`: Compare snapshots to detect cheating
-   - Location: `com.mukulramesh.fpscompress.scanner.IAntiCheatScanner`
-
-### State Flow Through Integrator
-
-```
-BUILDING (player sets up)
-    │
-    │ [Player clicks "Start Simulation"]
-    │ → takeSnapshot() [Dev 5]
-    │ → startSimulation() [Dev 4]
-    ▼
-SIMULATING (observing rates)
-    │
-    │ [Player clicks "Finish Simulation"]
-    │ → takeSnapshot() [Dev 5]
-    │ → validateLoop() [Dev 5]
-    │ → finishSimulation() [Dev 4]
-    │ → setRoomChunkState(false) [Dev 3]
-    │ → setRoutingState(true) [Dev 3]
-    ▼
-CACHED (math-only mode)
-    │
-    │ [Every tick]
-    │ → tick() [Dev 4]
-    │ → extractFromBuffer() [Dev 1] → pushInput() [Dev 4]
-    │ → pullOutput() [Dev 4] → addToBuffer() [Dev 1]
-    │
-    │ [If starved or blocked]
-    │ → setRoomChunkState(true) [Dev 3]
-    │ → setRoutingState(false) [Dev 3]
-    ▼
-HALTED (cache broke, needs player fix)
+CM Dimension:
+  [Importer #1] → [Furnace input]
+  [Furnace output] → [Exporter #1]
+  
+Overworld:
+  [PreFab SOUTH=PUSH ITEMS ← Exporter #1] → [Iron Chest]
 ```
 
-### Blame Assignment (Debugging)
-
-When issues occur, the integrator's simple design makes debugging trivial:
-
-| Problem | Responsible Developer |
-|---------|----------------------|
-| Chunk loading crashes | Dev 3 (ICMInterceptor) |
-| Anti-cheat false positives | Dev 5 (IAntiCheatScanner) |
-| Wrong production rates | Dev 4 (IMachineLogic) |
-| Virtual buffer routing issues | Dev 1 (IVirtualMachineData) |
-| Integration logic errors | Integration Team (FactoryIntegrator) |
-
-No developer steps on anyone else's toes. Each module is isolated and testable.
-
-### Player Control Mechanism: Simulation Wrench
-
-**Control Tool**: `SimulationWrenchItem` (Physical tool, no GUI required)
-
-Players use a handheld "Simulation Wrench" to control simulation phases:
-- **Right-click machine_portal in BUILDING state**: Start simulation
-- **Right-click machine_portal in SIMULATING state**: End simulation and enter CACHED mode
-
-**Implementation** (See `SIMULATION_CONTROLS.md` for complete guide):
-- Dev 1: Create `SimulationWrenchItem` with `useOn()` logic
-- Dev 2: Create 16x16 wrench texture and localization
-- Recipe: 2 Gold Ingots + 2 Sticks → Simulation Wrench
-
-**Benefits**:
-- No GUI programming required (~30 lines of code)
-- No client/server sync complexity
-- Intuitive UX (right-click = action)
-- Can be upgraded to full GUI in v2.0 if desired
+---
 
 ## Implementation Strategy
 
-When implementing the architecture:
+### Phase Order (De-risk First!)
 
-1. **Replace Template Code**: Remove example_block, example_item, and example_tab from FPSCompress.java
-2. **Module Independence**: Each of the 5 modules should be implementable independently and tested in isolation
-3. **Interface-First Design**: Define and commit API interfaces before implementing concrete classes
-4. **Package Organization**: Consider creating subpackages: `portal`, `spatial`, `logic`, `scanner`, `datagen`
-5. **Testing**: Module 4 (State Machine) should have unit tests since it's pure Java with no Minecraft dependencies
+**Phase 1**: Face Config + Adjacent Detection (Week 1)
+- Prove PreFab can detect adjacent blocks
+- Debug command: Right-click PreFab → Shows adjacent blocks and capabilities
+- Simple face config GUI (mode/filter, no Importer linking yet)
+- **Goal**: Validate core concept before building Importers/Exporters
 
-## Current File Structure
+**Phase 2**: Importer/Exporter Blocks (Week 2)
+- Only after Phase 1 proves adjacent detection works
+- Create ImporterBlock/ExporterBlock with UUID generation
+- Add UUID linking to Phase 1 GUI
 
-```
-fpscompress-template-1.21.11/
-├── src/main/java/com/mukulramesh/fpscompress/
-│   ├── FPSCompress.java       # Main mod class with example DeferredRegisters
-│   │                          # (Contains example_block, example_item, example_tab)
-│   ├── FPSCompressClient.java # Client-only initialization
-│   └── Config.java            # Example ModConfigSpec with sample config values
-├── src/main/resources/
-│   └── assets/fpscompress/
-│       └── lang/en_us.json    # Localization (currently empty template)
-├── src/main/templates/META-INF/
-│   └── neoforge.mods.toml     # Mod metadata template (uses gradle.properties variables)
-├── build.gradle               # NeoForge ModDevGradle build configuration
-├── gradle.properties          # Mod metadata: version=1.0.0, minecraft=1.21.11, neo=21.11.38-beta
-└── settings.gradle
-```
+**Phase 3**: Basic Transport (Week 2)
+- Hardcoded config first (test without GUI)
+- PreFab PULL: Extract from Overworld → Insert to Importer
+- PreFab PUSH: Extract from Exporter → Insert to Overworld
 
-**Note**: Template example code (example_block, example_item, etc.) should be replaced with actual mod implementation.
+**Phase 4**: Rate Measurement (Week 3)
+- During SIMULATING: Count resources transported
+- Calculate rates: `rate = total / ticks`
+
+**Phase 5**: Cached Production (Week 3)
+- During CACHED: Accumulate fractional rates
+- Transport whole units when accumulator >= 1.0
+
+**Phase 6**: Wrench Control (Week 4)
+- State transitions: BUILDING → SIMULATING → CACHED
+
+**Phase 7-8**: Polish (Optional)
+- Enhanced GUI, dynamic capabilities
+
+**See TODO_NEW.md for complete task breakdown.**
+
+---
 
 ## NeoForge 1.21 Specifics
 
@@ -321,10 +303,198 @@ fpscompress-template-1.21.11/
 - **Capabilities**: Registered via `RegisterCapabilitiesEvent`, not `@CapabilityInject`
 - **Config**: Use `ModConfigSpec` with `ModConfig.Type.COMMON` or `.SERVER`
 
+---
+
 ## Important Constraints
 
-- **No GUI for MachinePortalBlockEntity**: Internal storage acts like a headless chest
-- **No directional blocks**: All blocks use standard cube mapping (no facing)
-- **Performance**: Scanner must NOT iterate all block positions—only query existing BlockEntities
-- **State Transitions**: Must be explicit in IMachineLogic (no automatic transitions)
-- **Security**: Ensure validation prevents infinite resource loops via hidden batteries
+### MVP Scope (What IS Included)
+- ✅ One PreFab block in world
+- ✅ Importer/Exporter blocks in CM dimension
+- ✅ Face configuration (PULL/PUSH modes, UUID linking)
+- ✅ Transport between Overworld and CM dimension
+- ✅ Rate measurement (SIMULATING state)
+- ✅ Cached production (CACHED state with fractional math)
+- ✅ Vanilla blocks only (chests, furnaces, hoppers)
+
+### MVP Scope (What is NOT Included)
+- ❌ AE2 integration
+- ❌ Refined Storage integration
+- ❌ Factory Controller block
+- ❌ Multiple PreFab management
+- ❌ Any external mod integrations
+- ❌ PreFab-as-item portability
+- ❌ Advanced filters (item/fluid whitelists)
+- ❌ Anti-cheat validation (players can cheat with hidden chests, but that's post-MVP)
+
+### Design Principles
+- **No internal storage**: PreFabs are conduits, not chests
+- **Faces are independent**: Each face has separate config
+- **Caching is the goal**: Everything exists to enable rate-based virtual production
+- **MVP first**: Get basic caching working before adding features
+- **Performance**: Unload CM chunks during CACHED mode (that's the whole point!)
+- **Fractional math**: Production rates < 1.0 item/tick require accumulator pattern
+
+---
+
+## Key Technical Details
+
+### Importer/Exporter Linking (UUID-Based)
+
+**Setup**:
+```java
+// Importer placed in CM dimension
+ImporterBlockEntity importer = new ImporterBlockEntity();
+UUID importerUUID = UUID.randomUUID(); // e.g., abc-123
+importer.setUUID(importerUUID);
+
+// PreFab face configured
+FaceConfig northFace = new FaceConfig();
+northFace.mode = FaceMode.PULL;
+northFace.resourceType = ResourceFilter.ITEMS;
+northFace.targetUUID = importerUUID; // Link to Importer abc-123
+```
+
+**Runtime (PULL mode)**:
+```java
+// PreFab NORTH face = PULL ITEMS → Importer abc-123
+
+// 1. Extract from Overworld
+BlockPos overworldPos = prefabPos.relative(Direction.NORTH);
+BlockEntity chest = level.getBlockEntity(overworldPos);
+IItemHandler chestHandler = chest.getCapability(ItemHandler.BLOCK);
+ItemStack extracted = chestHandler.extractItem(0, 64, false);
+
+// 2. Find target Importer by UUID
+ServerLevel cmLevel = getCMLevel();
+ImporterBlockEntity importer = findImporterByUUID(cmLevel, targetUUID);
+
+// 3. Insert to Importer
+ItemStack remainder = importer.insertItem(extracted);
+int transferred = extracted.getCount() - remainder.getCount();
+
+// 4. Track for rate measurement (SIMULATING only)
+if (state == MachineState.SIMULATING) {
+    recordItemTransfer("minecraft:iron_ore", transferred);
+}
+```
+
+### Fractional Production
+
+```java
+// Factory produces 128 iron ingots over 600 ticks
+double rate = 128.0 / 600.0; // 0.2133 ingots/tick
+
+// CACHED mode tick logic
+ironAccumulator += rate; // Add 0.2133 each tick
+if (ironAccumulator >= 1.0) {
+    int wholeItems = (int) ironAccumulator;
+    ironAccumulator -= wholeItems;
+    
+    // Push to Overworld via Exporter
+    ExporterBlockEntity exporter = findExporterByUUID(cmLevel, exporterUUID);
+    ItemStack toPush = new ItemStack(Items.IRON_INGOT, wholeItems);
+    BlockPos overworldPos = prefabPos.relative(Direction.SOUTH);
+    BlockEntity outputChest = level.getBlockEntity(overworldPos);
+    outputChest.getCapability(ItemHandler.BLOCK).insertItem(0, toPush, false);
+}
+```
+
+### Chunk Loading Control
+
+```java
+// Use existing CMInterceptorImpl
+CMInterceptorImpl interceptor = CMInterceptorImpl.getInstance();
+
+// Start simulation: Load CM chunks
+interceptor.setRoomChunkState(roomCode, true);
+
+// Enter CACHED mode: Unload CM chunks (performance!)
+interceptor.setRoomChunkState(roomCode, false);
+
+// HALTED state: Keep chunks unloaded (player fixes Overworld side)
+// Don't reload chunks in HALTED!
+```
+
+---
+
+## Post-MVP Features (Future)
+
+### Anti-Cheat Validation (v1.0+)
+- **Problem**: Players can place chest in CM dimension, factory "produces" from storage
+- **Solution**: Bidirectional redstone protocol for graceful shutdown validation
+- See VALIDATION_REDSTONE_PROTOCOL.md for complete specification
+
+### AE2 Integration (v1.1+)
+- Factory Controller block holds multiple PreFab items
+- Controller exposes unified interface to AE2 network
+- Automatic resource routing via ME system
+
+### PreFab-as-Item (v1.2+)
+- Store all data in item NBT (not BlockEntity)
+- Portable factories (carry in inventory, ender chest)
+- Trade PreFabs with other players
+
+---
+
+## Documentation Index
+
+**Essential Reading** (start here):
+1. **START_HERE.md** - Entry point for new contributors
+2. **README_ARCHITECTURE.md** - High-level overview
+3. **IMPORTER_EXPORTER_SYSTEM.md** - How the three-block system works
+4. **MVP_SCOPE.md** - What's in/out of MVP scope
+5. **TODO_NEW.md** - Implementation roadmap (7 phases)
+
+**Technical Specs**:
+- **ARCHITECTURE_CONDUIT.md** - Complete technical specification
+- **ARCHITECTURE_PIVOT.md** - Why we changed from virtual buffers
+- **VALIDATION_REDSTONE_PROTOCOL.md** - Post-MVP anti-cheat system
+- **CM_API_INTEGRATION.md** - Compact Machines integration details
+
+**Reference**:
+- **CLEANUP_SUMMARY.md** - What was archived and why
+- **deprecated/** folder - Old virtual buffer system code
+
+---
+
+## Quick Reference
+
+### File Structure (Active Code)
+```
+src/main/java/com/mukulramesh/fpscompress/
+├── portal/
+│   ├── PrefabBlock.java              ← Main PreFab block
+│   ├── PrefabBlockEntity.java        ← Needs refactor for face configs
+│   ├── MachineState.java             ✓ Keep as-is (BUILDING/SIMULATING/CACHED/HALTED)
+│   ├── RoomCoordinateCache.java      ✓ Keep for coordinate mapping
+│   ├── TpsCacheUpgradeItem.java      ✓ Keep (CM → PreFab upgrade)
+│   ├── SimulationWrenchItem.java     ← Needs modify (state transitions)
+│   └── ... (other portal files)
+├── spatial/
+│   ├── CMInterceptorImpl.java        ✓ Keep (chunk loading control)
+│   └── ICMInterceptor.java           ✓ Keep (interface)
+└── ... (other packages)
+```
+
+### Common Commands
+```bash
+# Compile and check
+./gradlew clean compileJava checkstyleMain spotbugsMain
+
+# Run in Minecraft
+./gradlew runClient
+
+# Check what to implement next
+cat TODO_NEW.md | grep "Phase 1"
+```
+
+### Getting Help
+- Questions about architecture? → See ARCHITECTURE_CONDUIT.md
+- Questions about Importers/Exporters? → See IMPORTER_EXPORTER_SYSTEM.md
+- Questions about scope? → See MVP_SCOPE.md
+- Questions about implementation? → See TODO_NEW.md
+- Lost? → Read START_HERE.md
+
+---
+
+**Ready to start? Read START_HERE.md, then follow TODO_NEW.md Phase 1!**

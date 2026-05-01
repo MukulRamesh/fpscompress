@@ -4,17 +4,25 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.mukulramesh.fpscompress.component.FPSDataComponents;
+import com.mukulramesh.fpscompress.debug.Dev2TestCommands;
+import com.mukulramesh.fpscompress.portal.DimensionTeleportListener;
 import com.mukulramesh.fpscompress.portal.FPSDataAttachments;
+import com.mukulramesh.fpscompress.portal.PrefabBlock;
+import com.mukulramesh.fpscompress.portal.PrefabBlockEntity;
+import com.mukulramesh.fpscompress.portal.PSDExitListener;
 import com.mukulramesh.fpscompress.portal.SimulationWrenchItem;
 import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.bus.api.IEventBus;
@@ -24,6 +32,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -42,8 +51,34 @@ public final class FPSCompress {
     // "fpscompress" namespace
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
         DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
+    // Create a Deferred Register to hold BlockEntityTypes
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
+        DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, MODID);
+
+    // ===== Blocks =====
+
+    /**
+     * PreFab Machine block - An upgraded Compact Machine that stores factory state.
+     */
+    public static final DeferredBlock<PrefabBlock> PREFAB_BLOCK =
+        BLOCKS.register("prefab_machine", PrefabBlock::new);
+
+    /**
+     * PreFab Machine BlockEntity type.
+     */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PrefabBlockEntity>> PREFAB_BE =
+        BLOCK_ENTITIES.register("prefab_machine", () ->
+            BlockEntityType.Builder.of(PrefabBlockEntity::new, PREFAB_BLOCK.get()).build(null));
 
     // ===== Items =====
+
+    /**
+     * PreFab Machine item (block item).
+     * Immune to fire/lava damage to preserve factory data.
+     */
+    public static final DeferredItem<BlockItem> PREFAB_ITEM =
+        ITEMS.register("prefab_machine", () -> new BlockItem(PREFAB_BLOCK.get(),
+            new Item.Properties().fireResistant()));
 
     /**
      * TPS Cache Upgrade item - Right-click a Compact Machine to enable TPS caching.
@@ -68,6 +103,7 @@ public final class FPSCompress {
             .withTabsBefore(CreativeModeTabs.TOOLS_AND_UTILITIES)
             .icon(() -> TPS_CACHE_UPGRADE.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
+                output.accept(PREFAB_ITEM.get());
                 output.accept(TPS_CACHE_UPGRADE.get());
                 output.accept(SIMULATION_WRENCH.get());
             }).build());
@@ -87,8 +123,16 @@ public final class FPSCompress {
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register data components for persistent upgrade tracking
         FPSDataComponents.DATA_COMPONENTS.register(modEventBus);
-        // Register data attachments for storing VirtualMachineData
+        // Register data attachments (stub for backwards compatibility)
         FPSDataAttachments.ATTACHMENT_TYPES.register(modEventBus);
+        // Register BlockEntity types
+        BLOCK_ENTITIES.register(modEventBus);
+
+        // FIXED: DimensionTeleportListener now captures exact block on click (no more 3,087 block search!)
+        NeoForge.EVENT_BUS.register(new DimensionTeleportListener());
+
+        // Register PSD exit listener for PreFab room exit
+        NeoForge.EVENT_BUS.register(new PSDExitListener());
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (FPSCompress) to respond
@@ -118,5 +162,12 @@ public final class FPSCompress {
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
         LOGGER.info("HELLO from server starting");
+    }
+
+    // Register debug commands
+    @SubscribeEvent
+    public void onCommandsRegister(RegisterCommandsEvent event) {
+        Dev2TestCommands.register(event.getDispatcher());
+        LOGGER.info("Registered debug commands: /fps_dev2");
     }
 }

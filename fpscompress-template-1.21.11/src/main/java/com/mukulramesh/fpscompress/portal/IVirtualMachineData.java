@@ -1,5 +1,7 @@
 package com.mukulramesh.fpscompress.portal;
 
+import java.util.Map;
+
 /**
  * Interface for Dev 1: Core Registry & Block Shell
  *
@@ -76,6 +78,22 @@ public interface IVirtualMachineData {
      * @return The maximum capacity
      */
     int getBufferCapacity(ResourceType type);
+
+    /**
+     * Get a snapshot of all stored item types and their counts.
+     * Used for smart extraction when only one item type is present.
+     *
+     * @return Map of item resource IDs to counts
+     */
+    Map<String, Integer> getItemSnapshot();
+
+    /**
+     * Get a snapshot of all stored fluid types and their amounts.
+     * Used for smart extraction when only one fluid type is present.
+     *
+     * @return Map of fluid resource IDs to amounts (in mB)
+     */
+    Map<String, Integer> getFluidSnapshot();
 
     /**
      * Resource types supported by the virtual buffers.

@@ -134,6 +134,10 @@ tasks.named('classes').configure {
 tasks.matching { it.name.startsWith('run') }.configureEach {
     dependsOn copyModMetadata
 }
+// Ensure test compilation depends on metadata being copied
+tasks.named('compileTestJava').configure {
+    dependsOn copyModMetadata
+}
 
 // Sets up a dependency configuration called 'localRuntime'.
 // This configuration should be used instead of 'runtimeOnly' to declare
@@ -144,6 +148,10 @@ configurations {
 }
 
 dependencies {
+    // JUnit 5 for unit testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
     // Compact Machines dependency - required for Devs 1, 2, and 4 (CM API access)
     // Using compileOnly since we only need API access at compile time
     // Version 7.0.81 (compactmachines-neoforge-7.0.81.jar) for Minecraft 1.21.1
@@ -220,12 +228,26 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xlint:all', '-Xlint:-processing', '-Werror']
 }
 
+// Configure test task to use JUnit Platform
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
 idea {
     module {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+// Fix Gradle 9.x task dependency warnings and duplicate file handling
+tasks.named('jar').configure {
+    dependsOn 'copyModMetadata'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+tasks.named('checkstyleMain').configure {
+    dependsOn 'copyModMetadata'
 }
 
 // Checkstyle configuration

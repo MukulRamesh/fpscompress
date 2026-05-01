@@ -1,8 +1,8 @@
 package com.mukulramesh.fpscompress.portal;
 
 import com.mukulramesh.fpscompress.FPSCompress;
-import com.mukulramesh.fpscompress.portal.FPSDataAttachments.VirtualMachineDataWrapper;
 import dev.compactmods.machines.machine.block.BoundCompactMachineBlockEntity;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -10,6 +10,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import org.jetbrains.annotations.Nullable;
+
+import java.lang.reflect.Method;
+import java.util.Optional;
 
 /**
  * Item that installs the TPS Cache Upgrade on Compact Machines.
@@ -64,55 +68,177 @@ public class TpsCacheUpgradeItem extends Item {
             return InteractionResult.FAIL;
         }
 
-        // Cast to BlockEntity for attachment access
-        BlockEntity be = (BlockEntity) cmBE;
-
-        // Get or create VirtualMachineDataImpl attachment
-        VirtualMachineDataWrapper wrapper = be.getData(FPSDataAttachments.VIRTUAL_MACHINE_DATA);
-
-        // Reconstruct from wrapper (getData() never returns null due to supplier default)
-        VirtualMachineDataImpl data = new VirtualMachineDataImpl(cmBE);
-        if (wrapper.hasTpsUpgrade()) {
-            // Apply existing data if upgrade was previously installed
-            wrapper.applyTo(data);
-            FPSCompress.LOGGER.info("Loaded existing VirtualMachineDataImpl for CM at {}", context.getClickedPos());
-        } else {
-            FPSCompress.LOGGER.info("Creating new VirtualMachineDataImpl for CM at {}", context.getClickedPos());
-        }
-
-        // Check if already upgraded
-        if (data.hasTpsUpgrade()) {
+        // Get CM's room code via reflection
+        FPSCompress.LOGGER.info("Attempting to upgrade CM at {} to PreFab", context.getClickedPos());
+        String roomCode = getRoomCodeFromCM(cmBE);
+        if (roomCode == null) {
+            FPSCompress.LOGGER.error("Failed to get room code from CM");
             player.displayClientMessage(
-                Component.literal("§eTPS upgrade already installed!"),
+                Component.literal("§cFailed to read room data from Compact Machine"),
+                true
+            );
+            return InteractionResult.FAIL;
+        }
+        FPSCompress.LOGGER.info("Got room code: {}", roomCode);
+
+        // Replace block: CM → PreFab
+        BlockPos pos = context.getClickedPos();
+        FPSCompress.LOGGER.info("Replacing block at {} with PreFab", pos);
+
+        try {
+            // CRITICAL: Remove old BlockEntity first to prevent stale cache
+            level.removeBlockEntity(pos);
+
+            // Use flag 3: notify neighbors + send to clients
+            boolean success = level.setBlock(pos, FPSCompress.PREFAB_BLOCK.get().defaultBlockState(), 3);
+            if (!success) {
+                FPSCompress.LOGGER.error("setBlock returned false");
+                player.displayClientMessage(
+                    Component.literal("§cFailed to place PreFab block"),
+                    true
+                );
+                return InteractionResult.FAIL;
+            }
+
+            FPSCompress.LOGGER.info("Block replaced successfully");
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Failed to replace block", e);
+            player.displayClientMessage(
+                Component.literal("§cFailed to place PreFab block"),
                 true
             );
             return InteractionResult.FAIL;
         }
 
-        // Install the upgrade
-        data.setTpsUpgrade(true);
+        // Initialize PreFab BlockEntity (force chunk to refresh)
+        level.getChunkAt(pos).setUnsaved(true);
+        BlockEntity newBE = level.getBlockEntity(pos);
+        FPSCompress.LOGGER.info("New BlockEntity: {}", newBE != null ? newBE.getClass().getName() : "null");
 
-        // Save back to attachment
-        VirtualMachineDataWrapper newWrapper = VirtualMachineDataWrapper.fromData(data);
-        be.setData(FPSDataAttachments.VIRTUAL_MACHINE_DATA, newWrapper);
+        if (newBE instanceof PrefabBlockEntity prefabBE) {
+            FPSCompress.LOGGER.info("Initializing PreFab BlockEntity");
+            prefabBE.setRoomCode(roomCode);
+            prefabBE.setCurrentState(MachineState.BUILDING);
 
-        // Mark block entity as changed for persistence
-        be.setChanged();
+            // Try to get cached coordinates (with null checks)
+            try {
+                if (level.getServer() != null) {
+                    RoomCoordinateCache cache = RoomCoordinateCache.get(level.getServer());
+                    BlockPos roomCenter = cache.getRoomCenter(pos);
+                    if (roomCenter != null) {
+                        prefabBE.setRoomCenter(roomCenter);
+                        FPSCompress.LOGGER.info("PreFab initialized with cached room center: {}", roomCenter);
+                    } else {
+                        FPSCompress.LOGGER.info("No cached coordinates available");
+                    }
+                } else {
+                    FPSCompress.LOGGER.warn("Server is null, skipping coordinate cache");
+                }
+            } catch (Exception e) {
+                FPSCompress.LOGGER.error("Failed to get cached coordinates (non-fatal)", e);
+                // Continue anyway
+            }
 
-        // Consume item (unless creative mode)
-        if (!player.isCreative()) {
-            context.getItemInHand().shrink(1);
+            prefabBE.setChanged();
+            FPSCompress.LOGGER.info("PreFab BlockEntity initialized successfully");
+
+            // Success message
+            player.displayClientMessage(
+                Component.literal("§aCompact Machine upgraded to PreFab!"),
+                true
+            );
+
+            // Consume item (unless creative mode)
+            if (!player.isCreative()) {
+                context.getItemInHand().shrink(1);
+            }
+
+            FPSCompress.LOGGER.info("CM at {} upgraded to PreFab by player {}",
+                                   pos, player.getName().getString());
+
+            return InteractionResult.SUCCESS;
         }
 
-        // Success message
         player.displayClientMessage(
-            Component.literal("§aTPS Cache Upgrade installed!"),
+            Component.literal("§cFailed to create PreFab BlockEntity"),
             true
         );
+        return InteractionResult.FAIL;
+    }
 
-        FPSCompress.LOGGER.info("TPS Cache Upgrade installed on CM at {} by player {}",
-            context.getClickedPos(), player.getName().getString());
+    /**
+     * Get the room code from a Compact Machine BlockEntity using reflection.
+     *
+     * @param cmBE The Compact Machine BlockEntity
+     * @return The room code string, or null if not available
+     */
+    @Nullable
+    private String getRoomCodeFromCM(BoundCompactMachineBlockEntity cmBE) {
+        // Cast to Object immediately to avoid compile-time interface check
+        Object cmObj = cmBE;
 
-        return InteractionResult.SUCCESS;
+        FPSCompress.LOGGER.info("=== DEBUG: Getting room code from CM ===");
+        FPSCompress.LOGGER.info("CM BlockEntity class: {}", cmObj.getClass().getName());
+
+        try {
+
+            // List all available methods for debugging
+            FPSCompress.LOGGER.info("Available methods on CM BlockEntity:");
+            for (Method m : cmObj.getClass().getMethods()) {
+                if (m.getName().contains("room") || m.getName().contains("Room")
+                    || m.getName().contains("connected") || m.getName().contains("Connected")) {
+                    FPSCompress.LOGGER.info("  - {} returns {}", m.getName(), m.getReturnType().getName());
+                }
+            }
+
+            // Try to get connectedRoom method
+            Method connectedRoomMethod = cmObj.getClass().getMethod("connectedRoom");
+            FPSCompress.LOGGER.info("Found connectedRoom() method, return type: {}",
+                                   connectedRoomMethod.getReturnType().getName());
+
+            // Invoke the method
+            Object roomResult = connectedRoomMethod.invoke(cmObj);
+            FPSCompress.LOGGER.info("connectedRoom() returned: {} (type: {})",
+                                   roomResult,
+                                   roomResult != null ? roomResult.getClass().getName() : "null");
+
+            // Handle both String and Optional<String> return types
+            if (roomResult instanceof String roomCodeStr) {
+                // Direct String return (CM 7.0.81 behavior)
+                if (!roomCodeStr.isEmpty()) {
+                    FPSCompress.LOGGER.info("SUCCESS: Room code is '{}'", roomCodeStr);
+                    return roomCodeStr;
+                } else {
+                    FPSCompress.LOGGER.warn("connectedRoom() returned empty string");
+                }
+            } else if (roomResult instanceof Optional<?> opt) {
+                // Optional return type (alternative CM API version)
+                FPSCompress.LOGGER.info("Result is Optional, isPresent: {}", opt.isPresent());
+
+                if (opt.isPresent()) {
+                    Object roomKey = opt.get();
+                    FPSCompress.LOGGER.info("Optional contains: {} (type: {})",
+                                           roomKey, roomKey.getClass().getName());
+
+                    String roomCodeStr = roomKey.toString();
+                    FPSCompress.LOGGER.info("SUCCESS: Room code is '{}'", roomCodeStr);
+                    return roomCodeStr;
+                } else {
+                    FPSCompress.LOGGER.warn("connectedRoom() returned empty Optional - "
+                                          + "CM may not be bound to a room yet");
+                }
+            } else {
+                FPSCompress.LOGGER.error("connectedRoom() returned unexpected type: {}",
+                                        roomResult != null ? roomResult.getClass().getName() : "null");
+            }
+        } catch (NoSuchMethodException e) {
+            FPSCompress.LOGGER.error("connectedRoom() method not found - CM API may have changed", e);
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Failed to get room code from CM block", e);
+            e.printStackTrace();
+        }
+
+        FPSCompress.LOGGER.error("=== DEBUG: Failed to get room code ===");
+        return null;
     }
 }
