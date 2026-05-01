@@ -33,7 +33,9 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
     public PreFabConfigScreen(PreFabConfigMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = 176;
-        this.imageHeight = 166;
+        this.imageHeight = 200;  // Taller to fit our buttons
+        this.inventoryLabelY = 1000;  // Hide inventory label (push off screen)
+        this.titleLabelY = 1000;  // Hide title label (push off screen)
     }
 
     @Override
@@ -158,7 +160,8 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        // Render background - can be empty for now
+        // Render background with dark overlay
+        renderTransparentBackground(graphics);
     }
 
     @Override
@@ -166,13 +169,14 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         // Render default background
         super.render(graphics, mouseX, mouseY, partialTick);
 
-        // Render title
-        graphics.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
+        // Render custom title at top
+        graphics.drawCenteredString(this.font, "PreFab Configuration",
+            this.width / 2, this.height / 2 - 95, 0xFFFFFF);
 
-        // Render selected face indicator
-        graphics.drawString(this.font,
+        // Render selected face indicator below title
+        graphics.drawCenteredString(this.font,
             "Configuring: §6" + selectedFace.getName().toUpperCase(),
-            this.width / 2 - 80, this.height / 2 - 100, 0xFFFFFF);
+            this.width / 2, this.height / 2 - 82, 0xFFFFFF);
     }
 
     @Override
