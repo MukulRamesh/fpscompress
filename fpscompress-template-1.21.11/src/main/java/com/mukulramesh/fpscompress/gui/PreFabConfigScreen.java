@@ -18,9 +18,20 @@ import net.minecraft.world.entity.player.Inventory;
  * - Set mode (DISABLED/PULL/PUSH)
  * - Set filter (ALL/ITEMS/FLUIDS/ENERGY)
  * - Save changes (sends packet to server)
+ *
+ * TODO: GUI Structural Improvements (Post-Phase 1)
+ * This GUI needs a proper inventory-based implementation:
+ * 1. Create proper container GUI with inventory slots (not AbstractContainerScreen hack)
+ * 2. Mode/Filter should be labels, NOT clickable buttons - buttons are for actions only
+ * 3. Add proper texture background instead of transparent overlay
+ * 4. Consider using toggle buttons or radio button groups for mode/filter selection
+ * 5. Separate face selection from configuration - possibly use tabs or pages
+ * 6. Add visual feedback for which Importer/Exporter each face links to (Phase 2)
+ *
+ * Current implementation is functional but not architecturally sound.
  */
 public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu> {
-    private Direction selectedFace = Direction.NORTH;
+    private Direction selectedFace;
 
     // Button references for updating states
     private Button[] modeButtons = new Button[3];
@@ -36,6 +47,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         this.imageHeight = 200;  // Taller to fit our buttons
         this.inventoryLabelY = 1000;  // Hide inventory label (push off screen)
         this.titleLabelY = 1000;  // Hide title label (push off screen)
+        this.selectedFace = menu.getDefaultFace();  // Set default to clicked face
     }
 
     @Override
@@ -45,15 +57,27 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         int centerX = this.width / 2;
         int startY = this.height / 2 - 80;
 
-        // Face selection buttons (6 directions)
+        // Face selection buttons (6 directions) - store references for highlighting
+        Button[] faceButtons = new Button[6];
         int faceButtonY = startY;
+        int idx = 0;
         for (Direction dir : Direction.values()) {
-            int buttonX = centerX - 180 + (dir.ordinal() * 60);
-            addRenderableWidget(Button.builder(
+            int buttonX = centerX - 180 + (idx * 60);
+            final Direction capturedDir = dir;
+            final int capturedIdx = idx;
+            faceButtons[idx] = addRenderableWidget(Button.builder(
                 Component.literal(dir.getName().toUpperCase()),
-                btn -> selectFace(dir)
+                btn -> {
+                    selectFace(capturedDir);
+                    updateFaceButtonHighlights(faceButtons, capturedIdx);
+                }
             ).bounds(buttonX, faceButtonY, 55, BUTTON_HEIGHT).build());
+            idx++;
         }
+
+        // Set initial selection highlight based on default face
+        int defaultIndex = selectedFace.ordinal();
+        updateFaceButtonHighlights(faceButtons, defaultIndex);
 
         // Mode buttons
         int modeY = startY + 40;
@@ -119,6 +143,17 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         updateButtonStates();
     }
 
+    private void updateFaceButtonHighlights(Button[] faceButtons, int selectedIndex) {
+        for (int i = 0; i < faceButtons.length; i++) {
+            Button btn = faceButtons[i];
+            Direction dir = Direction.values()[i];
+            boolean isSelected = (i == selectedIndex);
+            btn.setMessage(Component.literal(
+                (isSelected ? "§a" : "§7") + dir.getName().toUpperCase()
+            ));
+        }
+    }
+
     private void setMode(FaceMode mode) {
         FaceConfig config = menu.getFaceConfig(selectedFace);
         config.setMode(mode);
@@ -172,11 +207,6 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         // Render custom title at top
         graphics.drawCenteredString(this.font, "PreFab Configuration",
             this.width / 2, this.height / 2 - 95, 0xFFFFFF);
-
-        // Render selected face indicator below title
-        graphics.drawCenteredString(this.font,
-            "Configuring: §6" + selectedFace.getName().toUpperCase(),
-            this.width / 2, this.height / 2 - 82, 0xFFFFFF);
     }
 
     @Override

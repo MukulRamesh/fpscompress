@@ -24,14 +24,20 @@ import java.util.Map;
 public class PreFabConfigMenu extends AbstractContainerMenu {
     private final BlockPos prefabPos;
     private final Map<Direction, FaceConfig> faceConfigs = new EnumMap<>(Direction.class);
+    private final Direction defaultFace;
 
     public PreFabConfigMenu(int containerId, Inventory playerInventory, FriendlyByteBuf extraData) {
-        this(containerId, playerInventory, extraData.readBlockPos());
+        this(containerId, playerInventory, extraData.readBlockPos(), Direction.from3DDataValue(extraData.readByte()));
     }
 
     public PreFabConfigMenu(int containerId, Inventory playerInventory, BlockPos prefabPos) {
+        this(containerId, playerInventory, prefabPos, Direction.NORTH);
+    }
+
+    public PreFabConfigMenu(int containerId, Inventory playerInventory, BlockPos prefabPos, Direction defaultFace) {
         super(FPSCompress.PREFAB_CONFIG_MENU.get(), containerId);
         this.prefabPos = prefabPos;
+        this.defaultFace = defaultFace;
 
         // Load current configs from BlockEntity
         BlockEntity be = playerInventory.player.level().getBlockEntity(prefabPos);
@@ -55,6 +61,10 @@ public class PreFabConfigMenu extends AbstractContainerMenu {
 
     public FaceConfig getFaceConfig(Direction direction) {
         return faceConfigs.get(direction);
+    }
+
+    public Direction getDefaultFace() {
+        return defaultFace;
     }
 
     /**

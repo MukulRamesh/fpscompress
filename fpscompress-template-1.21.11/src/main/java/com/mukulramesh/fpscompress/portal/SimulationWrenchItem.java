@@ -69,35 +69,28 @@ public class SimulationWrenchItem extends Item {
             return InteractionResult.FAIL;
         }
 
-        // Phase 1 Part C: Shift+Right-click opens face config GUI
+        // Phase 1 Part C:
+        // Shift+Right-click: Break the block (drop as item)
+        // Right-click: Open face config GUI
         if (player.isShiftKeyDown()) {
+            // Break the PreFab block and drop it as an item
+            level.destroyBlock(context.getClickedPos(), true);
+            player.displayClientMessage(
+                Component.literal("§ePreFab removed"),
+                true
+            );
+            return InteractionResult.SUCCESS;
+        } else {
+            // Open face configuration GUI
             if (player instanceof ServerPlayer serverPlayer) {
-                // Open face configuration GUI with BlockPos as extra data
+                // Set the clicked face so GUI defaults to it
+                prefab.setClickedFace(context.getClickedFace());
                 serverPlayer.openMenu(prefab, context.getClickedPos());
 
-                FPSCompress.LOGGER.info("Opened PreFab config GUI for player {} at {}",
-                    player.getName().getString(), context.getClickedPos());
+                FPSCompress.LOGGER.info("Opened PreFab config GUI for player {} at {} (clicked face: {})",
+                    player.getName().getString(), context.getClickedPos(), context.getClickedFace());
             }
             return InteractionResult.SUCCESS;
         }
-
-        // Get current machine state
-        MachineState currentState = prefab.getCurrentState();
-
-        FPSCompress.LOGGER.info("Simulation Wrench used on PreFab at {} by player {}, current state: {}",
-            context.getClickedPos(), player.getName().getString(), currentState);
-
-        // TODO Phase 6: Implement state transitions
-        // For now, just show current state
-        player.displayClientMessage(
-            Component.literal(String.format("§ePreFab State: §b%s", currentState.name())),
-            true
-        );
-        player.displayClientMessage(
-            Component.literal("§7(State transitions not yet implemented - Phase 6)"),
-            true
-        );
-
-        return InteractionResult.SUCCESS;
     }
 }

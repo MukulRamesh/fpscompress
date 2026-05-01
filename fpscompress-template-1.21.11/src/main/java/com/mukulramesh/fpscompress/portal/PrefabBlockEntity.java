@@ -270,6 +270,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // ===== MenuProvider Implementation =====
 
+    // Store the clicked face direction for GUI default selection
+    private Direction clickedFace = Direction.NORTH;
+
+    public void setClickedFace(Direction face) {
+        this.clickedFace = face;
+    }
+
     @Override
     public Component getDisplayName() {
         return Component.literal("PreFab Configuration");
@@ -277,6 +284,6 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     @Override
     public AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
-        return new PreFabConfigMenu(containerId, playerInventory, this.getBlockPos());
+        return new PreFabConfigMenu(containerId, playerInventory, this.getBlockPos(), this.clickedFace);
     }
 }
