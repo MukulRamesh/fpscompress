@@ -1,5 +1,7 @@
 package com.mukulramesh.fpscompress;
 
+import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
+import com.mukulramesh.fpscompress.gui.PreFabConfigScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -7,6 +9,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
@@ -29,5 +32,12 @@ public class FPSCompressClient {
         // Some client setup code
         FPSCompress.LOGGER.info("HELLO FROM CLIENT SETUP");
         FPSCompress.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+    }
+
+    @SubscribeEvent
+    static void registerScreens(RegisterMenuScreensEvent event) {
+        // Register PreFab configuration screen
+        event.register(FPSCompress.PREFAB_CONFIG_MENU.get(), PreFabConfigScreen::new);
+        FPSCompress.LOGGER.info("Registered PreFab configuration screen");
     }
 }

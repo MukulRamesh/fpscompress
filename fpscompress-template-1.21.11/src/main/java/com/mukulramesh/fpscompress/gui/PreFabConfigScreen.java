@@ -5,9 +5,10 @@ import com.mukulramesh.fpscompress.portal.FaceMode;
 import com.mukulramesh.fpscompress.portal.ResourceFilter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 
 /**
  * Client-side GUI screen for configuring PreFab faces.
@@ -18,8 +19,7 @@ import net.minecraft.network.chat.Component;
  * - Set filter (ALL/ITEMS/FLUIDS/ENERGY)
  * - Save changes (sends packet to server)
  */
-public class PreFabConfigScreen extends Screen {
-    private final PreFabConfigMenu menu;
+public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu> {
     private Direction selectedFace = Direction.NORTH;
 
     // Button references for updating states
@@ -30,9 +30,10 @@ public class PreFabConfigScreen extends Screen {
     private static final int BUTTON_HEIGHT = 20;
     private static final int SPACING = 5;
 
-    public PreFabConfigScreen(PreFabConfigMenu menu) {
-        super(Component.literal("PreFab Configuration"));
-        this.menu = menu;
+    public PreFabConfigScreen(PreFabConfigMenu menu, Inventory playerInventory, Component title) {
+        super(menu, playerInventory, title);
+        this.imageWidth = 176;
+        this.imageHeight = 166;
     }
 
     @Override
@@ -156,9 +157,14 @@ public class PreFabConfigScreen extends Screen {
     }
 
     @Override
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        // Render background - can be empty for now
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Render background
-        this.renderBackground(graphics, mouseX, mouseY, partialTick);
+        // Render default background
+        super.render(graphics, mouseX, mouseY, partialTick);
 
         // Render title
         graphics.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
@@ -167,8 +173,6 @@ public class PreFabConfigScreen extends Screen {
         graphics.drawString(this.font,
             "Configuring: §6" + selectedFace.getName().toUpperCase(),
             this.width / 2 - 80, this.height / 2 - 100, 0xFFFFFF);
-
-        super.render(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
