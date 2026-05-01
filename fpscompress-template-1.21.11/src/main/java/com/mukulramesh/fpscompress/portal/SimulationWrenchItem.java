@@ -1,9 +1,15 @@
 package com.mukulramesh.fpscompress.portal;
 
 import com.mukulramesh.fpscompress.FPSCompress;
+import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -36,6 +42,7 @@ public class SimulationWrenchItem extends Item {
     /**
      * Called when the player right-clicks a block with this item.
      *
+     * Phase 1 Part C: Shift+Right-click opens face config GUI
      * TODO Phase 6: Implement full state machine
      *
      * @param context The use context
@@ -60,6 +67,23 @@ public class SimulationWrenchItem extends Item {
                 true
             );
             return InteractionResult.FAIL;
+        }
+
+        // Phase 1 Part C: Shift+Right-click opens face config GUI
+        if (player.isShiftKeyDown()) {
+            if (player instanceof ServerPlayer serverPlayer) {
+                // Open face configuration GUI
+                MenuProvider menuProvider = new SimpleMenuProvider(
+                    (containerId, playerInventory, playerEntity) ->
+                        new PreFabConfigMenu(containerId, playerInventory, context.getClickedPos()),
+                    Component.literal("PreFab Configuration")
+                );
+                serverPlayer.openMenu(menuProvider);
+
+                FPSCompress.LOGGER.info("Opened PreFab config GUI for player {} at {}",
+                    player.getName().getString(), context.getClickedPos());
+            }
+            return InteractionResult.SUCCESS;
         }
 
         // Get current machine state

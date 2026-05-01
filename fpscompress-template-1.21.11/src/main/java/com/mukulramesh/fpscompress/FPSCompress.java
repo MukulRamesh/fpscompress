@@ -13,15 +13,22 @@ import com.mukulramesh.fpscompress.portal.PSDExitListener;
 import com.mukulramesh.fpscompress.portal.SimulationWrenchItem;
 import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
 
+import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
+import com.mukulramesh.fpscompress.network.FaceConfigPacket;
+
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -54,6 +61,9 @@ public final class FPSCompress {
     // Create a Deferred Register to hold BlockEntityTypes
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
         DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, MODID);
+    // Create a Deferred Register to hold MenuTypes
+    public static final DeferredRegister<MenuType<?>> MENU_TYPES =
+        DeferredRegister.create(BuiltInRegistries.MENU, MODID);
 
     // ===== Blocks =====
 
@@ -69,6 +79,15 @@ public final class FPSCompress {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PrefabBlockEntity>> PREFAB_BE =
         BLOCK_ENTITIES.register("prefab_machine", () ->
             BlockEntityType.Builder.of(PrefabBlockEntity::new, PREFAB_BLOCK.get()).build(null));
+
+    // ===== Menu Types =====
+
+    /**
+     * PreFab Configuration Menu - GUI for configuring face modes and filters.
+     */
+    public static final DeferredHolder<MenuType<?>, MenuType<PreFabConfigMenu>> PREFAB_CONFIG_MENU =
+        MENU_TYPES.register("prefab_config", () ->
+            IMenuTypeExtension.create(PreFabConfigMenu::new));
 
     // ===== Items =====
 
@@ -127,6 +146,10 @@ public final class FPSCompress {
         FPSDataAttachments.ATTACHMENT_TYPES.register(modEventBus);
         // Register BlockEntity types
         BLOCK_ENTITIES.register(modEventBus);
+        // Register Menu types
+        MENU_TYPES.register(modEventBus);
+        // Register network packets
+        modEventBus.addListener(this::registerPackets);
 
         // FIXED: DimensionTeleportListener now captures exact block on click (no more 3,087 block search!)
         NeoForge.EVENT_BUS.register(new DimensionTeleportListener());
@@ -155,6 +178,16 @@ public final class FPSCompress {
         LOGGER.info("{}{}", Config.MAGIC_NUMBER_INTRODUCTION.get(), Config.MAGIC_NUMBER.getAsInt());
 
         Config.ITEM_STRINGS.get().forEach((item) -> LOGGER.info("ITEM >> {}", item));
+    }
+
+    private void registerPackets(RegisterPayloadHandlersEvent event) {
+        final PayloadRegistrar registrar = event.registrar("1");
+        registrar.playToServer(
+            FaceConfigPacket.TYPE,
+            FaceConfigPacket.STREAM_CODEC,
+            FaceConfigPacket::handle
+        );
+        LOGGER.info("Registered network packet: FaceConfigPacket");
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
