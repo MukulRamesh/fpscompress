@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-05-02  
 **Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)  
-**Current Phase**: Phase 2 Complete ✅ → Ready for Phase 3
+**Current Phase**: Phase 3 Complete ✅ → Ready for Phase 4
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
@@ -153,7 +153,7 @@
 ---
 
 ### Phase 3: Basic Transport Logic
-**Status**: 🚧 **IN PROGRESS** (2026-05-02)  
+**Status**: ✅ **COMPLETE** (2026-05-02)  
 **Goal**: Move resources between Overworld and CM dimension via Importer/Exporter gates
 
 **Prerequisites**: Phase 2 complete (Importers/Exporters working, UUID linking functional)
@@ -162,120 +162,43 @@
 - PULL mode: Overworld chest → PreFab → find Importer by UUID → insert to Importer buffer
 - PUSH mode: find Exporter by UUID → extract from Exporter buffer → PreFab → Overworld chest
 - Exporters actively pull from adjacent machines (already implemented in Phase 2)
-- Importers expose capability to adjacent machines (Phase 8 optional, for MVP just buffer)
+- Importers actively push to adjacent machines (implemented in Phase 3)
 
 **Tasks**:
-- [ ] Add ticker to `PrefabBlock.java`:
-  - Register server-side BlockEntityTicker in `getTicker()`
-  - Call `PrefabBlockEntity.tick()` method
-- [ ] Implement `tick()` in `PrefabBlockEntity.java`:
-  - For each face with mode != DISABLED:
-    - If mode == PULL: Handle pull logic
-    - If mode == PUSH: Handle push logic
-- [ ] Implement PULL logic:
+- [x] Add ticker to `PrefabBlock.java`: Register server-side BlockEntityTicker
+- [x] Implement `tick()` in `PrefabBlockEntity.java`: Process all configured faces
+- [x] Implement PULL logic: Overworld → Importer
   ```java
   // 1. Get face config
   FaceConfig config = getFaceConfig(face);
   if (config.getMode() != FaceMode.PULL) return;
   
-  // 2. Query adjacent Overworld block capability
-  BlockPos overworldPos = getBlockPos().relative(face);
-  IItemHandler overworldHandler = level.getCapability(
-      Capabilities.ItemHandler.BLOCK, overworldPos, face.getOpposite());
-  if (overworldHandler == null) return;
-  
-  // 3. Find target Importer by UUID in CM dimension
-  ServerLevel cmLevel = getCMLevel();
-  ImporterBlockEntity importer = findImporterByUUID(cmLevel, config.getTargetUUID());
-  if (importer == null) return;
-  
-  // 4. Try extracting from Overworld
-  ItemStack extracted = ItemStack.EMPTY;
-  for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
-      extracted = overworldHandler.extractItem(slot, 64, false);
-      if (!extracted.isEmpty()) break;
-  }
-  if (extracted.isEmpty()) return;
-  
-  // 5. Insert to Importer buffer
-  ItemStack remainder = importer.insertItem(extracted);
-  
-  // 6. Put remainder back if buffer full
-  if (!remainder.isEmpty()) {
-      for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
-          remainder = overworldHandler.insertItem(slot, remainder, false);
-          if (remainder.isEmpty()) break;
-      }
-  }
-  ```
-- [ ] Implement PUSH logic:
-  ```java
-  // 1. Get face config
-  FaceConfig config = getFaceConfig(face);
-  if (config.getMode() != FaceMode.PUSH) return;
-  
-  // 2. Find target Exporter by UUID in CM dimension
-  ServerLevel cmLevel = getCMLevel();
-  ExporterBlockEntity exporter = findExporterByUUID(cmLevel, config.getTargetUUID());
-  if (exporter == null) return;
-  
-  // 3. Try extracting from Exporter buffer
-  ItemStack extracted = exporter.extractFromBuffer(64);
-  if (extracted.isEmpty()) return;
-  
-  // 4. Query adjacent Overworld block capability
-  BlockPos overworldPos = getBlockPos().relative(face);
-  IItemHandler overworldHandler = level.getCapability(
-      Capabilities.ItemHandler.BLOCK, overworldPos, face.getOpposite());
-  if (overworldHandler == null) {
-      // Can't insert to Overworld - put back in Exporter
-      exporter.insertItem(extracted); // Add insertItem() method to ExporterBlockEntity
-      return;
-  }
-  
-  // 5. Insert to Overworld
-  ItemStack remainder = ItemStack.EMPTY;
-  for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
-      remainder = overworldHandler.insertItem(slot, extracted, false);
-      if (remainder.isEmpty()) break;
-      extracted = remainder;
-  }
-  
-  // 6. Put remainder back in Exporter if Overworld full
-  if (!remainder.isEmpty()) {
-      exporter.insertItem(remainder);
-  }
-  ```
-- [ ] Add `getCMLevel()` helper method to PrefabBlockEntity:
-  ```java
-  @Nullable
-  private ServerLevel getCMLevel() {
-      if (level == null || level.isClientSide()) return null;
-      MinecraftServer server = level.getServer();
-      if (server == null) return null;
-      return server.getLevel(CMInterceptorImpl.CM_DIMENSION_KEY);
-  }
-  ```
-- [ ] Add `insertItem()` method to `ExporterBlockEntity.java` (for putting remainder back)
-- [ ] Test PULL mode:
-  - Configure PreFab NORTH face: PULL → "Apple Importer"
-  - Place chest north of PreFab with apples
-  - Verify apples disappear from chest
-  - Check Importer buffer has apples (right-click debug display)
-- [ ] Test PUSH mode:
-  - Place chest next to Exporter in CM dimension with items
-  - Exporter pulls items (already working from Phase 2)
-  - Configure PreFab SOUTH face: PUSH → "Apple Exporter"
-  - Place chest south of PreFab in Overworld
-  - Verify apples appear in Overworld chest
-- [ ] Test roundtrip:
-  - NORTH = PULL → Importer, SOUTH = PUSH → Exporter
-  - Place furnace between Importer and Exporter in CM
-  - Add coal/iron to north chest → Should appear as ingots in south chest
+- [x] Implement PUSH logic: Exporter → Overworld
+- [x] Add `getCMLevel()` helper method to PrefabBlockEntity
+- [x] Add `insertItem()` to ExporterBlockEntity (for remainder handling)
+- [x] Add `pushToAdjacentMachines()` to ImporterBlockEntity
+- [x] Add ticker to ImporterBlock for active pushing
+- [x] Test PULL mode: Overworld chest → Importer buffer ✓
+- [x] Test PUSH mode: Exporter buffer → Overworld chest ✓
+- [x] Test roundtrip: Full item flow working ✓
+- [x] Fix registry persistence bugs (moved to Block.onRemove())
 
-**Performance Notes**:
-- Only process configured faces (skip DISABLED)
-- Cache UUID lookups (already implemented in Phase 2)
+**Bugs Fixed**:
+- Registry unregistering on chunk unload (moved to Block.onRemove())
+- Infinite loop from getBlockState() loading chunks  
+- Importer not pushing to adjacent machines (added active pushing)
+- ExporterBlockEntity missing public insertItem() method
+
+**Result**: ✅ Complete item flow working:
+1. PreFab PULL: Overworld chest → Importer buffer
+2. Importer PUSH: Buffer → Adjacent machine (furnace, etc.)
+3. Exporter PULL: Adjacent machine → Exporter buffer
+4. PreFab PUSH: Exporter buffer → Overworld chest
+
+**Known Limitations** (will address in Phase 4-5):
+- CM chunks must stay loaded for transport to work
+- No rate measurement yet
+- No cached production yet
 - Limit items moved per tick (64 max for MVP)
 
 ---
