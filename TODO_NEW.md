@@ -1,7 +1,8 @@
 # FPSCompress TODO List - Conduit Architecture
 
-**Last Updated**: 2026-04-28  
-**Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)
+**Last Updated**: 2026-05-02  
+**Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)  
+**Current Phase**: Phase 1 Complete ✅ → Ready for Phase 2
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
@@ -34,87 +35,72 @@
 ## 🎯 MVP Implementation (Focus Here First)
 
 ### Phase 1: Face Configuration + Adjacent Block Detection (De-risk)
-**Status**: Not Started  
+**Status**: ✅ **COMPLETE** (2026-05-02)  
 **Goal**: Prove PreFab can detect adjacent blocks and faces work correctly
 
 **Why this first**: De-risk the core concept before building Importers/Exporters
 
 **Tasks - Part A: Data Structures**:
-- [ ] Create `portal/FaceMode.java` enum (DISABLED, PULL, PUSH)
-- [ ] Create `portal/ResourceFilter.java` enum (ALL, ITEMS, FLUIDS, ENERGY)
-- [ ] Create `portal/FaceConfig.java` data class:
-  ```java
-  public class FaceConfig {
-      FaceMode mode = FaceMode.DISABLED;
-      ResourceFilter resourceType = ResourceFilter.ALL;
-      UUID targetUUID = null;  // Will link to Importer/Exporter (Phase 2)
-      
-      // NBT serialization methods
-  }
-  ```
-- [ ] Modify `portal/PreFabBlockEntity.java`:
-  - Add `Map<Direction, FaceConfig> faceConfigs` field
+- [x] Create `portal/FaceMode.java` enum (DISABLED, PULL, PUSH)
+- [x] Create `portal/ResourceFilter.java` enum (ALL, ITEMS, FLUIDS, ENERGY)
+- [x] Create `portal/FaceConfig.java` data class with NBT serialization
+- [x] Modify `portal/PreFabBlockEntity.java`:
+  - Added `Map<Direction, FaceConfig> faceConfigs` field
   - Initialize all 6 faces to DISABLED in constructor
-  - Implement NBT `saveAdditional()` and `loadAdditional()`
+  - Implemented NBT `saveAdditional()` and `loadAdditional()`
+  - Added client sync methods (`getUpdatePacket()`, `getUpdateTag()`, `handleUpdateTag()`)
 
 **Tasks - Part B: Adjacent Block Detection (Debug)**:
-- [ ] Add debug method to `PreFabBlockEntity`:
-  ```java
-  public void debugAdjacentBlocks(Player player) {
-      for (Direction dir : Direction.values()) {
-          BlockPos adjacentPos = this.getBlockPos().relative(dir);
-          BlockEntity be = this.level.getBlockEntity(adjacentPos);
-          
-          if (be != null) {
-              // Try to get capabilities
-              IItemHandler itemHandler = be.getCapability(Capabilities.ItemHandler.BLOCK, dir.getOpposite());
-              IFluidHandler fluidHandler = be.getCapability(Capabilities.FluidHandler.BLOCK, dir.getOpposite());
-              IEnergyStorage energyStorage = be.getCapability(Capabilities.EnergyStorage.BLOCK, dir.getOpposite());
-              
-              player.displayClientMessage(Component.literal(
-                  String.format("§6%s: §7%s §a[Items:%s Fluids:%s Energy:%s]",
-                      dir.name(),
-                      be.getBlockState().getBlock().getName().getString(),
-                      itemHandler != null ? "✓" : "✗",
-                      fluidHandler != null ? "✓" : "✗",
-                      energyStorage != null ? "✓" : "✗"
-                  )
-              ), false);
-          } else {
-              player.displayClientMessage(Component.literal(
-                  String.format("§6%s: §8No block", dir.name())
-              ), false);
-          }
-      }
-  }
-  ```
-- [ ] Modify `PrefabBlock.useWithoutItem()`:
-  - Right-click PreFab without item → Call `debugAdjacentBlocks(player)`
-  - Shows what blocks are adjacent and what capabilities they have
+- [x] Add `debugAdjacentBlocks(Player player)` method to `PreFabBlockEntity`
+  - Queries IItemHandler, IFluidHandler, IEnergyStorage capabilities
+  - Displays results in chat with color-coded symbols
+- [x] Modify `PrefabBlock.useWithoutItem()`:
+  - Right-click PreFab without wrench → Calls `debugAdjacentBlocks(player)`
+  - Checks for Simulation Wrench and returns PASS if held (allows wrench interaction)
 
 **Tasks - Part C: Simple Face Config GUI**:
-- [ ] Create minimal GUI (no Importer/Exporter linking yet):
-  ```
-  ┌─────────────────────────────┐
-  │   Face: NORTH               │
-  ├─────────────────────────────┤
-  │ Mode:   [DISABLED] [PULL] [PUSH]
-  │ Filter: [ALL] [ITEMS] [FLUIDS] [ENERGY]
-  │ [Save]                      │
-  └─────────────────────────────┘
-  ```
-- [ ] Trigger: Shift+Right-click PreFab with wrench
-- [ ] Network packet to sync config to server
-- [ ] Test: Configure faces, break PreFab, verify configs preserved in NBT
+- [x] Create `gui/PreFabConfigScreen.java`:
+  - 6 face selection buttons (NORTH/SOUTH/EAST/WEST/UP/DOWN)
+  - Mode buttons (DISABLED/PULL/PUSH) with green highlighting for active selection
+  - Filter buttons (ALL/ITEMS/FLUIDS/ENERGY) with green highlighting
+  - Save button (also auto-saves on ESC/GUI close)
+  - Defaults to clicked face when opened
+- [x] Create `gui/PreFabConfigMenu.java`:
+  - Server-side container menu
+  - Loads configs from BlockEntity on open
+  - Creates defensive copies to prevent direct BlockEntity modification
+- [x] Create `network/FaceConfigPacket.java`:
+  - Client → Server sync packet
+  - Uses CustomPacketPayload with StreamCodec
+  - Defensive copying to prevent internal representation exposure (spotbugs compliance)
+- [x] Modify `portal/SimulationWrenchItem.java`:
+  - Right-click → Opens face config GUI (sends BlockPos + Direction to client)
+  - Shift+right-click → Breaks PreFab block and drops as item
+  - Custom buffer writer for network sync (`buf.writeBlockPos()`, `buf.writeByte()`)
+- [x] Register client-side screen in `FPSCompressClient.java`
+- [x] Register network packet in `FPSCompress.java`
+- [x] Add `"id": "fpscompress:prefab"` to BlockEntity NBT for item serialization
+- [x] Test: Configure faces, close/reopen GUI → Configs persist ✓
+- [x] Test: Break PreFab → Drops with NBT data ✓
+- [x] Test: Quit to menu → No crashes ✓
 
 **De-risk Validation**:
 - ✅ Can detect adjacent chests/furnaces/hoppers
 - ✅ Can query their capabilities (Items/Fluids/Energy)
-- ✅ Face configs save/load correctly
-- ✅ GUI opens and works
+- ✅ Face configs save/load correctly (NBT persistence)
+- ✅ Face configs sync client ↔ server correctly (BlockEntity sync)
+- ✅ GUI opens and works (network packet properly formatted)
+- ✅ Auto-save on ESC implemented
+- ✅ All code quality checks passing (checkstyle, spotbugs)
 
-**If this phase fails**: Core concept broken, rethink architecture  
-**If this phase succeeds**: Confident to proceed with Importers/Exporters
+**Bugs Fixed**:
+- Fixed crash on save: BlockEntity NBT missing "id" field
+- Fixed wrench not opening GUI: Block interaction consuming event before item
+- Fixed network protocol error: Menu constructor expected BlockPos + Direction, only received BlockPos
+- Fixed configs not persisting: Client BlockEntity not syncing from server
+- Added `getUpdatePacket()`, `getUpdateTag()`, `handleUpdateTag()` for proper client sync
+
+**Result**: ✅ Core concept validated - proceeding to Phase 2 (Importers/Exporters)
 
 ---
 
@@ -171,20 +157,35 @@
 **Status**: Not Started  
 **Goal**: Record actual transport rates while CM chunks are loaded
 
+**Implementation Approach**: Use delta accounting (see VALIDATION_DELTA_ACCOUNTING.md)
+- Track four quantities: Imported, Exported, Initial State, Final State
+- Calculate net production: `Net = (Final - Initial) + (Exported - Imported)`
+- Positive = produced, Negative = consumed, Zero = passthrough
+
 **Tasks**:
 - [ ] Add `MachineState` field to PreFabBlockEntity (BUILDING/SIMULATING/CACHED/HALTED)
-- [ ] Add rate tracking fields:
+- [ ] Create `portal/ResourceDeltaTracker.java`:
+  - Track totalImported, totalExported per resource type
+  - Methods: `recordImport()`, `recordExport()`, `captureInitialState()`, `captureFinalState()`
+  - Method: `calculateNet(resource)` returns net production
+- [ ] Add delta tracker to PreFabBlockEntity:
   ```java
-  Map<String, Double> itemRates = new HashMap<>(); // resource_id -> items/tick
-  Map<String, Double> fluidRates = new HashMap<>(); // fluid_id -> mB/tick
-  double energyRate = 0.0; // FE/tick
-  int simulationTicks = 0;
+  ResourceDeltaTracker deltaTracker = new ResourceDeltaTracker();
+  long simulationStartTick = 0;
+  long simulationEndTick = 0;
   ```
+- [ ] On transition BUILDING → SIMULATING:
+  - Scan all machine inventories in CM dimension (see VALIDATION_DELTA_ACCOUNTING.md)
+  - Call `deltaTracker.captureInitialState(inventory)`
+  - Record simulationStartTick
 - [ ] During `tick()` when state == SIMULATING:
-  - Count all resources transported
-  - Increment simulationTicks
+  - Call `deltaTracker.recordImport()` after each successful pull
+  - Call `deltaTracker.recordExport()` after each successful push
 - [ ] On transition SIMULATING → CACHED:
-  - Calculate rates: `rate = totalTransported / simulationTicks`
+  - Scan all machine inventories again
+  - Call `deltaTracker.captureFinalState(inventory)`
+  - Record simulationEndTick
+  - Calculate rates: `rate = calculateNet(resource) / (simulationEndTick - simulationStartTick)`
   - Store rates in PreFabBlockEntity
   - Serialize rates to NBT
 

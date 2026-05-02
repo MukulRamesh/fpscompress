@@ -1,6 +1,5 @@
 package com.mukulramesh.fpscompress;
 
-import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import com.mukulramesh.fpscompress.gui.PreFabConfigScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;

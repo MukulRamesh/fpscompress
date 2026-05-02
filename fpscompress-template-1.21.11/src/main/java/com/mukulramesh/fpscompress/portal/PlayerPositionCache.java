@@ -25,7 +25,8 @@ public final class PlayerPositionCache {
     /**
      * Store player's position, dimension, and rotation before entering a PreFab room.
      */
-    public static void cacheEntryPosition(UUID playerId, ResourceKey<Level> dimension, BlockPos pos, float yaw, float pitch) {
+    public static void cacheEntryPosition(UUID playerId, ResourceKey<Level> dimension,
+            BlockPos pos, float yaw, float pitch) {
         ENTRY_POSITIONS.put(playerId, new CachedPosition(dimension, pos, yaw, pitch));
     }
 

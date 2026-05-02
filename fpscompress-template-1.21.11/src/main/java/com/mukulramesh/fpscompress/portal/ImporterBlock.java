@@ -1,0 +1,147 @@
+package com.mukulramesh.fpscompress.portal;
+
+import com.mojang.logging.LogUtils;
+import com.mukulramesh.fpscompress.FPSCompress;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+
+/**
+ * Importer block - CM dimension input gate for PreFab resource transport.
+ *
+ * Features:
+ * - Acts as input gate: receives resources from PreFab PULL faces
+ * - Exposes IItemHandler to adjacent machines (passive capability)
+ * - Has unique UUID for PreFab face linking
+ * - 9-slot internal buffer for passthrough
+ * - Can only be placed in CM dimension (enforced by player)
+ */
+public class ImporterBlock extends Block implements EntityBlock {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    public ImporterBlock() {
+        super(BlockBehaviour.Properties.of()
+            .strength(3.0f, 4.0f)
+            .sound(SoundType.METAL)
+        );
+    }
+
+    @Nullable
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new ImporterBlockEntity(pos, state);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level,
+                                              BlockPos pos, Player player,
+                                              BlockHitResult hitResult) {
+        // Debug output: show UUID, filter, and buffer contents
+        if (!level.isClientSide()) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof ImporterBlockEntity importer) {
+                player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal(
+                        String.format("§6=== %s ===", importer.getDisplayName())
+                    ),
+                    false
+                );
+                player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal(
+                        String.format("§7UUID: §3%s", importer.getImporterUUID().toString().substring(0, 8))
+                    ),
+                    false
+                );
+
+                // Show filter
+                ItemStack filter = importer.getFilterItem();
+                if (!filter.isEmpty()) {
+                    player.displayClientMessage(
+                        net.minecraft.network.chat.Component.literal(
+                            String.format("§7Filter: §e%s", filter.getHoverName().getString())
+                        ),
+                        false
+                    );
+                } else {
+                    player.displayClientMessage(
+                        net.minecraft.network.chat.Component.literal(
+                            "§7Filter: §cNone (right-click with item to set)"
+                        ),
+                        false
+                    );
+                }
+
+                // Show buffer contents
+                int itemCount = importer.getBufferItemCount();
+                player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal(
+                        String.format("§7Buffer: §a%d items stored", itemCount)
+                    ),
+                    false
+                );
+
+                return InteractionResult.SUCCESS;
+            }
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    protected net.minecraft.world.ItemInteractionResult useItemOn(
+            ItemStack stack, BlockState state, Level level, BlockPos pos,
+            Player player, net.minecraft.world.InteractionHand hand,
+            BlockHitResult hitResult) {
+        // Right-click with item to set filter
+        if (!level.isClientSide() && !stack.isEmpty()) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof ImporterBlockEntity importer) {
+                importer.setFilterItem(stack);
+                player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal(
+                        String.format("§aImporter filter set to: %s", stack.getHoverName().getString())
+                    ),
+                    true
+                );
+                return net.minecraft.world.ItemInteractionResult.SUCCESS;
+            }
+        }
+        return net.minecraft.world.ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    }
+
+    public ItemStack getCloneItemStack(Level level, BlockPos pos, BlockState state) {
+        // Don't preserve UUID for creative picks - each placement should generate new UUID
+        // Only getDrops() preserves UUID (for survival block breaking)
+        return new ItemStack(FPSCompress.IMPORTER_ITEM.get());
+    }
+
+    @Override
+    public java.util.List<ItemStack> getDrops(BlockState state,
+            net.minecraft.world.level.storage.loot.LootParams.Builder builder) {
+        // Always drop Importer with UUID preserved
+        BlockEntity be = builder.getOptionalParameter(
+            net.minecraft.world.level.storage.loot.parameters.LootContextParams.BLOCK_ENTITY);
+        ItemStack stack = new ItemStack(FPSCompress.IMPORTER_ITEM.get());
+
+        if (be instanceof ImporterBlockEntity importer) {
+            CompoundTag nbt = importer.saveWithoutMetadata(builder.getLevel().registryAccess());
+            nbt.putString("id", "fpscompress:importer");
+            stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
+        }
+
+        return java.util.List.of(stack);
+    }
+}

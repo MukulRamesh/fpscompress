@@ -21,7 +21,20 @@ import java.util.Map;
  *
  * Sent when player clicks "Save" in PreFab config GUI.
  */
-public record FaceConfigPacket(BlockPos prefabPos, Map<Direction, FaceConfig> faceConfigs) implements CustomPacketPayload {
+public record FaceConfigPacket(BlockPos prefabPos, Map<Direction, FaceConfig> faceConfigs)
+        implements CustomPacketPayload {
+
+    // Compact constructor to create defensive copy
+    public FaceConfigPacket(BlockPos prefabPos, Map<Direction, FaceConfig> faceConfigs) {
+        this.prefabPos = prefabPos;
+        this.faceConfigs = new EnumMap<>(faceConfigs);
+    }
+
+    // Override accessor to return defensive copy
+    @Override
+    public Map<Direction, FaceConfig> faceConfigs() {
+        return new EnumMap<>(faceConfigs);
+    }
 
     public static final Type<FaceConfigPacket> TYPE = new Type<>(
         ResourceLocation.fromNamespaceAndPath("fpscompress", "face_config")
@@ -75,12 +88,22 @@ public record FaceConfigPacket(BlockPos prefabPos, Map<Direction, FaceConfig> fa
                 if (be instanceof PrefabBlockEntity prefab) {
                     // Update all 6 face configurations
                     for (Direction dir : Direction.values()) {
-                        FaceConfig config = packet.faceConfigs.get(dir);
-                        prefab.setFaceConfig(dir, config);
+                        FaceConfig config = packet.faceConfigs().get(dir);
+                        if (config != null) {
+                            prefab.setFaceConfig(dir, config);
+                        }
                     }
 
                     // Mark dirty to trigger save
                     prefab.setChanged();
+
+                    // Sync BlockEntity to client so GUI shows updated configs
+                    serverPlayer.level().sendBlockUpdated(
+                        packet.prefabPos,
+                        prefab.getBlockState(),
+                        prefab.getBlockState(),
+                        3  // UPDATE_CLIENTS flag
+                    );
 
                     serverPlayer.displayClientMessage(
                         net.minecraft.network.chat.Component.literal("§aPreFab configuration saved!"),

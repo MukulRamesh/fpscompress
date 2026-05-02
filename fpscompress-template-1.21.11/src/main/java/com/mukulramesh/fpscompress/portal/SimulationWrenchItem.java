@@ -1,15 +1,10 @@
 package com.mukulramesh.fpscompress.portal;
 
 import com.mukulramesh.fpscompress.FPSCompress;
-import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -85,7 +80,41 @@ public class SimulationWrenchItem extends Item {
             if (player instanceof ServerPlayer serverPlayer) {
                 // Set the clicked face so GUI defaults to it
                 prefab.setClickedFace(context.getClickedFace());
-                serverPlayer.openMenu(prefab, context.getClickedPos());
+
+                // Open menu with custom data (BlockPos + Direction + Importer/Exporter lists)
+                serverPlayer.openMenu(prefab, buf -> {
+                    buf.writeBlockPos(context.getClickedPos());
+                    buf.writeByte(context.getClickedFace().get3DDataValue());
+
+                    // Send Importer/Exporter lists for GUI dropdown
+                    net.minecraft.server.MinecraftServer server = serverPlayer.getServer();
+                    if (server != null) {
+                        java.util.List<com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry> importers =
+                            com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.getAllImporters(server);
+                        java.util.List<com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry> exporters =
+                            com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.getAllExporters(server);
+
+                        // Write Importers
+                        buf.writeInt(importers.size());
+                        for (com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry entry : importers) {
+                            buf.writeUUID(entry.uuid());
+                            buf.writeBlockPos(entry.pos());
+                            buf.writeUtf(entry.displayName());
+                        }
+
+                        // Write Exporters
+                        buf.writeInt(exporters.size());
+                        for (com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry entry : exporters) {
+                            buf.writeUUID(entry.uuid());
+                            buf.writeBlockPos(entry.pos());
+                            buf.writeUtf(entry.displayName());
+                        }
+                    } else {
+                        // No server - write empty lists
+                        buf.writeInt(0);
+                        buf.writeInt(0);
+                    }
+                });
 
                 FPSCompress.LOGGER.info("Opened PreFab config GUI for player {} at {} (clicked face: {})",
                     player.getName().getString(), context.getClickedPos(), context.getClickedFace());

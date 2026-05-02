@@ -309,9 +309,9 @@ if (importer != null) {
     ItemStack remainder = importer.insertItem(extracted);
     int transferred = extracted.getCount() - remainder.getCount();
     
-    // 4. Track for rate measurement
+    // 4. Track for rate measurement (see VALIDATION_DELTA_ACCOUNTING.md)
     if (state == SIMULATING) {
-        recordItemTransfer("minecraft:iron_ore", transferred);
+        deltaTracker.recordImport("minecraft:iron_ore", transferred);
     }
 }
 ```
@@ -326,6 +326,27 @@ if (importer != null) {
 
 ## Anti-Cheat Considerations
 
+### MVP: Delta Accounting for Rate Measurement
+
+For MVP scope, use **delta accounting** to measure production rates (see VALIDATION_DELTA_ACCOUNTING.md):
+
+**What it measures**:
+- Track imports, exports, initial state, final state per resource
+- Calculate net production: `Net = (Final - Initial) + (Exported - Imported)`
+- Derive rates: `rate = net / simulation_ticks`
+
+**MVP limitations** (accepted for now):
+- ❌ Does NOT detect hidden storage cheat (chest with 1000 iron ingots)
+- ✅ DOES accurately measure what happened during simulation
+- ✅ Works with vanilla blocks (furnaces, hoppers, chests)
+- ✅ Simple to implement, no complex scanning
+
+**Post-MVP enhancement needed**: Add anti-cheat validation (see below).
+
+---
+
+### Post-MVP: Anti-Cheat Validation Strategy
+
 ### Old System (Virtual Buffers)
 - Needed snapshot scanning to detect hidden batteries
 - Complex validation logic
@@ -338,9 +359,9 @@ if (importer != null) {
 - During SIMULATING: Factory "produces" iron ingots (actually from chest)
 - Cached rate includes chest contents, not actual production
 - During CACHED: Factory appears to produce iron from nothing
-- **This is impossible to detect by checking Importers/Exporters alone**
+- **This is impossible to detect by delta accounting alone**
 
-**Post-MVP Validation Strategy** (Bidirectional Redstone Control):
+**Post-MVP Solution** (Bidirectional Redstone Control):
 
 ### The Challenge
 **Autonomous factories**: Some factories run continuously without natural "idle" moments

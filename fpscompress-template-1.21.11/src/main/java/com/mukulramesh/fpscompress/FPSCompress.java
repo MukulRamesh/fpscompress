@@ -7,6 +7,10 @@ import com.mukulramesh.fpscompress.component.FPSDataComponents;
 import com.mukulramesh.fpscompress.debug.Dev2TestCommands;
 import com.mukulramesh.fpscompress.portal.DimensionTeleportListener;
 import com.mukulramesh.fpscompress.portal.FPSDataAttachments;
+import com.mukulramesh.fpscompress.portal.ExporterBlock;
+import com.mukulramesh.fpscompress.portal.ExporterBlockEntity;
+import com.mukulramesh.fpscompress.portal.ImporterBlock;
+import com.mukulramesh.fpscompress.portal.ImporterBlockEntity;
 import com.mukulramesh.fpscompress.portal.PrefabBlock;
 import com.mukulramesh.fpscompress.portal.PrefabBlockEntity;
 import com.mukulramesh.fpscompress.portal.PSDExitListener;
@@ -74,11 +78,37 @@ public final class FPSCompress {
         BLOCKS.register("prefab_machine", PrefabBlock::new);
 
     /**
+     * Importer Block - CM dimension input gate for PreFab resource transport.
+     */
+    public static final DeferredBlock<ImporterBlock> IMPORTER_BLOCK =
+        BLOCKS.register("importer", ImporterBlock::new);
+
+    /**
+     * Exporter Block - CM dimension output gate for PreFab resource transport.
+     */
+    public static final DeferredBlock<ExporterBlock> EXPORTER_BLOCK =
+        BLOCKS.register("exporter", ExporterBlock::new);
+
+    /**
      * PreFab Machine BlockEntity type.
      */
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PrefabBlockEntity>> PREFAB_BE =
         BLOCK_ENTITIES.register("prefab_machine", () ->
             BlockEntityType.Builder.of(PrefabBlockEntity::new, PREFAB_BLOCK.get()).build(null));
+
+    /**
+     * Importer BlockEntity type.
+     */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ImporterBlockEntity>> IMPORTER_BE =
+        BLOCK_ENTITIES.register("importer", () ->
+            BlockEntityType.Builder.of(ImporterBlockEntity::new, IMPORTER_BLOCK.get()).build(null));
+
+    /**
+     * Exporter BlockEntity type.
+     */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ExporterBlockEntity>> EXPORTER_BE =
+        BLOCK_ENTITIES.register("exporter", () ->
+            BlockEntityType.Builder.of(ExporterBlockEntity::new, EXPORTER_BLOCK.get()).build(null));
 
     // ===== Menu Types =====
 
@@ -97,6 +127,22 @@ public final class FPSCompress {
      */
     public static final DeferredItem<BlockItem> PREFAB_ITEM =
         ITEMS.register("prefab_machine", () -> new BlockItem(PREFAB_BLOCK.get(),
+            new Item.Properties().fireResistant()));
+
+    /**
+     * Importer Block item.
+     * Immune to fire/lava damage to preserve UUID data.
+     */
+    public static final DeferredItem<BlockItem> IMPORTER_ITEM =
+        ITEMS.register("importer", () -> new BlockItem(IMPORTER_BLOCK.get(),
+            new Item.Properties().fireResistant()));
+
+    /**
+     * Exporter Block item.
+     * Immune to fire/lava damage to preserve UUID data.
+     */
+    public static final DeferredItem<BlockItem> EXPORTER_ITEM =
+        ITEMS.register("exporter", () -> new BlockItem(EXPORTER_BLOCK.get(),
             new Item.Properties().fireResistant()));
 
     /**
@@ -123,6 +169,8 @@ public final class FPSCompress {
             .icon(() -> TPS_CACHE_UPGRADE.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
                 output.accept(PREFAB_ITEM.get());
+                output.accept(IMPORTER_ITEM.get());
+                output.accept(EXPORTER_ITEM.get());
                 output.accept(TPS_CACHE_UPGRADE.get());
                 output.accept(SIMULATION_WRENCH.get());
             }).build());

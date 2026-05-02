@@ -24,6 +24,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+
+import net.minecraft.server.level.ServerLevel;
 
 /**
  * BlockEntity for PreFab blocks - upgraded Compact Machines that store factory state.
@@ -51,6 +54,10 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // Cached production rates: resource ID → rate per tick (positive = output, negative = input)
     private final Map<String, Double> cachedRates = new HashMap<>();
+
+    // UUID lookup caching (O(1) fast path for repeated lookups)
+    private final Map<UUID, BlockPos> importerCache = new HashMap<>();
+    private final Map<UUID, BlockPos> exporterCache = new HashMap<>();
 
     public PrefabBlockEntity(BlockPos pos, BlockState state) {
         super(FPSCompress.PREFAB_BE.get(), pos, state);
@@ -148,9 +155,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
             if (be != null) {
                 // Try to get capabilities from the adjacent block
-                IItemHandler itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, adjacentPos, dir.getOpposite());
-                IFluidHandler fluidHandler = level.getCapability(Capabilities.FluidHandler.BLOCK, adjacentPos, dir.getOpposite());
-                IEnergyStorage energyStorage = level.getCapability(Capabilities.EnergyStorage.BLOCK, adjacentPos, dir.getOpposite());
+                IItemHandler itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK,
+                    adjacentPos, dir.getOpposite());
+                IFluidHandler fluidHandler = level.getCapability(Capabilities.FluidHandler.BLOCK,
+                    adjacentPos, dir.getOpposite());
+                IEnergyStorage energyStorage = level.getCapability(
+                    Capabilities.EnergyStorage.BLOCK, adjacentPos, dir.getOpposite());
 
                 String blockName = be.getBlockState().getBlock().getName().getString();
 
@@ -185,6 +195,88 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     public void clearCachedRates() {
         cachedRates.clear();
         setChanged();
+    }
+
+    // ===== UUID Lookup System (Phase 2) =====
+
+    /**
+     * Cache an Importer's position for fast lookup.
+     * Called by GUI or when Importer/Exporter is first accessed.
+     *
+     * @param uuid The Importer UUID
+     * @param pos The Importer position
+     */
+    public void cacheImporterPosition(UUID uuid, BlockPos pos) {
+        importerCache.put(uuid, pos);
+    }
+
+    /**
+     * Cache an Exporter's position for fast lookup.
+     * Called by GUI or when Importer/Exporter is first accessed.
+     *
+     * @param uuid The Exporter UUID
+     * @param pos The Exporter position
+     */
+    public void cacheExporterPosition(UUID uuid, BlockPos pos) {
+        exporterCache.put(uuid, pos);
+    }
+
+    /**
+     * Find Importer block by UUID in CM dimension.
+     * Uses cached position (O(1)). Returns null if not cached or block broken.
+     *
+     * @param cmLevel The CM dimension level
+     * @param targetUUID UUID of the target Importer
+     * @return The ImporterBlockEntity, or null if not found
+     */
+    @Nullable
+    public ImporterBlockEntity findImporterByUUID(ServerLevel cmLevel, UUID targetUUID) {
+        if (targetUUID == null) {
+            return null;
+        }
+
+        // Look up cached position
+        BlockPos cachedPos = importerCache.get(targetUUID);
+        if (cachedPos != null) {
+            BlockEntity be = cmLevel.getBlockEntity(cachedPos);
+            if (be instanceof ImporterBlockEntity importer
+                    && importer.getImporterUUID().equals(targetUUID)) {
+                return importer;
+            }
+            // Cache miss - position changed or block broken
+            importerCache.remove(targetUUID);
+        }
+
+        return null; // Not found - face links to broken/missing Importer
+    }
+
+    /**
+     * Find Exporter block by UUID in CM dimension.
+     * Uses cached position (O(1)). Returns null if not cached or block broken.
+     *
+     * @param cmLevel The CM dimension level
+     * @param targetUUID UUID of the target Exporter
+     * @return The ExporterBlockEntity, or null if not found
+     */
+    @Nullable
+    public ExporterBlockEntity findExporterByUUID(ServerLevel cmLevel, UUID targetUUID) {
+        if (targetUUID == null) {
+            return null;
+        }
+
+        // Look up cached position
+        BlockPos cachedPos = exporterCache.get(targetUUID);
+        if (cachedPos != null) {
+            BlockEntity be = cmLevel.getBlockEntity(cachedPos);
+            if (be instanceof ExporterBlockEntity exporter
+                    && exporter.getExporterUUID().equals(targetUUID)) {
+                return exporter;
+            }
+            // Cache miss - position changed or block broken
+            exporterCache.remove(targetUUID);
+        }
+
+        return null; // Not found - face links to broken/missing Exporter
     }
 
     // ===== NBT Serialization =====
@@ -284,6 +376,36 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     @Override
     public AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
-        return new PreFabConfigMenu(containerId, playerInventory, this.getBlockPos(), this.clickedFace);
+        return new PreFabConfigMenu(containerId, playerInventory, this.getBlockPos(), this.clickedFace, null);
+    }
+
+    // ===== Client Sync =====
+
+    /**
+     * Get packet to sync BlockEntity to client.
+     * Called by sendBlockUpdated().
+     */
+    @Override
+    public net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    /**
+     * Get NBT data to sync to client.
+     * Called when chunk loads on client or when getUpdatePacket() is sent.
+     */
+    @Override
+    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        saveAdditional(tag, registries);
+        return tag;
+    }
+
+    /**
+     * Handle NBT data from server on client side.
+     */
+    @Override
+    public void handleUpdateTag(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        loadAdditional(tag, registries);
     }
 }

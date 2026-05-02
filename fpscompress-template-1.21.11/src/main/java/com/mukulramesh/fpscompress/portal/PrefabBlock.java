@@ -52,7 +52,13 @@ public class PrefabBlock extends Block implements EntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level,
                                               BlockPos pos, Player player,
                                               BlockHitResult hitResult) {
-        // Show storage contents when right-clicking without PSD
+        // Check if player is holding a Simulation Wrench - let the item handle it
+        ItemStack mainHand = player.getMainHandItem();
+        if (mainHand.getItem() == FPSCompress.SIMULATION_WRENCH.get()) {
+            return InteractionResult.PASS;
+        }
+
+        // Show storage contents when right-clicking without wrench or PSD
         if (!level.isClientSide()) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof PrefabBlockEntity prefab) {
@@ -236,8 +242,9 @@ public class PrefabBlock extends Block implements EntityBlock {
         BlockEntity be = level.getBlockEntity(pos);
 
         if (be instanceof PrefabBlockEntity prefab) {
-            // Save BlockEntity NBT to item
+            // Save BlockEntity NBT to item with proper ID
             CompoundTag nbt = prefab.saveWithoutMetadata(level.registryAccess());
+            nbt.putString("id", "fpscompress:prefab");
             stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
         }
 
@@ -253,8 +260,9 @@ public class PrefabBlock extends Block implements EntityBlock {
         ItemStack stack = new ItemStack(FPSCompress.PREFAB_ITEM.get());
 
         if (be instanceof PrefabBlockEntity prefab) {
-            // Save BlockEntity NBT to item
+            // Save BlockEntity NBT to item with proper ID
             CompoundTag nbt = prefab.saveWithoutMetadata(builder.getLevel().registryAccess());
+            nbt.putString("id", "fpscompress:prefab");
             stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
         }
 

@@ -448,6 +448,7 @@ interceptor.setRoomChunkState(roomCode, false);
 **Technical Specs**:
 - **ARCHITECTURE_CONDUIT.md** - Complete technical specification
 - **ARCHITECTURE_PIVOT.md** - Why we changed from virtual buffers
+- **VALIDATION_DELTA_ACCOUNTING.md** - MVP rate measurement via import/export deltas
 - **VALIDATION_REDSTONE_PROTOCOL.md** - Post-MVP anti-cheat system
 - **CM_API_INTEGRATION.md** - Compact Machines integration details
 

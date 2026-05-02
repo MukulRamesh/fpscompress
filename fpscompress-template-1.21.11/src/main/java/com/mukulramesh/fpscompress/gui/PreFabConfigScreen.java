@@ -2,6 +2,7 @@ package com.mukulramesh.fpscompress.gui;
 
 import com.mukulramesh.fpscompress.portal.FaceConfig;
 import com.mukulramesh.fpscompress.portal.FaceMode;
+import com.mukulramesh.fpscompress.portal.ImporterExporterRegistry;
 import com.mukulramesh.fpscompress.portal.ResourceFilter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -9,6 +10,9 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Client-side GUI screen for configuring PreFab faces.
@@ -36,6 +40,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
     // Button references for updating states
     private Button[] modeButtons = new Button[3];
     private Button[] filterButtons = new Button[4];
+    private Button linkButton;
 
     private static final int BUTTON_WIDTH = 80;
     private static final int BUTTON_HEIGHT = 20;
@@ -66,7 +71,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
             final Direction capturedDir = dir;
             final int capturedIdx = idx;
             faceButtons[idx] = addRenderableWidget(Button.builder(
-                Component.literal(dir.getName().toUpperCase()),
+                Component.literal(dir.getName().toUpperCase(Locale.ROOT)),
                 btn -> {
                     selectFace(capturedDir);
                     updateFaceButtonHighlights(faceButtons, capturedIdx);
@@ -83,7 +88,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         int modeY = startY + 40;
         addRenderableWidget(Button.builder(
             Component.literal("Mode:"),
-            btn -> {}
+            btn -> { }
         ).bounds(centerX - 180, modeY, 60, BUTTON_HEIGHT).build());
 
         modeButtons[0] = addRenderableWidget(Button.builder(
@@ -105,7 +110,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         int filterY = startY + 70;
         addRenderableWidget(Button.builder(
             Component.literal("Filter:"),
-            btn -> {}
+            btn -> { }
         ).bounds(centerX - 180, filterY, 60, BUTTON_HEIGHT).build());
 
         filterButtons[0] = addRenderableWidget(Button.builder(
@@ -128,11 +133,18 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
             btn -> setFilter(ResourceFilter.ENERGY)
         ).bounds(centerX + 100, filterY, 60, BUTTON_HEIGHT).build());
 
+        // Link button (Phase 2 - cycle through available Importers/Exporters)
+        int linkY = startY + 100;
+        linkButton = addRenderableWidget(Button.builder(
+            Component.literal("Link: None"),
+            btn -> cycleLink()
+        ).bounds(centerX - 110, linkY, 220, BUTTON_HEIGHT).build());
+
         // Save button
         addRenderableWidget(Button.builder(
             Component.literal("Save"),
             btn -> save()
-        ).bounds(centerX - 40, startY + 110, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        ).bounds(centerX - 40, startY + 130, BUTTON_WIDTH, BUTTON_HEIGHT).build());
 
         // Update button states for currently selected face
         updateButtonStates();
@@ -149,7 +161,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
             Direction dir = Direction.values()[i];
             boolean isSelected = (i == selectedIndex);
             btn.setMessage(Component.literal(
-                (isSelected ? "§a" : "§7") + dir.getName().toUpperCase()
+                (isSelected ? "§a" : "§7") + dir.getName().toUpperCase(Locale.ROOT)
             ));
         }
     }
@@ -163,6 +175,43 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
     private void setFilter(ResourceFilter filter) {
         FaceConfig config = menu.getFaceConfig(selectedFace);
         config.setResourceType(filter);
+        updateButtonStates();
+    }
+
+    private void cycleLink() {
+        FaceConfig config = menu.getFaceConfig(selectedFace);
+        FaceMode mode = config.getMode();
+
+        if (mode == FaceMode.DISABLED) {
+            return; // No linking for disabled faces
+        }
+
+        // Get available Importers or Exporters based on mode
+        List<ImporterExporterRegistry.Entry> available = mode == FaceMode.PULL
+            ? menu.getAvailableImporters()
+            : menu.getAvailableExporters();
+
+        if (available.isEmpty()) {
+            config.setTargetUUID(null);
+            updateButtonStates();
+            return;
+        }
+
+        // Find current index
+        int currentIndex = -1;
+        if (config.getTargetUUID() != null) {
+            for (int i = 0; i < available.size(); i++) {
+                if (available.get(i).uuid().equals(config.getTargetUUID())) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // Cycle to next (or first if none selected)
+        int nextIndex = (currentIndex + 1) % available.size();
+        config.setTargetUUID(available.get(nextIndex).uuid());
+
         updateButtonStates();
     }
 
@@ -186,6 +235,43 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
                 (active ? "§a[" : "§7") + filter.name() + (active ? "]" : "")
             ));
         }
+
+        // Update link button based on mode and current selection
+        FaceMode mode = config.getMode();
+        if (mode == FaceMode.DISABLED) {
+            linkButton.active = false;
+            linkButton.setMessage(Component.literal("§7Link: (Disabled)"));
+        } else {
+            linkButton.active = true;
+            String linkType = mode == FaceMode.PULL ? "Importer" : "Exporter";
+
+            if (config.getTargetUUID() == null) {
+                linkButton.setMessage(Component.literal("§cLink: No " + linkType + " selected"));
+            } else {
+                // Show display name (e.g., "Apple Importer")
+                ImporterExporterRegistry.Entry entry = findEntry(config.getTargetUUID(), mode);
+                if (entry != null) {
+                    linkButton.setMessage(Component.literal(
+                        String.format("§aLink: %s", entry.displayName())
+                    ));
+                } else {
+                    linkButton.setMessage(Component.literal("§cLink: " + linkType + " not found"));
+                }
+            }
+        }
+    }
+
+    private ImporterExporterRegistry.Entry findEntry(java.util.UUID uuid, FaceMode mode) {
+        List<ImporterExporterRegistry.Entry> available = mode == FaceMode.PULL
+            ? menu.getAvailableImporters()
+            : menu.getAvailableExporters();
+
+        for (ImporterExporterRegistry.Entry entry : available) {
+            if (entry.uuid().equals(uuid)) {
+                return entry;
+            }
+        }
+        return null;
     }
 
     private void save() {
@@ -212,5 +298,12 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void removed() {
+        // Auto-save when GUI closes (ESC key or any other way)
+        menu.saveToServer();
+        super.removed();
     }
 }
