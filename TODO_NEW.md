@@ -304,61 +304,39 @@
 
 ---
 
-### Phase 7: Enhanced Face Configuration GUI (Optional)
-**Status**: Not Started  
+### Phase 7: Enhanced Face Configuration GUI
+**Status**: ✅ **COMPLETE** (Phase 1)  
 **Goal**: Let player configure faces visually
 
-**Files to Create**:
-- `gui/PreFabConfigScreen.java` - Client-side GUI (extends Screen)
-- `gui/PreFabConfigMenu.java` - Server-side container (extends AbstractContainerMenu)
-- `network/FaceConfigPacket.java` - Client → Server sync
+**Completed in Phase 1**:
+- [x] Created `gui/PreFabConfigScreen.java` - Client-side GUI
+- [x] Created `gui/PreFabConfigMenu.java` - Server-side container
+- [x] Created `network/FaceConfigPacket.java` - Client → Server sync
+- [x] GUI with 6 face buttons (North/South/East/West/Up/Down)
+- [x] Mode buttons: [DISABLED] [PULL] [PUSH] with green highlighting
+- [x] Filter buttons: [ALL] [ITEMS] [FLUIDS] [ENERGY] with green highlighting
+- [x] Link button: Cycles through available Importers/Exporters
+- [x] Trigger: Shift+Right-click PreFab with Simulation Wrench
+- [x] Auto-save on ESC/close
 
-**Tasks**:
-- [ ] Create GUI with 6 face buttons (North/South/East/West/Up/Down)
-- [ ] For selected face, show:
-  - Mode buttons: [DISABLED] [PULL] [PUSH]
-  - Filter buttons: [ALL] [ITEMS] [FLUIDS] [ENERGY]
-- [ ] On button click:
-  - Send packet to server with new config
-  - Server validates and updates PreFabBlockEntity
-  - Server sends confirmation back to client
-- [ ] Trigger GUI:
-  - Modify `PrefabBlock.useItemOn()` to detect Shift+Right-click with wrench
-  - Open GUI on client side
+**Note**: This phase was implemented early (Phase 1) to de-risk the GUI system.
 
 ---
 
 ### Phase 8: Dynamic Capabilities (Optional for MVP)
-**Status**: Not Started (CapabilityRegistration exists but needs rewrite)  
-**Goal**: Expose capabilities based on face configuration
+**Status**: Deferred - Not needed for MVP  
+**Goal**: Expose IItemHandler capabilities on PreFab faces
 
-**Files to Modify**:
-- `portal/CapabilityRegistration.java`
+**Why deferred**:
+- PreFab already uses active transport (tick-based pushing/pulling)
+- Hoppers and pipes can interact with Importers/Exporters directly (Phase 9)
+- Capability exposure on PreFab faces adds complexity without immediate benefit
+- Can be added post-MVP if players want hopper integration on PreFab itself
 
-**Tasks**:
-- [ ] Register capabilities with context-aware logic:
-  ```java
-  event.registerBlockEntity(
-      Capabilities.ItemHandler.BLOCK,
-      FPSCompress.PREFAB_BE.get(),
-      (blockEntity, context) -> {
-          if (blockEntity instanceof PrefabBlockEntity prefab) {
-              Direction face = context; // Which side is being queried
-              FaceConfig config = prefab.getFaceConfig(face);
-              
-              if (config.resourceType.allowsItems()) {
-                  return new FaceItemHandler(prefab, face, config.mode);
-              }
-          }
-          return null;
-      }
-  );
-  ```
-- [ ] Create `capabilities/FaceItemHandler.java`:
-  - If mode == PULL: Accept insertItem(), reject extractItem()
-  - If mode == PUSH: Accept extractItem(), reject insertItem()
-  - If mode == DISABLED: Reject all operations
-- [ ] Similar for FaceFluidHandler and FaceEnergyStorage
+**If implemented later**:
+- Register capabilities with context-aware logic (per-face)
+- Create FaceItemHandler that respects PULL/PUSH/DISABLED modes
+- Similar for FaceFluidHandler and FaceEnergyStorage
 
 ---
 
@@ -417,7 +395,30 @@
 - [ ] Centralized chunk loading
 - [ ] GUI for managing multiple factories
 
-### 4. Advanced Features (Post-MVP)
+### 4. Room-Based Filtering (Post-MVP)
+**See**: [ROOM_FILTERING.md](ROOM_FILTERING.md) for complete implementation plan
+
+**Problem**: PreFab GUI shows ALL Importers/Exporters across all CM rooms, causing clutter in large factories.
+
+**Solution**: Filter Importers/Exporters by room using player context stack (FILO):
+- Track which CM room each player is in using per-player stack
+- When player enters CM room → push roomCode onto stack
+- When player places Importer/Exporter → peek stack, store roomCode in block
+- PreFab only shows Importers/Exporters in its linked room
+
+**Estimated effort**: 2-4 hours  
+**Complexity**: MEDIUM  
+**Priority**: HIGH (improves UX significantly for multi-room factories)
+
+**Implementation**:
+- [ ] Create `PlayerRoomContext.java` registry (FILO stack per player UUID)
+- [ ] Hook teleportation events to push/pop room codes
+- [ ] Store `roomCode` field in Importer/ExporterBlockEntity
+- [ ] Update `ImporterExporterRegistry.Entry` to include roomCode
+- [ ] Filter GUI dropdown by PreFab's linked room
+- [ ] Handle edge cases (disconnects, nested PreFabs, /tp commands)
+
+### 5. Advanced Features (Post-MVP)
 - [ ] Item/fluid whitelist filters (per-face)
 - [ ] Blacklist filters
 - [ ] Priority system (which face to prioritize)
