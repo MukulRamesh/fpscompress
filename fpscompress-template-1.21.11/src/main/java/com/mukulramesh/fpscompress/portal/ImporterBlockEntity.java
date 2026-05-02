@@ -260,12 +260,16 @@ public class ImporterBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+            "[Importer] setRemoved() called - isRemoved={}, level={}, clientSide={}",
+            isRemoved(), level != null, level != null && level.isClientSide()
+        );
         // Only unregister if actually removed (not just chunk unload)
         // onLoad() will re-register when chunk loads again
         if (level != null && !level.isClientSide() && isRemoved()) {
             ImporterExporterRegistry.unregisterImporter(importerUUID);
             com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
-                "Unregistered Importer {} (block broken)",
+                "[Importer] Unregistered {} (block broken)",
                 importerUUID.toString().substring(0, 8)
             );
         }
@@ -274,15 +278,13 @@ public class ImporterBlockEntity extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+            "[Importer] onLoad() called - level={}, clientSide={}",
+            level != null, level != null && level.isClientSide()
+        );
         // Register when chunk loads
         if (level != null && !level.isClientSide()) {
             ImporterExporterRegistry.registerImporter(importerUUID, getBlockPos(), getDisplayName());
-            com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
-                "Registered Importer {} at {} (Display: {})",
-                importerUUID.toString().substring(0, 8),
-                getBlockPos(),
-                getDisplayName()
-            );
         }
     }
 

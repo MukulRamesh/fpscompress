@@ -35,6 +35,10 @@ public final class ImporterExporterRegistry {
      */
     public static void registerImporter(UUID uuid, BlockPos pos, String displayName) {
         IMPORTERS.put(uuid, new Entry(uuid, pos, displayName));
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+            "[Registry] Registered Importer: {} at {} (Total: {})",
+            displayName, pos, IMPORTERS.size()
+        );
     }
 
     /**
@@ -47,6 +51,10 @@ public final class ImporterExporterRegistry {
      */
     public static void registerExporter(UUID uuid, BlockPos pos, String displayName) {
         EXPORTERS.put(uuid, new Entry(uuid, pos, displayName));
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+            "[Registry] Registered Exporter: {} at {} (Total: {})",
+            displayName, pos, EXPORTERS.size()
+        );
     }
 
     /**
@@ -56,7 +64,13 @@ public final class ImporterExporterRegistry {
      * @param uuid Importer UUID
      */
     public static void unregisterImporter(UUID uuid) {
-        IMPORTERS.remove(uuid);
+        Entry removed = IMPORTERS.remove(uuid);
+        if (removed != null) {
+            com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+                "[Registry] Unregistered Importer: {} (Total: {})",
+                removed.displayName(), IMPORTERS.size()
+            );
+        }
     }
 
     /**
@@ -66,7 +80,13 @@ public final class ImporterExporterRegistry {
      * @param uuid Exporter UUID
      */
     public static void unregisterExporter(UUID uuid) {
-        EXPORTERS.remove(uuid);
+        Entry removed = EXPORTERS.remove(uuid);
+        if (removed != null) {
+            com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+                "[Registry] Unregistered Exporter: {} (Total: {})",
+                removed.displayName(), EXPORTERS.size()
+            );
+        }
     }
 
     /**
@@ -77,6 +97,10 @@ public final class ImporterExporterRegistry {
      * @return List of Importer entries (UUID → position → display name)
      */
     public static List<Entry> getAllImporters(MinecraftServer server) {
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+            "[Registry] Query getAllImporters: {} entries",
+            IMPORTERS.size()
+        );
         return new ArrayList<>(IMPORTERS.values());
     }
 
@@ -88,6 +112,10 @@ public final class ImporterExporterRegistry {
      * @return List of Exporter entries (UUID → position → display name)
      */
     public static List<Entry> getAllExporters(MinecraftServer server) {
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+            "[Registry] Query getAllExporters: {} entries",
+            EXPORTERS.size()
+        );
         return new ArrayList<>(EXPORTERS.values());
     }
 
