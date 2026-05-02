@@ -46,6 +46,25 @@ public class ImporterBlock extends Block implements EntityBlock {
         return new ImporterBlockEntity(pos, state);
     }
 
+    @Nullable
+    @Override
+    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+        // Only tick on server side
+        if (level.isClientSide()) {
+            return null;
+        }
+
+        // Return ticker for ImporterBlockEntity
+        return type == com.mukulramesh.fpscompress.FPSCompress.IMPORTER_BE.get()
+            ? (level1, pos, state1, blockEntity) -> {
+                if (blockEntity instanceof ImporterBlockEntity importer) {
+                    ImporterBlockEntity.tick(level1, pos, state1, importer);
+                }
+            }
+            : null;
+    }
+
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level,
                                               BlockPos pos, Player player,

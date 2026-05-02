@@ -114,6 +114,72 @@ public class ImporterBlockEntity extends BlockEntity {
     }
 
     /**
+     * Push items from buffer to adjacent machines.
+     * Called every tick during active pushing behavior.
+     */
+    public void pushToAdjacentMachines() {
+        net.minecraft.world.level.Level level = getLevel();
+        if (level == null || level.isClientSide()) {
+            return;
+        }
+
+        BlockPos pos = getBlockPos();
+
+        // Scan all 6 adjacent positions for IItemHandler capabilities
+        for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+            BlockPos adjacentPos = pos.relative(dir);
+
+            // Query capability from adjacent block
+            net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+                adjacentPos,
+                dir.getOpposite() // Adjacent block exposes capability on the side facing us
+            );
+
+            if (handler == null) {
+                continue;
+            }
+
+            // Try pushing items from our buffer to adjacent machine
+            for (int slot = 0; slot < inventory.getSlots(); slot++) {
+                ItemStack stackInSlot = inventory.getStackInSlot(slot);
+                if (stackInSlot.isEmpty()) {
+                    continue;
+                }
+
+                // Try extracting from our buffer
+                int countInSlot = stackInSlot.getCount();
+                ItemStack extracted = inventory.extractItem(slot, countInSlot, false);
+                if (extracted.isEmpty()) {
+                    continue;
+                }
+
+                // Try inserting into adjacent machine
+                ItemStack remainder = ItemStack.EMPTY;
+                for (int targetSlot = 0; targetSlot < handler.getSlots(); targetSlot++) {
+                    remainder = handler.insertItem(targetSlot, extracted, false);
+                    if (remainder.isEmpty()) {
+                        break; // All items inserted
+                    }
+                    extracted = remainder;
+                }
+
+                // If we couldn't insert everything, put remainder back
+                if (!remainder.isEmpty()) {
+                    ItemStack stillRemaining = inventory.insertItem(slot, remainder, false);
+                    if (!stillRemaining.isEmpty()) {
+                        // Buffer full - stop pushing for this tick
+                        return;
+                    }
+                }
+
+                // Successfully pushed from this slot - continue to next slot
+                setChanged();
+            }
+        }
+    }
+
+    /**
      * Get total item count in buffer (for debug display).
      *
      * @return Number of items stored
@@ -134,6 +200,18 @@ public class ImporterBlockEntity extends BlockEntity {
      */
     ItemStackHandler getInventory() {
         return inventory;
+    }
+
+    // ===== Block Entity Ticking =====
+
+    public static void tick(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos,
+                           net.minecraft.world.level.block.state.BlockState state, ImporterBlockEntity importer) {
+        if (level.isClientSide()) {
+            return;
+        }
+
+        // Push from buffer to adjacent machines every tick
+        importer.pushToAdjacentMachines();
     }
 
     // ===== NBT Serialization =====
