@@ -202,12 +202,12 @@ public class ExporterBlockEntity extends BlockEntity {
     }
 
     /**
-     * Insert items into buffer (internal helper).
+     * Insert items into buffer (public for PreFab to use when putting back remainder).
      *
      * @param stack Items to insert
      * @return Remainder (items that didn't fit)
      */
-    private ItemStack insertIntoBuffer(ItemStack stack) {
+    public ItemStack insertItem(ItemStack stack) {
         if (stack.isEmpty()) {
             return ItemStack.EMPTY;
         }
@@ -226,6 +226,16 @@ public class ExporterBlockEntity extends BlockEntity {
         }
 
         return remaining;
+    }
+
+    /**
+     * Insert items into buffer (internal helper - kept for backward compatibility).
+     *
+     * @param stack Items to insert
+     * @return Remainder (items that didn't fit)
+     */
+    private ItemStack insertIntoBuffer(ItemStack stack) {
+        return insertItem(stack);
     }
 
     /**

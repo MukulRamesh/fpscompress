@@ -48,6 +48,25 @@ public class PrefabBlock extends Block implements EntityBlock {
         return new PrefabBlockEntity(pos, state);
     }
 
+    @Nullable
+    @Override
+    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+        // Only tick on server side
+        if (level.isClientSide()) {
+            return null;
+        }
+
+        // Return ticker for PrefabBlockEntity
+        return type == FPSCompress.PREFAB_BE.get()
+            ? (level1, pos, state1, blockEntity) -> {
+                if (blockEntity instanceof PrefabBlockEntity prefab) {
+                    PrefabBlockEntity.tick(level1, pos, state1, prefab);
+                }
+            }
+            : null;
+    }
+
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level,
                                               BlockPos pos, Player player,

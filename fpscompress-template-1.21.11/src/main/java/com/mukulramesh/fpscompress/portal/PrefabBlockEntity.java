@@ -408,4 +408,199 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     public void handleUpdateTag(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         loadAdditional(tag, registries);
     }
+
+    // ===== Ticking Logic (Phase 3) =====
+
+    /**
+     * Server-side tick method for resource transport.
+     * Called every tick by BlockEntityTicker registered in PrefabBlock.getTicker().
+     *
+     * @param level The level (server-side)
+     * @param pos The PreFab position
+     * @param state The block state
+     * @param prefab The PreFab block entity
+     */
+    public static void tick(net.minecraft.world.level.Level level, BlockPos pos, BlockState state,
+                           PrefabBlockEntity prefab) {
+        if (level.isClientSide()) {
+            return;
+        }
+
+        // Process each configured face
+        for (Direction face : Direction.values()) {
+            FaceConfig config = prefab.getFaceConfig(face);
+            if (config.getMode() == FaceMode.DISABLED) {
+                continue; // Skip disabled faces
+            }
+
+            // Only handle ITEMS for MVP (fluids/energy in Phase 7)
+            if (config.getResourceType() != ResourceFilter.ITEMS
+                    && config.getResourceType() != ResourceFilter.ALL) {
+                continue;
+            }
+
+            if (config.getMode() == FaceMode.PULL) {
+                prefab.handlePullFace(face, config);
+            } else if (config.getMode() == FaceMode.PUSH) {
+                prefab.handlePushFace(face, config);
+            }
+        }
+    }
+
+    /**
+     * Handle PULL mode: Extract from Overworld → Insert to Importer.
+     *
+     * @param face The face direction
+     * @param config The face configuration
+     */
+    private void handlePullFace(Direction face, FaceConfig config) {
+        // 1. Get CM dimension
+        ServerLevel cmLevel = getCMLevel();
+        if (cmLevel == null) {
+            return; // CM dimension not loaded
+        }
+
+        // 2. Query adjacent Overworld block capability
+        BlockPos overworldPos = getBlockPos().relative(face);
+        IItemHandler overworldHandler = level.getCapability(
+            Capabilities.ItemHandler.BLOCK,
+            overworldPos,
+            face.getOpposite()
+        );
+        if (overworldHandler == null) {
+            return; // No inventory adjacent
+        }
+
+        // 3. Find target Importer by UUID
+        UUID targetUUID = config.getTargetUUID();
+        if (targetUUID == null) {
+            return; // Face not linked to Importer
+        }
+
+        ImporterBlockEntity importer = findImporterByUUID(cmLevel, targetUUID);
+        if (importer == null) {
+            // Cache miss - try building cache from registry
+            ImporterExporterRegistry.Entry entry = ImporterExporterRegistry.getImporter(targetUUID);
+            if (entry != null) {
+                cacheImporterPosition(targetUUID, entry.pos());
+                importer = findImporterByUUID(cmLevel, targetUUID);
+            }
+            if (importer == null) {
+                return; // Importer broken/missing
+            }
+        }
+
+        // 4. Try extracting from Overworld (up to 64 items per tick)
+        net.minecraft.world.item.ItemStack extracted = net.minecraft.world.item.ItemStack.EMPTY;
+        for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
+            extracted = overworldHandler.extractItem(slot, 64, false);
+            if (!extracted.isEmpty()) {
+                break;
+            }
+        }
+        if (extracted.isEmpty()) {
+            return; // Nothing to transport
+        }
+
+        // 5. Insert to Importer buffer
+        net.minecraft.world.item.ItemStack remainder = importer.insertItem(extracted);
+
+        // 6. Put remainder back if Importer buffer full
+        if (!remainder.isEmpty()) {
+            for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
+                remainder = overworldHandler.insertItem(slot, remainder, false);
+                if (remainder.isEmpty()) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle PUSH mode: Extract from Exporter → Insert to Overworld.
+     *
+     * @param face The face direction
+     * @param config The face configuration
+     */
+    private void handlePushFace(Direction face, FaceConfig config) {
+        // 1. Get CM dimension
+        ServerLevel cmLevel = getCMLevel();
+        if (cmLevel == null) {
+            return; // CM dimension not loaded
+        }
+
+        // 2. Find target Exporter by UUID
+        UUID targetUUID = config.getTargetUUID();
+        if (targetUUID == null) {
+            return; // Face not linked to Exporter
+        }
+
+        ExporterBlockEntity exporter = findExporterByUUID(cmLevel, targetUUID);
+        if (exporter == null) {
+            // Cache miss - try building cache from registry
+            ImporterExporterRegistry.Entry entry = ImporterExporterRegistry.getExporter(targetUUID);
+            if (entry != null) {
+                cacheExporterPosition(targetUUID, entry.pos());
+                exporter = findExporterByUUID(cmLevel, targetUUID);
+            }
+            if (exporter == null) {
+                return; // Exporter broken/missing
+            }
+        }
+
+        // 3. Try extracting from Exporter buffer (up to 64 items per tick)
+        net.minecraft.world.item.ItemStack extracted = exporter.extractFromBuffer(64);
+        if (extracted.isEmpty()) {
+            return; // Nothing to transport
+        }
+
+        // 4. Query adjacent Overworld block capability
+        BlockPos overworldPos = getBlockPos().relative(face);
+        IItemHandler overworldHandler = level.getCapability(
+            Capabilities.ItemHandler.BLOCK,
+            overworldPos,
+            face.getOpposite()
+        );
+        if (overworldHandler == null) {
+            // Can't insert to Overworld - put back in Exporter
+            exporter.insertItem(extracted);
+            return;
+        }
+
+        // 5. Insert to Overworld
+        net.minecraft.world.item.ItemStack remainder = extracted;
+        for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
+            remainder = overworldHandler.insertItem(slot, remainder, false);
+            if (remainder.isEmpty()) {
+                break;
+            }
+        }
+
+        // 6. Put remainder back in Exporter if Overworld full
+        if (!remainder.isEmpty()) {
+            exporter.insertItem(remainder);
+        }
+    }
+
+    /**
+     * Get CM dimension level.
+     *
+     * @return The CM dimension ServerLevel, or null if not available
+     */
+    @Nullable
+    private ServerLevel getCMLevel() {
+        if (level == null || level.isClientSide()) {
+            return null;
+        }
+        net.minecraft.server.MinecraftServer server = level.getServer();
+        if (server == null) {
+            return null;
+        }
+        return server.getLevel(
+            net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION,
+                net.minecraft.resources.ResourceLocation.parse("compactmachines:compact_world")
+            )
+        );
+    }
 }
