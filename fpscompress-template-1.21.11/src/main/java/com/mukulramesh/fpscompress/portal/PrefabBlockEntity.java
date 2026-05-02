@@ -505,6 +505,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         // 5. Insert to Importer buffer
         net.minecraft.world.item.ItemStack remainder = importer.insertItem(extracted);
 
+        // Log successful transport
+        int transferred = extracted.getCount() - remainder.getCount();
+        if (transferred > 0) {
+            FPSCompress.LOGGER.info("PULL {}: Transferred {} x{} to Importer",
+                face, extracted.getItem(), transferred);
+        }
+
         // 6. Put remainder back if Importer buffer full
         if (!remainder.isEmpty()) {
             for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
@@ -574,6 +581,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             if (remainder.isEmpty()) {
                 break;
             }
+        }
+
+        // Log successful transport
+        int transferred = extracted.getCount() - remainder.getCount();
+        if (transferred > 0) {
+            FPSCompress.LOGGER.info("PUSH {}: Transferred {} x{} to Overworld",
+                face, extracted.getItem(), transferred);
         }
 
         // 6. Put remainder back in Exporter if Overworld full
