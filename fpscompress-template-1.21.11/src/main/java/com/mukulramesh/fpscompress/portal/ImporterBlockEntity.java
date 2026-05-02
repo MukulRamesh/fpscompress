@@ -182,9 +182,14 @@ public class ImporterBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
-        // Unregister when block is removed
-        if (level != null && !level.isClientSide()) {
+        // Only unregister if actually removed (not just chunk unload)
+        // onLoad() will re-register when chunk loads again
+        if (level != null && !level.isClientSide() && isRemoved()) {
             ImporterExporterRegistry.unregisterImporter(importerUUID);
+            com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+                "Unregistered Importer {} (block broken)",
+                importerUUID.toString().substring(0, 8)
+            );
         }
     }
 
