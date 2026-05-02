@@ -318,31 +318,12 @@ public class ExporterBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
-
-        // Check if block is actually broken (not just chunk unload)
-        // If the block at our position is still an ExporterBlock, it's just chunk unload
-        if (level != null && !level.isClientSide()) {
-            net.minecraft.world.level.block.state.BlockState blockState = level.getBlockState(getBlockPos());
-            boolean blockStillExists = blockState.getBlock() instanceof ExporterBlock;
-
-            com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
-                "[Exporter] setRemoved() - blockStillExists={}, isRemoved={}",
-                blockStillExists, isRemoved()
-            );
-
-            // Only unregister if block is actually gone (broken by player)
-            if (!blockStillExists) {
-                ImporterExporterRegistry.unregisterExporter(exporterUUID);
-                com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
-                    "[Exporter] Unregistered {} (block broken)",
-                    exporterUUID.toString().substring(0, 8)
-                );
-            } else {
-                com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
-                    "[Exporter] Keeping in registry (chunk unload)"
-                );
-            }
-        }
+        // Don't unregister here - setRemoved() is called for both chunk unload AND block break
+        // Unregistration happens in ExporterBlock.onRemove() instead
+        com.mukulramesh.fpscompress.FPSCompress.LOGGER.debug(
+            "[Exporter] setRemoved() called for {}",
+            exporterUUID.toString().substring(0, 8)
+        );
     }
 
     @Override

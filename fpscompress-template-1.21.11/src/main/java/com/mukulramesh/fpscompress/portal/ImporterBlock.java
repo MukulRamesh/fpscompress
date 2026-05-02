@@ -163,4 +163,21 @@ public class ImporterBlock extends Block implements EntityBlock {
 
         return java.util.List.of(stack);
     }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos,
+                           BlockState newState, boolean movedByPiston) {
+        // Unregister from global registry when block is actually removed
+        // (onRemove is ONLY called when block breaks, not on chunk unload)
+        if (!level.isClientSide() && !state.is(newState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof ImporterBlockEntity importer) {
+                ImporterExporterRegistry.unregisterImporter(importer.getImporterUUID());
+                LOGGER.info("[ImporterBlock] Unregistered {} from registry (block broken)",
+                    importer.getImporterUUID().toString().substring(0, 8));
+            }
+        }
+
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
 }
