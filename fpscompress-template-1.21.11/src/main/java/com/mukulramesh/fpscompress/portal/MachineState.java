@@ -1,9 +1,14 @@
 package com.mukulramesh.fpscompress.portal;
 
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.util.StringRepresentable;
+
 /**
  * Represents the current operational state of a PreFab factory.
  */
-public enum MachineState {
+public enum MachineState implements StringRepresentable {
     /**
      * Player is setting up the factory inside the room.
      * Chunks are loaded, routing is physical.
@@ -26,5 +31,13 @@ public enum MachineState {
      * Cache is invalid (starved inputs or blocked outputs).
      * Chunks are loaded, routing is physical, waiting for player intervention.
      */
-    HALTED
+    HALTED;
+
+    public static final StreamCodec<ByteBuf, MachineState> STREAM_CODEC =
+        ByteBufCodecs.idMapper(i -> values()[i], MachineState::ordinal);
+
+    @Override
+    public String getSerializedName() {
+        return this.name().toLowerCase();
+    }
 }

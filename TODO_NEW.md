@@ -1,8 +1,8 @@
 # FPSCompress TODO List - Conduit Architecture
 
-**Last Updated**: 2026-05-02  
+**Last Updated**: 2026-05-03  
 **Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)  
-**Current Phase**: Phase 3 Complete ✅ → Ready for Phase 4
+**Current Phase**: Phase 4 Complete ✅ → Ready for Phase 5
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
@@ -204,7 +204,7 @@
 ---
 
 ### Phase 4: Rate Measurement (SIMULATING State)
-**Status**: Not Started  
+**Status**: ✅ **COMPLETE** (2026-05-03)  
 **Goal**: Record actual transport rates while CM chunks are loaded
 
 **Implementation Approach**: Use delta accounting (see VALIDATION_DELTA_ACCOUNTING.md)
@@ -213,31 +213,52 @@
 - Positive = produced, Negative = consumed, Zero = passthrough
 
 **Tasks**:
-- [ ] Add `MachineState` field to PreFabBlockEntity (BUILDING/SIMULATING/CACHED/HALTED)
-- [ ] Create `portal/ResourceDeltaTracker.java`:
-  - Track totalImported, totalExported per resource type
-  - Methods: `recordImport()`, `recordExport()`, `captureInitialState()`, `captureFinalState()`
-  - Method: `calculateNet(resource)` returns net production
-- [ ] Add delta tracker to PreFabBlockEntity:
-  ```java
-  ResourceDeltaTracker deltaTracker = new ResourceDeltaTracker();
-  long simulationStartTick = 0;
-  long simulationEndTick = 0;
-  ```
-- [ ] On transition BUILDING → SIMULATING:
-  - Scan all machine inventories in CM dimension (see VALIDATION_DELTA_ACCOUNTING.md)
-  - Call `deltaTracker.captureInitialState(inventory)`
-  - Record simulationStartTick
-- [ ] During `tick()` when state == SIMULATING:
-  - Call `deltaTracker.recordImport()` after each successful pull
-  - Call `deltaTracker.recordExport()` after each successful push
-- [ ] On transition SIMULATING → CACHED:
-  - Scan all machine inventories again
-  - Call `deltaTracker.captureFinalState(inventory)`
-  - Record simulationEndTick
-  - Calculate rates: `rate = calculateNet(resource) / (simulationEndTick - simulationStartTick)`
-  - Store rates in PreFabBlockEntity
-  - Serialize rates to NBT
+- [x] Create `portal/ResourceDeltaTracker.java`:
+  - Track totalImported, totalExported per resource type (MVP simplified - no inventory scanning)
+  - Methods: `recordImport()`, `recordExport()`, `calculateNet()`, `getAllTrackedResources()`
+  - NBT serialization for crash recovery
+- [x] Add delta tracker to PreFabBlockEntity with timing fields:
+  - `ResourceDeltaTracker deltaTracker`
+  - `long simulationStartTick` (when SIMULATING started)
+  - `long simulationEndTick` (when SIMULATING ended)
+  - `long cachedStateStartTick` (when CACHED started)
+  - `Map<String, Long> cachedProduction` (accumulated during CACHED)
+  - `String lastSimulationResult` (GUI display of last result)
+- [x] Restrict transport to SIMULATING state only (keep items visible in Overworld until simulation starts)
+- [x] Hook delta tracking into transport logic:
+  - Call `deltaTracker.recordImport()` after successful PULL transport
+  - Call `deltaTracker.recordExport()` after successful PUSH transport
+- [x] Implement state transition methods in PreFabBlockEntity:
+  - `startSimulation()`: BUILDING → SIMULATING (loads CM chunks, resets tracker)
+  - `finishSimulation()`: SIMULATING → CACHED/HALTED/BUILDING (calculates rates, unloads chunks)
+  - `resetToBuilding()`: CACHED → BUILDING (clears rates, keeps chunks UNLOADED)
+  - `resumeSimulation()`: HALTED → SIMULATING (resume measurement)
+- [x] Calculate rates using MVP formula: `Net = Exported - Imported`
+  - Positive = Factory produced (output)
+  - Negative = Factory consumed (input)
+  - Zero = Passthrough (no production/consumption)
+- [x] Handle edge cases:
+  - No activity (no imports AND no exports) → HALTED state
+  - Passthrough (imports = exports, net = 0) → BUILDING state (reset and reconfigure)
+  - Production detected (net ≠ 0) → CACHED state (success)
+- [x] Create Status GUI system:
+  - `gui/PreFabStatusScreen.java` - Client-side GUI with live updates
+  - `gui/PreFabStatusMenu.java` - Server-side container menu
+  - `network/StatusGuiSyncPacket.java` - Server → Client sync every tick (9 fields)
+  - `network/SimulationControlPacket.java` - Client → Server state transition trigger
+- [x] Implement Status GUI features:
+  - Right-click PreFab without wrench → Opens status/control GUI
+  - Live display during SIMULATING: Elapsed ticks, imported/exported counts (all players)
+  - Live display during CACHED (creative): Simulation Time, Cached Ticks, production counts, rates
+  - Live display during CACHED (survival): Rates only (no timing/count info)
+  - Localized item names using BuiltInRegistries
+  - Comprehensive tooltips explaining each field
+  - Last simulation result display (Success/Passthrough/No activity)
+- [x] Update face config GUI:
+  - Remove Mode and Filter buttons (moved to linking phase)
+  - Keep face selection + link button + save only
+- [x] NBT serialization for all new fields (survives world reload)
+- [x] All linters passing (checkstyle, spotbugs, compileJava)
 
 ---
 

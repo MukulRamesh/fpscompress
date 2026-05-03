@@ -2,7 +2,6 @@ package com.mukulramesh.fpscompress.spatial;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import org.slf4j.Logger;
@@ -40,6 +39,21 @@ import java.util.HashSet;
 public class CMInterceptorImpl implements ICMInterceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CMInterceptorImpl.class);
+
+    /**
+     * Singleton instance for global access.
+     */
+    private static final CMInterceptorImpl INSTANCE = new CMInterceptorImpl();
+
+    /**
+     * Get the singleton instance.
+     * Note: SpotBugs MS_EXPOSE_REP warning is intentional for singleton pattern.
+     *
+     * @return The CMInterceptorImpl instance
+     */
+    public static CMInterceptorImpl getInstance() {
+        return INSTANCE;
+    }
 
     /**
      * Custom ticket type for FPSCompress factory chunk loading.
@@ -138,7 +152,6 @@ public class CMInterceptorImpl implements ICMInterceptor {
             return;
         }
 
-        ServerChunkCache chunkSource = dimension.getChunkSource();
         ChunkPos centerChunk = new ChunkPos(roomCenter);
 
         Set<ChunkPos> loadedChunkPositions = new HashSet<>();
@@ -148,20 +161,20 @@ public class CMInterceptorImpl implements ICMInterceptor {
             for (int dz = -1; dz <= 1; dz++) {
                 ChunkPos chunkPos = new ChunkPos(centerChunk.x + dx, centerChunk.z + dz);
 
-                // Add a chunk ticket to force-load this chunk
-                // The ticket level 2 ensures the chunk is fully loaded and ticking
-                chunkSource.addRegionTicket(FACTORY_TICKET, chunkPos, 2, roomCenter);
+                // Force-load chunk using NeoForge API (ensures ticking even when no player nearby)
+                boolean success = dimension.setChunkForced(chunkPos.x, chunkPos.z, true);
 
                 loadedChunkPositions.add(chunkPos);
 
-                LOGGER.debug("Loaded chunk {} for room {}", chunkPos, roomCode);
+                LOGGER.debug("Force-loaded chunk {} for room {} (success: {})",
+                    chunkPos, roomCode, success);
             }
         }
 
         loadedRooms.put(roomCode, roomCenter);
         roomChunks.put(roomCode, loadedChunkPositions);
 
-        LOGGER.info("Successfully loaded 3x3 chunk area for room {} at center {}",
+        LOGGER.info("Successfully force-loaded 3x3 chunk area for room {} at center {}",
                 roomCode, roomCenter);
     }
 
@@ -191,18 +204,16 @@ public class CMInterceptorImpl implements ICMInterceptor {
             return;
         }
 
-        ServerChunkCache chunkSource = dimension.getChunkSource();
-
-        // Remove chunk tickets to allow chunks to unload
+        // Remove forced chunks to allow them to unload
         for (ChunkPos chunkPos : chunksToUnload) {
-            chunkSource.removeRegionTicket(FACTORY_TICKET, chunkPos, 2, roomCenter);
-            LOGGER.debug("Unloaded chunk {} for room {}", chunkPos, roomCode);
+            dimension.setChunkForced(chunkPos.x, chunkPos.z, false);
+            LOGGER.debug("Un-forced chunk {} for room {}", chunkPos, roomCode);
         }
 
         loadedRooms.remove(roomCode);
         roomChunks.remove(roomCode);
 
-        LOGGER.info("Successfully unloaded chunks for room {} at center {}",
+        LOGGER.info("Successfully un-forced chunks for room {} at center {}",
                 roomCode, roomCenter);
     }
 

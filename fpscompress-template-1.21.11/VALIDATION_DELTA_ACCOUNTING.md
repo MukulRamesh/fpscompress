@@ -15,6 +15,8 @@ Track four quantities for each resource type (e.g., "iron_ingot"):
 3. **Initial State** - Count of items present in factory machines/inventories when simulation starts
 4. **Final State** - Count of items present in factory machines/inventories when simulation ends
 
+**IMPORTANT**: For MVP, only "Total Imported" and "Total Exported" are tracked. "Initial State" and "Final State" scanning requires a robust inventory scanner that walks all BlockEntities in the CM dimension—this is **POST-MVP anti-cheat validation** (see VALIDATION_REDSTONE_PROTOCOL.md).
+
 **Net Production Formula**:
 ```
 Net = (Final - Initial) + (Exported - Imported)
@@ -109,18 +111,20 @@ double productionRate = netProduction / (double) activeTicks;
 
 **Example**:
 ```
-Iron Ore:
-  Imported: 100
-  Exported: 0
+Iron Ingots:
+  Imported: 0
+  Exported: 100  ← System thinks factory produced 100 ingots
   Initial:  0
-  Final:    0  ← System thinks 100 ore were consumed
+  Final:    0
 
-Reality: 50 ore in hidden chest, 50 ore actually smelted
+Reality: 100 ingots were in hidden chest, factory produced 0 ingots
 ```
 
-**Why This Happens**: "Final State" only scans machines connected to Importers/Exporters. Hidden chests are invisible.
+**Why this is exploitable**: Player places 100 iron ingots in a hidden chest during SIMULATING, then exports them via Exporter. PreFab thinks the factory produced them. In CACHED mode, the factory "produces" infinite iron ingots from nothing (100 ingots every X ticks, forever).
 
-**Mitigation**: This is the "post-MVP anti-cheat validation" problem from CLAUDE.md. The delta accounting approach measures *what happened*, not *whether it's legitimate*. For MVP, accept that players can cheat and address in v1.0+.
+**Why This Happens**: The system only sees import/export events. Hidden storage inside the CM dimension can inject or extract resources without the PreFab knowing. Initial/Final state scanning (scanning ALL BlockEntity inventories in the CM room) would detect this, but that's POST-MVP anti-cheat validation.
+
+**MVP Limitation**: For MVP, we accept that players can cheat this way. The focus is proving the caching system improves performance, not preventing exploits. See VALIDATION_REDSTONE_PROTOCOL.md for the post-MVP anti-cheat system that solves this.
 
 ### 2. **Intermediate Products** (Tracking Complexity)
 **Problem**: How to track transformations?
@@ -199,7 +203,19 @@ Coal:
 
 ---
 
-## Implementation Notes
+## Implementation Notes (POST-MVP)
+
+**⚠️ WARNING**: The code below shows how to implement initial/final state scanning for anti-cheat validation. This is **NOT part of MVP scope**. MVP only tracks imports/exports during transport (no inventory scanning needed).
+
+For MVP Phase 4 (Rate Measurement):
+- ✅ Track `totalImported` and `totalExported` during transport ticks
+- ✅ Calculate rates using full simulation time window
+- ❌ Do NOT implement `captureInitialState()` or `captureFinalState()`
+- ❌ Do NOT implement `scanAllMachineInventories()`
+
+The inventory scanning code below is for **v1.0+ anti-cheat** work (post-MVP).
+
+---
 
 ### Data Structure (Per BlockEntity)
 ```java
@@ -282,8 +298,9 @@ private Map<ResourceKey, Long> scanAllMachineInventories(ServerLevel level) {
 **Yes, with caveats:**
 
 ✅ **What it DOES solve**:
-- Measures actual resource flow (imports/exports)
-- Calculates production/consumption rates
+- Measures actual resource flow (imports/exports) during transport ← MVP tracks this
+- Calculates production/consumption rates from import/export deltas
+- Initial/Final state scanning enables anti-cheat validation ← POST-MVP feature
 - Works with vanilla blocks (furnaces, chests, hoppers)
 - Simple accounting, easy to implement
 

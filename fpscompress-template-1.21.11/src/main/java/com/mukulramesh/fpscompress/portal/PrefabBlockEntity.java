@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.server.level.ServerLevel;
+import com.mukulramesh.fpscompress.spatial.CMInterceptorImpl;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 /**
  * BlockEntity for PreFab blocks - upgraded Compact Machines that store factory state.
@@ -54,6 +56,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // Cached production rates: resource ID → rate per tick (positive = output, negative = input)
     private final Map<String, Double> cachedRates = new HashMap<>();
+
+    // Phase 4: Rate measurement during SIMULATING state
+    private ResourceDeltaTracker deltaTracker = new ResourceDeltaTracker();
+    private long simulationStartTick = 0;
+    private long simulationEndTick = 0;
+    private long cachedStateStartTick = 0; // When CACHED state started
+    private final Map<String, Long> cachedProduction = new HashMap<>(); // Accumulated during CACHED
+    private String lastSimulationResult = ""; // Result of last simulation (for GUI display)
 
     // UUID lookup caching (O(1) fast path for repeated lookups)
     private final Map<UUID, BlockPos> importerCache = new HashMap<>();
@@ -197,6 +207,51 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         setChanged();
     }
 
+    public long getSimulationStartTick() {
+        return simulationStartTick;
+    }
+
+    public long getSimulationEndTick() {
+        return simulationEndTick;
+    }
+
+    public long getCachedStateStartTick() {
+        return cachedStateStartTick;
+    }
+
+    /**
+     * Get accumulated production during CACHED state (for creative mode display).
+     *
+     * @return Map of resource ID → total produced/consumed
+     */
+    public java.util.Map<String, Long> getCachedProduction() {
+        return new java.util.HashMap<>(cachedProduction);
+    }
+
+    /**
+     * Get live import/export stats for GUI display.
+     *
+     * @return Map of resource ID → [imported, exported]
+     */
+    public java.util.Map<String, long[]> getLiveStats() {
+        java.util.Map<String, long[]> stats = new java.util.HashMap<>();
+        for (String resourceId : deltaTracker.getAllTrackedResources()) {
+            long imported = deltaTracker.getTotalImported(resourceId);
+            long exported = deltaTracker.getTotalExported(resourceId);
+            stats.put(resourceId, new long[]{imported, exported});
+        }
+        return stats;
+    }
+
+    /**
+     * Get last simulation result message (for GUI display).
+     *
+     * @return Result message (empty if no simulation run yet)
+     */
+    public String getLastSimulationResult() {
+        return lastSimulationResult;
+    }
+
     // ===== UUID Lookup System (Phase 2) =====
 
     /**
@@ -314,6 +369,35 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
             tag.put("rates", ratesList);
         }
+
+        // Phase 4: Save rate measurement state
+        if (currentState == MachineState.SIMULATING) {
+            tag.put("deltaTracker", deltaTracker.toNBT());
+            tag.putLong("simulationStartTick", simulationStartTick);
+        }
+
+        // Save CACHED state tracking
+        if (currentState == MachineState.CACHED) {
+            tag.putLong("simulationEndTick", simulationEndTick);
+            tag.putLong("cachedStateStartTick", cachedStateStartTick);
+
+            // Save accumulated production
+            if (!cachedProduction.isEmpty()) {
+                ListTag prodList = new ListTag();
+                for (Map.Entry<String, Long> entry : cachedProduction.entrySet()) {
+                    CompoundTag prodEntry = new CompoundTag();
+                    prodEntry.putString("id", entry.getKey());
+                    prodEntry.putLong("amount", entry.getValue());
+                    prodList.add(prodEntry);
+                }
+                tag.put("cachedProduction", prodList);
+            }
+        }
+
+        // Save last simulation result
+        if (!lastSimulationResult.isEmpty()) {
+            tag.putString("lastSimulationResult", lastSimulationResult);
+        }
     }
 
     @Override
@@ -357,6 +441,35 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 double rate = rateEntry.getDouble("rate");
                 cachedRates.put(id, rate);
             }
+        }
+
+        // Phase 4: Load rate measurement state
+        if (tag.contains("deltaTracker")) {
+            deltaTracker = ResourceDeltaTracker.fromNBT(tag.getCompound("deltaTracker"));
+        }
+        if (tag.contains("simulationStartTick")) {
+            simulationStartTick = tag.getLong("simulationStartTick");
+        }
+
+        // Load CACHED state tracking
+        if (tag.contains("simulationEndTick")) {
+            simulationEndTick = tag.getLong("simulationEndTick");
+        }
+        if (tag.contains("cachedStateStartTick")) {
+            cachedStateStartTick = tag.getLong("cachedStateStartTick");
+        }
+        if (tag.contains("cachedProduction")) {
+            cachedProduction.clear();
+            ListTag prodList = tag.getList("cachedProduction", Tag.TAG_COMPOUND);
+            for (int i = 0; i < prodList.size(); i++) {
+                CompoundTag prodEntry = prodList.getCompound(i);
+                String id = prodEntry.getString("id");
+                long amount = prodEntry.getLong("amount");
+                cachedProduction.put(id, amount);
+            }
+        }
+        if (tag.contains("lastSimulationResult")) {
+            lastSimulationResult = tag.getString("lastSimulationResult");
         }
     }
 
@@ -426,12 +539,22 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             return;
         }
 
+        // Debug: Log tick every 100 ticks during SIMULATING
+        if (prefab.getCurrentState() == MachineState.SIMULATING
+                && level.getGameTime() % 100 == 0) {
+            FPSCompress.LOGGER.debug("PreFab at {} ticking (state: {}, tick: {})",
+                pos, prefab.getCurrentState(), level.getGameTime());
+        }
+
         // Process each configured face
+        int activeFaces = 0;
         for (Direction face : Direction.values()) {
             FaceConfig config = prefab.getFaceConfig(face);
             if (config.getMode() == FaceMode.DISABLED) {
                 continue; // Skip disabled faces
             }
+
+            activeFaces++;
 
             // Only handle ITEMS for MVP (fluids/energy in Phase 7)
             if (config.getResourceType() != ResourceFilter.ITEMS
@@ -445,6 +568,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 prefab.handlePushFace(face, config);
             }
         }
+
+        // Debug: Log if no active faces during SIMULATING
+        if (prefab.getCurrentState() == MachineState.SIMULATING
+                && activeFaces == 0 && level.getGameTime() % 200 == 0) {
+            FPSCompress.LOGGER.warn("PreFab at {} has NO active faces configured!", pos);
+        }
     }
 
     /**
@@ -454,6 +583,11 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param config The face configuration
      */
     private void handlePullFace(Direction face, FaceConfig config) {
+        // Only transport during SIMULATING state
+        if (currentState != MachineState.SIMULATING) {
+            return;
+        }
+
         // 1. Get CM dimension
         ServerLevel cmLevel = getCMLevel();
         if (cmLevel == null) {
@@ -510,6 +644,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         if (transferred > 0) {
             FPSCompress.LOGGER.info("PULL {}: Transferred {} x{} to Importer",
                 face, extracted.getItem(), transferred);
+
+            // Phase 4: Track imports during SIMULATING
+            if (currentState == MachineState.SIMULATING) {
+                String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
+                deltaTracker.recordImport(resourceId, transferred);
+                FPSCompress.LOGGER.info("▶ deltaTracker.recordImport('{}', {}) called (state: {})",
+                    resourceId, transferred, currentState);
+            }
         }
 
         // 6. Put remainder back if Importer buffer full
@@ -530,6 +672,11 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param config The face configuration
      */
     private void handlePushFace(Direction face, FaceConfig config) {
+        // Only transport during SIMULATING state
+        if (currentState != MachineState.SIMULATING) {
+            return;
+        }
+
         // 1. Get CM dimension
         ServerLevel cmLevel = getCMLevel();
         if (cmLevel == null) {
@@ -588,6 +735,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         if (transferred > 0) {
             FPSCompress.LOGGER.info("PUSH {}: Transferred {} x{} to Overworld",
                 face, extracted.getItem(), transferred);
+
+            // Phase 4: Track exports during SIMULATING
+            if (currentState == MachineState.SIMULATING) {
+                String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
+                deltaTracker.recordExport(resourceId, transferred);
+                FPSCompress.LOGGER.info("▶ deltaTracker.recordExport('{}', {}) called (state: {})",
+                    resourceId, transferred, currentState);
+            }
         }
 
         // 6. Put remainder back in Exporter if Overworld full
@@ -616,5 +771,175 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 net.minecraft.resources.ResourceLocation.parse("compactmachines:compact_world")
             )
         );
+    }
+
+    // ===== State Transition Methods (Phase 4) =====
+
+    /**
+     * Transition BUILDING → SIMULATING.
+     * Loads CM chunks, resets delta tracker, starts rate measurement.
+     */
+    public void startSimulation() {
+        if (currentState != MachineState.BUILDING) {
+            FPSCompress.LOGGER.warn("Cannot start simulation from state {}", currentState);
+            return;
+        }
+
+        ServerLevel cmLevel = getCMLevel();
+        if (cmLevel == null || roomCode == null) {
+            FPSCompress.LOGGER.error("Cannot start simulation: CM dimension or roomCode not available");
+            return;
+        }
+
+        // Ensure room center is cached (needed for chunk loading)
+        if (roomCenter != null && level != null && !level.isClientSide()) {
+            net.minecraft.server.MinecraftServer server = level.getServer();
+            if (server != null) {
+                RoomCoordinateCache cache = RoomCoordinateCache.get(server);
+                cache.setRoomCenter(getBlockPos(), roomCode, roomCenter);
+                FPSCompress.LOGGER.debug("Cached room center {} for room {}",
+                    roomCenter, roomCode);
+            }
+        }
+
+        // Load CM chunks
+        CMInterceptorImpl.getInstance().setRoomChunkState(cmLevel, roomCode, true);
+
+        // Reset delta tracker (MVP: only tracks imports/exports, no inventory scanning)
+        deltaTracker = new ResourceDeltaTracker();
+
+        // Clear previous simulation result
+        lastSimulationResult = "";
+
+        // Record start time
+        simulationStartTick = level.getGameTime();
+
+        // Transition state
+        setCurrentState(MachineState.SIMULATING);
+
+        FPSCompress.LOGGER.info("PreFab at {} started simulation (tick {})",
+            getBlockPos(), simulationStartTick);
+    }
+
+    /**
+     * Transition SIMULATING → CACHED.
+     * Calculates rates from import/export deltas, unloads CM chunks.
+     */
+    public void finishSimulation() {
+        if (currentState != MachineState.SIMULATING) {
+            FPSCompress.LOGGER.warn("Cannot finish simulation from state {}", currentState);
+            return;
+        }
+
+        ServerLevel cmLevel = getCMLevel();
+        if (cmLevel == null || roomCode == null) {
+            FPSCompress.LOGGER.error("Cannot finish simulation: CM dimension or roomCode not available");
+            return;
+        }
+
+        // Record end time
+        simulationEndTick = level.getGameTime();
+        long totalTicks = simulationEndTick - simulationStartTick;
+
+        if (totalTicks == 0) {
+            FPSCompress.LOGGER.error("Simulation duration is zero ticks - cannot calculate rates");
+            setCurrentState(MachineState.HALTED);
+            return;
+        }
+
+        // Calculate rates for all tracked resources (MVP: Net = Exported - Imported)
+        clearCachedRates();
+
+        // Debug: Check what's in deltaTracker
+        java.util.Set<String> trackedResources = deltaTracker.getAllTrackedResources();
+        FPSCompress.LOGGER.info("▶ finishSimulation: deltaTracker has {} tracked resources",
+            trackedResources.size());
+        for (String res : trackedResources) {
+            FPSCompress.LOGGER.info("  - {}: imported={}, exported={}",
+                res, deltaTracker.getTotalImported(res), deltaTracker.getTotalExported(res));
+        }
+
+        for (String resourceId : trackedResources) {
+            long netProduction = deltaTracker.calculateNet(resourceId);
+            double ratePerTick = (double) netProduction / totalTicks;
+
+            FPSCompress.LOGGER.info("▶ Resource {}: net={}, rate={}, storing={}",
+                resourceId, netProduction, ratePerTick, (ratePerTick != 0.0));
+
+            if (ratePerTick != 0.0) { // Only store non-zero rates
+                setCachedRate(resourceId, ratePerTick);
+                FPSCompress.LOGGER.info("Calculated rate for {}: {} items/tick (net: {} over {} ticks)",
+                    resourceId, ratePerTick, netProduction, totalTicks);
+            }
+        }
+
+        // Detect zero activity or passthrough
+        if (cachedRates.isEmpty()) {
+            if (trackedResources.isEmpty()) {
+                // No activity at all - factory didn't process anything
+                FPSCompress.LOGGER.warn("No activity detected - entering HALTED state");
+                lastSimulationResult = "No activity";
+                setCurrentState(MachineState.HALTED);
+            } else {
+                // Passthrough detected - items moved but net production is zero
+                FPSCompress.LOGGER.info("Passthrough detected (net production = 0) - resetting to BUILDING");
+                lastSimulationResult = "Passthrough (no net production)";
+                setCurrentState(MachineState.BUILDING);
+            }
+            return;
+        }
+
+        // Unload CM chunks (performance gain!)
+        CMInterceptorImpl.getInstance().setRoomChunkState(cmLevel, roomCode, false);
+
+        // Record when CACHED state starts and reset production counters
+        cachedStateStartTick = level.getGameTime();
+        cachedProduction.clear();
+
+        // Record successful simulation
+        lastSimulationResult = "Success - cached " + cachedRates.size() + " rates";
+
+        // Transition state
+        setCurrentState(MachineState.CACHED);
+
+        FPSCompress.LOGGER.info("PreFab at {} finished simulation (tick {}), cached {} rates",
+            getBlockPos(), simulationEndTick, cachedRates.size());
+    }
+
+    /**
+     * Transition CACHED → BUILDING.
+     * Clears rates, keeps CM chunks UNLOADED (player must manually enter to reconfigure).
+     */
+    public void resetToBuilding() {
+        if (currentState != MachineState.CACHED) {
+            FPSCompress.LOGGER.warn("Cannot reset from state {}", currentState);
+            return;
+        }
+
+        // Clear cached rates
+        clearCachedRates();
+        deltaTracker = new ResourceDeltaTracker();
+
+        // Transition state
+        setCurrentState(MachineState.BUILDING);
+
+        FPSCompress.LOGGER.info("PreFab at {} reset to BUILDING mode (chunks remain unloaded)", getBlockPos());
+    }
+
+    /**
+     * Transition HALTED → SIMULATING.
+     * Resumes measurement after player fixes inputs/outputs.
+     */
+    public void resumeSimulation() {
+        if (currentState != MachineState.HALTED) {
+            FPSCompress.LOGGER.warn("Cannot resume from state {}", currentState);
+            return;
+        }
+
+        // Treat as fresh simulation start
+        setCurrentState(MachineState.BUILDING);
+        startSimulation();
+
+        FPSCompress.LOGGER.info("PreFab at {} resumed simulation", getBlockPos());
     }
 }

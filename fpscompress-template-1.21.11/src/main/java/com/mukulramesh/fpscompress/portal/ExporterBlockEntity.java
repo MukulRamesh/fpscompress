@@ -344,10 +344,8 @@ public class ExporterBlockEntity extends BlockEntity {
     @Override
     public void setChanged() {
         super.setChanged();
-        // Update registry when filter changes
-        if (level != null && !level.isClientSide()) {
-            ImporterExporterRegistry.registerExporter(exporterUUID, getBlockPos(), getDisplayName());
-        }
+        // Registry updates only needed on load (onLoad) and NBT deserialization (loadAdditional)
+        // No need to re-register on every setChanged() call
     }
 
     // ===== Client Sync =====

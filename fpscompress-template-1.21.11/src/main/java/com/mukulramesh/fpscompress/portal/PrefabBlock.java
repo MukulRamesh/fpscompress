@@ -77,84 +77,39 @@ public class PrefabBlock extends Block implements EntityBlock {
             return InteractionResult.PASS;
         }
 
-        // Show storage contents when right-clicking without wrench or PSD
-        if (!level.isClientSide()) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof PrefabBlockEntity prefab) {
-                // Phase 1: Debug adjacent blocks
-                prefab.debugAdjacentBlocks(player);
-
-                // Show storage stats in chat
-                displayStorageStats(player, prefab);
-                return InteractionResult.SUCCESS;
-            }
-
-            player.displayClientMessage(
-                net.minecraft.network.chat.Component.literal(
-                    "§eUse Personal Shrinking Device to enter this PreFab"
-                ),
-                false
-            );
+        // Phase 4: Open status/control GUI when right-clicked with empty hand
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
+
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (!(blockEntity instanceof PrefabBlockEntity)) {
+            return InteractionResult.FAIL;
+        }
+
+        // Open status/control GUI (create anonymous MenuProvider for PreFabStatusMenu)
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(new net.minecraft.world.MenuProvider() {
+                @Override
+                public net.minecraft.network.chat.Component getDisplayName() {
+                    return net.minecraft.network.chat.Component.literal("PreFab Status & Control");
+                }
+
+                @Override
+                public net.minecraft.world.inventory.AbstractContainerMenu createMenu(
+                        int containerId,
+                        net.minecraft.world.entity.player.Inventory playerInventory,
+                        net.minecraft.world.entity.player.Player playerEntity) {
+                    return new com.mukulramesh.fpscompress.gui.PreFabStatusMenu(
+                        containerId, playerInventory, pos
+                    );
+                }
+            }, buf -> {
+                buf.writeBlockPos(pos);
+            });
+        }
+
         return InteractionResult.SUCCESS;
-    }
-
-    /**
-     * Display PreFab status to the player.
-     * TODO Phase 1+: Add face configuration display, cached rates display
-     */
-    private void displayStorageStats(Player player, PrefabBlockEntity prefab) {
-        player.displayClientMessage(
-            net.minecraft.network.chat.Component.literal("§6=== PreFab Status ==="),
-            false
-        );
-
-        // Show machine state
-        MachineState state = prefab.getCurrentState();
-        String stateColor = switch (state) {
-            case BUILDING -> "§e";
-            case SIMULATING -> "§b";
-            case CACHED -> "§a";
-            case HALTED -> "§c";
-        };
-        player.displayClientMessage(
-            net.minecraft.network.chat.Component.literal(
-                String.format("§7State: %s%s", stateColor, state.name())
-            ),
-            false
-        );
-
-        // Show room info
-        String roomCode = prefab.getRoomCode();
-        if (roomCode != null) {
-            player.displayClientMessage(
-                net.minecraft.network.chat.Component.literal(
-                    String.format("§7Room: §3%s", roomCode)
-                ),
-                false
-            );
-        } else {
-            player.displayClientMessage(
-                net.minecraft.network.chat.Component.literal("§7Room: §cNot linked (upgrade from CM first)"),
-                false
-            );
-        }
-
-        // Show cached rates count (if any)
-        int rateCount = prefab.getCachedRates().size();
-        if (rateCount > 0) {
-            player.displayClientMessage(
-                net.minecraft.network.chat.Component.literal(
-                    String.format("§7Cached Rates: §a%d resource types", rateCount)
-                ),
-                false
-            );
-        }
-
-        player.displayClientMessage(
-            net.minecraft.network.chat.Component.literal("§8(Hold PSD and right-click to enter)"),
-            false
-        );
     }
 
     @Override

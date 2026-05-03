@@ -1,6 +1,7 @@
 package com.mukulramesh.fpscompress;
 
 import com.mukulramesh.fpscompress.gui.PreFabConfigScreen;
+import com.mukulramesh.fpscompress.gui.PreFabStatusScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -38,5 +39,9 @@ public class FPSCompressClient {
         // Register PreFab configuration screen
         event.register(FPSCompress.PREFAB_CONFIG_MENU.get(), PreFabConfigScreen::new);
         FPSCompress.LOGGER.info("Registered PreFab configuration screen");
+
+        // Register PreFab status/control screen
+        event.register(FPSCompress.PREFAB_STATUS_MENU.get(), PreFabStatusScreen::new);
+        FPSCompress.LOGGER.info("Registered PreFab status screen");
     }
 }

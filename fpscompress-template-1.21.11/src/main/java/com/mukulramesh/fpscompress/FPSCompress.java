@@ -19,6 +19,7 @@ import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
 
 import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import com.mukulramesh.fpscompress.network.FaceConfigPacket;
+import com.mukulramesh.fpscompress.network.SimulationControlPacket;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -118,6 +119,13 @@ public final class FPSCompress {
     public static final DeferredHolder<MenuType<?>, MenuType<PreFabConfigMenu>> PREFAB_CONFIG_MENU =
         MENU_TYPES.register("prefab_config", () ->
             IMenuTypeExtension.create(PreFabConfigMenu::new));
+
+    /**
+     * PreFab Status Menu - GUI for displaying state and controlling simulation.
+     */
+    public static final DeferredHolder<MenuType<?>, MenuType<com.mukulramesh.fpscompress.gui.PreFabStatusMenu>>
+        PREFAB_STATUS_MENU = MENU_TYPES.register("prefab_status", () ->
+            IMenuTypeExtension.create(com.mukulramesh.fpscompress.gui.PreFabStatusMenu::new));
 
     // ===== Items =====
 
@@ -236,6 +244,20 @@ public final class FPSCompress {
             FaceConfigPacket::handle
         );
         LOGGER.info("Registered network packet: FaceConfigPacket");
+
+        registrar.playToServer(
+            SimulationControlPacket.TYPE,
+            SimulationControlPacket.STREAM_CODEC,
+            SimulationControlPacket::handle
+        );
+        LOGGER.info("Registered network packet: SimulationControlPacket");
+
+        registrar.playToClient(
+            com.mukulramesh.fpscompress.network.StatusGuiSyncPacket.TYPE,
+            com.mukulramesh.fpscompress.network.StatusGuiSyncPacket.STREAM_CODEC,
+            com.mukulramesh.fpscompress.network.StatusGuiSyncPacket::handle
+        );
+        LOGGER.info("Registered network packet: StatusGuiSyncPacket");
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
