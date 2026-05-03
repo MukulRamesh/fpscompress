@@ -291,37 +291,26 @@
 ---
 
 ### Phase 6: Simulation Wrench Control
-**Status**: Partially implemented (exists but needs state machine integration)  
+**Status**: ✅ **COMPLETE** (Implemented in Phase 4)  
 **Goal**: Let player control state transitions
 
-**Files to Modify**:
-- `portal/SimulationWrenchItem.java`
+**Completed in Phase 4**:
+- [x] Created Status GUI with control button (replaces wrench for state transitions)
+- [x] Implemented `SimulationControlPacket` for Client → Server state control
+- [x] State transition methods in PreFabBlockEntity:
+  - `startSimulation()`: BUILDING → SIMULATING (loads CM chunks, resets tracker)
+  - `finishSimulation()`: SIMULATING → CACHED/HALTED/BUILDING (calculates rates, unloads chunks)
+  - `resetToBuilding()`: CACHED → BUILDING (clears rates, keeps chunks unloaded)
+  - `resumeSimulation()`: HALTED → SIMULATING (resumes measurement)
+- [x] Control button changes based on state:
+  - BUILDING: "Start Simulation" (green)
+  - SIMULATING: "Finish Simulation" (yellow)
+  - CACHED: "Reset to Building" (red)
+  - HALTED: "Resume Simulation" (orange)
+- [x] Chat feedback messages for each transition
+- [x] Wrench kept for face configuration GUI only (Shift+Right-click)
 
-**Tasks**:
-- [ ] Update `useOn()` to handle PreFab blocks:
-  ```java
-  if (blockEntity instanceof PrefabBlockEntity prefab) {
-      MachineState current = prefab.getState();
-      if (current == BUILDING) {
-          prefab.startSimulation(); // → SIMULATING
-          player.displayClientMessage("Started simulation - measuring rates...");
-      } else if (current == SIMULATING) {
-          prefab.finishSimulation(); // → CACHED
-          player.displayClientMessage("Caching complete - running virtually!");
-      } else if (current == CACHED) {
-          prefab.resetToBuilding(); // → BUILDING
-          player.displayClientMessage("Reset to building mode");
-      } else if (current == HALTED) {
-          prefab.resumeSimulation(); // → SIMULATING
-          player.displayClientMessage("Resumed simulation");
-      }
-  }
-  ```
-- [ ] Implement state transition methods in PreFabBlockEntity:
-  - `startSimulation()`: Reset counters, load CM chunks
-  - `finishSimulation()`: Calculate rates, unload CM chunks, enter CACHED
-  - `resetToBuilding()`: Clear rates, load CM chunks
-  - `resumeSimulation()`: Keep rates, load CM chunks, continue measurement
+**Note**: This phase merged with Phase 4 (Status GUI implementation)
 
 ---
 
