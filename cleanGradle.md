@@ -10,3 +10,6 @@ rm -Recurse -Force "$env:USERPROFILE\.gradle\caches\journal-1" -ErrorAction Sile
 
 # Test Gradle works
 .\gradlew --version
+
+
+cp assets_adjusted/*.png fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/textures/block/
