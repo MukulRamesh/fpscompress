@@ -3,6 +3,7 @@ package com.mukulramesh.fpscompress.gui;
 import com.mukulramesh.fpscompress.portal.FaceConfig;
 import com.mukulramesh.fpscompress.portal.FaceMode;
 import com.mukulramesh.fpscompress.portal.ImporterExporterRegistry;
+import com.mukulramesh.fpscompress.portal.ResourceFilter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -37,6 +38,8 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
     private Direction selectedFace;
 
     // Button references for updating states
+    private Button[] modeButtons = new Button[3];
+    private Button[] filterButtons = new Button[4];
     private Button linkButton;
 
     private static final int BUTTON_WIDTH = 80;
@@ -81,8 +84,51 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         int defaultIndex = selectedFace.ordinal();
         updateFaceButtonHighlights(faceButtons, defaultIndex);
 
+        // Mode buttons (centered, no label)
+        int modeY = startY + 40;
+        // 3 buttons * 80 width + 2 gaps * 10 = 260 total width
+        // Start at centerX - 130 to center
+        modeButtons[0] = addRenderableWidget(Button.builder(
+            Component.literal("DISABLED"),
+            btn -> setMode(FaceMode.DISABLED)
+        ).bounds(centerX - 130, modeY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+
+        modeButtons[1] = addRenderableWidget(Button.builder(
+            Component.literal("PULL"),
+            btn -> setMode(FaceMode.PULL)
+        ).bounds(centerX - 40, modeY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+
+        modeButtons[2] = addRenderableWidget(Button.builder(
+            Component.literal("PUSH"),
+            btn -> setMode(FaceMode.PUSH)
+        ).bounds(centerX + 50, modeY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+
+        // Filter buttons (centered, no label)
+        int filterY = startY + 70;
+        // 4 buttons * 60 width + 3 gaps * 10 = 270 total width
+        // Start at centerX - 135 to center
+        filterButtons[0] = addRenderableWidget(Button.builder(
+            Component.literal("ALL"),
+            btn -> setFilter(ResourceFilter.ALL)
+        ).bounds(centerX - 135, filterY, 60, BUTTON_HEIGHT).build());
+
+        filterButtons[1] = addRenderableWidget(Button.builder(
+            Component.literal("ITEMS"),
+            btn -> setFilter(ResourceFilter.ITEMS)
+        ).bounds(centerX - 65, filterY, 60, BUTTON_HEIGHT).build());
+
+        filterButtons[2] = addRenderableWidget(Button.builder(
+            Component.literal("FLUIDS"),
+            btn -> setFilter(ResourceFilter.FLUIDS)
+        ).bounds(centerX + 5, filterY, 60, BUTTON_HEIGHT).build());
+
+        filterButtons[3] = addRenderableWidget(Button.builder(
+            Component.literal("ENERGY"),
+            btn -> setFilter(ResourceFilter.ENERGY)
+        ).bounds(centerX + 75, filterY, 60, BUTTON_HEIGHT).build());
+
         // Link button (Phase 2 - cycle through available Importers/Exporters)
-        int linkY = startY + 40;
+        int linkY = startY + 100;
         linkButton = addRenderableWidget(Button.builder(
             Component.literal("Link: None"),
             btn -> cycleLink()
@@ -92,7 +138,7 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
         addRenderableWidget(Button.builder(
             Component.literal("Save"),
             btn -> save()
-        ).bounds(centerX - 40, startY + 70, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        ).bounds(centerX - 40, startY + 130, BUTTON_WIDTH, BUTTON_HEIGHT).build());
 
         // Update button states for currently selected face
         updateButtonStates();
@@ -112,6 +158,18 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
                 (isSelected ? "§a" : "§7") + dir.getName().toUpperCase(Locale.ROOT)
             ));
         }
+    }
+
+    private void setMode(FaceMode mode) {
+        FaceConfig config = menu.getFaceConfig(selectedFace);
+        config.setMode(mode);
+        updateButtonStates();
+    }
+
+    private void setFilter(ResourceFilter filter) {
+        FaceConfig config = menu.getFaceConfig(selectedFace);
+        config.setResourceType(filter);
+        updateButtonStates();
     }
 
     private void cycleLink() {
@@ -154,8 +212,27 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
     private void updateButtonStates() {
         FaceConfig config = menu.getFaceConfig(selectedFace);
 
-        // Update link button based on mode and current selection
+        // Update mode button highlighting
         FaceMode mode = config.getMode();
+        for (int i = 0; i < modeButtons.length; i++) {
+            FaceMode btnMode = FaceMode.values()[i];
+            boolean isSelected = (mode == btnMode);
+            modeButtons[i].setMessage(Component.literal(
+                (isSelected ? "§a" : "§7") + btnMode.name()
+            ));
+        }
+
+        // Update filter button highlighting
+        ResourceFilter filter = config.getResourceType();
+        for (int i = 0; i < filterButtons.length; i++) {
+            ResourceFilter btnFilter = ResourceFilter.values()[i];
+            boolean isSelected = (filter == btnFilter);
+            filterButtons[i].setMessage(Component.literal(
+                (isSelected ? "§a" : "§7") + btnFilter.name()
+            ));
+        }
+
+        // Update link button based on mode and current selection
         if (mode == FaceMode.DISABLED) {
             linkButton.active = false;
             linkButton.setMessage(Component.literal("§7Link: (Disabled)"));
