@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "fpscompress:block/prefab_top",
+    "front": "fpscompress:block/prefab_front",
+    "side": "fpscompress:block/prefab_side"
+  }
+}
