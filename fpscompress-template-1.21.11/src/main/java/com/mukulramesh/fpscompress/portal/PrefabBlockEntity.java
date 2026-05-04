@@ -13,6 +13,7 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -64,6 +65,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     private long cachedStateStartTick = 0; // When CACHED state started
     private final Map<String, Long> cachedProduction = new HashMap<>(); // Accumulated during CACHED
     private String lastSimulationResult = ""; // Result of last simulation (for GUI display)
+
+    // Phase 5: Fractional accumulators for cached production
+    private final Map<String, Double> itemAccumulators = new HashMap<>(); // Resource ID → fractional accumulator
+
+    // HALTED state exponential backoff (performance optimization)
+    private int haltedRetryInterval = 1; // Current retry interval (ticks)
+    private int ticksSinceLastRetry = 0; // Ticks since last retry attempt
 
     // UUID lookup caching (O(1) fast path for repeated lookups)
     private final Map<UUID, BlockPos> importerCache = new HashMap<>();
@@ -252,6 +260,26 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         return lastSimulationResult;
     }
 
+    /**
+     * Get localized item name from resource ID.
+     * Used for user-friendly error messages.
+     *
+     * @param resourceId The resource ID (e.g., "minecraft:iron_ingot")
+     * @return Localized name (e.g., "Iron Ingot") or fallback to resource ID
+     */
+    private String getLocalizedItemName(String resourceId) {
+        try {
+            net.minecraft.resources.ResourceLocation resLoc =
+                net.minecraft.resources.ResourceLocation.parse(resourceId);
+            net.minecraft.world.item.Item item =
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.get(resLoc);
+            return item.getName(new ItemStack(item)).getString();
+        } catch (Exception e) {
+            // Fallback: Return just the item name part (after colon)
+            return resourceId.contains(":") ? resourceId.substring(resourceId.indexOf(':') + 1) : resourceId;
+        }
+    }
+
     // ===== UUID Lookup System (Phase 2) =====
 
     /**
@@ -392,11 +420,29 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 }
                 tag.put("cachedProduction", prodList);
             }
+
+            // Phase 5: Save fractional accumulators
+            if (!itemAccumulators.isEmpty()) {
+                ListTag accumList = new ListTag();
+                for (Map.Entry<String, Double> entry : itemAccumulators.entrySet()) {
+                    CompoundTag accumEntry = new CompoundTag();
+                    accumEntry.putString("id", entry.getKey());
+                    accumEntry.putDouble("accum", entry.getValue());
+                    accumList.add(accumEntry);
+                }
+                tag.put("itemAccumulators", accumList);
+            }
         }
 
         // Save last simulation result
         if (!lastSimulationResult.isEmpty()) {
             tag.putString("lastSimulationResult", lastSimulationResult);
+        }
+
+        // Save HALTED backoff state
+        if (currentState == MachineState.HALTED) {
+            tag.putInt("haltedRetryInterval", haltedRetryInterval);
+            tag.putInt("ticksSinceLastRetry", ticksSinceLastRetry);
         }
     }
 
@@ -471,6 +517,26 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         if (tag.contains("lastSimulationResult")) {
             lastSimulationResult = tag.getString("lastSimulationResult");
         }
+
+        // Load HALTED backoff state
+        if (tag.contains("haltedRetryInterval")) {
+            haltedRetryInterval = tag.getInt("haltedRetryInterval");
+        }
+        if (tag.contains("ticksSinceLastRetry")) {
+            ticksSinceLastRetry = tag.getInt("ticksSinceLastRetry");
+        }
+
+        // Phase 5: Load fractional accumulators
+        if (tag.contains("itemAccumulators")) {
+            itemAccumulators.clear();
+            ListTag accumList = tag.getList("itemAccumulators", Tag.TAG_COMPOUND);
+            for (int i = 0; i < accumList.size(); i++) {
+                CompoundTag accumEntry = accumList.getCompound(i);
+                String id = accumEntry.getString("id");
+                double accum = accumEntry.getDouble("accum");
+                itemAccumulators.put(id, accum);
+            }
+        }
     }
 
     // ===== MenuProvider Implementation =====
@@ -539,6 +605,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             return;
         }
 
+        // Phase 5: Handle CACHED and HALTED modes (fractional production without CM chunks)
+        if (prefab.getCurrentState() == MachineState.CACHED
+                || prefab.getCurrentState() == MachineState.HALTED) {
+            prefab.tickCachedProduction();
+            return; // Don't process faces during CACHED/HALTED modes
+        }
+
         // Debug: Log tick every 100 ticks during SIMULATING
         if (prefab.getCurrentState() == MachineState.SIMULATING
                 && level.getGameTime() % 100 == 0) {
@@ -546,7 +619,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 pos, prefab.getCurrentState(), level.getGameTime());
         }
 
-        // Process each configured face
+        // Process each configured face (SIMULATING mode only, due to Phase 4 restriction)
         int activeFaces = 0;
         for (Direction face : Direction.values()) {
             FaceConfig config = prefab.getFaceConfig(face);
@@ -648,7 +721,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             // Phase 4: Track imports during SIMULATING
             if (currentState == MachineState.SIMULATING) {
                 String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
-                deltaTracker.recordImport(resourceId, transferred);
+                deltaTracker.recordImport(resourceId, transferred, level.getGameTime());
                 FPSCompress.LOGGER.info("▶ deltaTracker.recordImport('{}', {}) called (state: {})",
                     resourceId, transferred, currentState);
             }
@@ -739,7 +812,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             // Phase 4: Track exports during SIMULATING
             if (currentState == MachineState.SIMULATING) {
                 String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
-                deltaTracker.recordExport(resourceId, transferred);
+                deltaTracker.recordExport(resourceId, transferred, level.getGameTime());
                 FPSCompress.LOGGER.info("▶ deltaTracker.recordExport('{}', {}) called (state: {})",
                     resourceId, transferred, currentState);
             }
@@ -837,14 +910,23 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             return;
         }
 
-        // Record end time
-        simulationEndTick = level.getGameTime();
+        // Check if any activity occurred
+        if (!deltaTracker.hasActivity()) {
+            FPSCompress.LOGGER.warn("No activity detected - entering HALTED state");
+            lastSimulationResult = "No activity";
+            setCurrentState(MachineState.HALTED);
+            return;
+        }
+
+        // Use activity-based time window (first input to last output)
+        simulationStartTick = deltaTracker.getFirstActivityTick();
+        simulationEndTick = deltaTracker.getLastActivityTick();
         long totalTicks = simulationEndTick - simulationStartTick;
 
         if (totalTicks == 0) {
-            FPSCompress.LOGGER.error("Simulation duration is zero ticks - cannot calculate rates");
-            setCurrentState(MachineState.HALTED);
-            return;
+            // All activity happened in same tick - use 1 tick to avoid division by zero
+            totalTicks = 1;
+            FPSCompress.LOGGER.warn("All activity in single tick - using 1 tick for rate calculation");
         }
 
         // Calculate rates for all tracked resources (MVP: Net = Exported - Imported)
@@ -873,19 +955,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Detect zero activity or passthrough
+        // Detect passthrough (activity occurred but net production is zero)
         if (cachedRates.isEmpty()) {
-            if (trackedResources.isEmpty()) {
-                // No activity at all - factory didn't process anything
-                FPSCompress.LOGGER.warn("No activity detected - entering HALTED state");
-                lastSimulationResult = "No activity";
-                setCurrentState(MachineState.HALTED);
-            } else {
-                // Passthrough detected - items moved but net production is zero
-                FPSCompress.LOGGER.info("Passthrough detected (net production = 0) - resetting to BUILDING");
-                lastSimulationResult = "Passthrough (no net production)";
-                setCurrentState(MachineState.BUILDING);
-            }
+            // Passthrough detected - items moved but net production is zero
+            FPSCompress.LOGGER.info("Passthrough detected (net production = 0) - resetting to BUILDING");
+            lastSimulationResult = "Passthrough (no net production)";
+            setCurrentState(MachineState.BUILDING);
             return;
         }
 
@@ -896,8 +971,8 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         cachedStateStartTick = level.getGameTime();
         cachedProduction.clear();
 
-        // Record successful simulation
-        lastSimulationResult = "Success - cached " + cachedRates.size() + " rates";
+        // Clear result message on success (only keep failure messages visible)
+        lastSimulationResult = "";
 
         // Transition state
         setCurrentState(MachineState.CACHED);
@@ -916,9 +991,11 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             return;
         }
 
-        // Clear cached rates
+        // Clear cached rates and accumulators
         clearCachedRates();
         deltaTracker = new ResourceDeltaTracker();
+        itemAccumulators.clear(); // Phase 5: Clear fractional accumulators
+        cachedProduction.clear();
 
         // Transition state
         setCurrentState(MachineState.BUILDING);
@@ -941,5 +1018,275 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         startSimulation();
 
         FPSCompress.LOGGER.info("PreFab at {} resumed simulation", getBlockPos());
+    }
+
+    // ===== Phase 5: Cached Production (Fractional Math) =====
+
+    /**
+     * Tick cached production using fractional math.
+     * Called every tick when in CACHED or HALTED state.
+     * CM chunks stay UNLOADED - this is the whole point of caching!
+     *
+     * Performance optimization: In HALTED state, uses exponential backoff
+     * to reduce inventory checking frequency (1 → 2 → 4 → 8... up to 100 ticks).
+     */
+    private void tickCachedProduction() {
+        // Performance optimization: Exponential backoff in HALTED state
+        if (currentState == MachineState.HALTED) {
+            ticksSinceLastRetry++;
+            if (ticksSinceLastRetry < haltedRetryInterval) {
+                return; // Skip this tick - waiting for retry interval
+            }
+            // Retry interval reached - reset counter and attempt recovery
+            ticksSinceLastRetry = 0;
+            FPSCompress.LOGGER.debug("HALTED retry attempt (interval: {} ticks)", haltedRetryInterval);
+        }
+
+        boolean hadFailure = false;
+        String failureMessage = "";
+
+        // Process each cached rate
+        for (Map.Entry<String, Double> entry : cachedRates.entrySet()) {
+            String resourceId = entry.getKey();
+            double ratePerTick = entry.getValue();
+
+            // Initialize accumulator if needed
+            itemAccumulators.putIfAbsent(resourceId, 0.0);
+
+            // Accumulate fractional production (ONLY if in CACHED state, not HALTED)
+            double currentAccum = itemAccumulators.get(resourceId);
+            if (currentState == MachineState.CACHED) {
+                currentAccum += ratePerTick;
+            }
+            // In HALTED state: Don't accumulate, just try to transfer what's already there
+
+            // Check if we have at least 1 whole item to transfer
+            if (Math.abs(currentAccum) >= 1.0) {
+                int wholeItems = (int) currentAccum; // Truncate to integer (positive or negative)
+                currentAccum -= wholeItems; // Remove transferred amount
+
+                // Attempt to transfer whole items
+                boolean success;
+                if (wholeItems > 0) {
+                    // Positive rate = Output (factory produces this resource)
+                    success = transferCachedOutput(resourceId, wholeItems);
+                } else {
+                    // Negative rate = Input (factory consumes this resource)
+                    success = transferCachedInput(resourceId, -wholeItems); // Make positive for transfer
+                }
+
+                if (!success) {
+                    // Transfer failed - put items back into accumulator
+                    currentAccum += wholeItems;
+                    itemAccumulators.put(resourceId, currentAccum);
+
+                    // Record failure details for this tick
+                    hadFailure = true;
+                    String itemName = getLocalizedItemName(resourceId);
+                    if (wholeItems > 0) {
+                        failureMessage = String.format("Output blocked: %s (%d needed)",
+                            itemName, wholeItems);
+                    } else {
+                        failureMessage = String.format("Input starved: %s (%d needed)",
+                            itemName, -wholeItems);
+                    }
+
+                    FPSCompress.LOGGER.debug("Cache transfer failed: {}", failureMessage);
+                    // Continue trying other resources instead of returning
+                    continue;
+                }
+            }
+
+            // Store updated accumulator
+            itemAccumulators.put(resourceId, currentAccum);
+        }
+
+        // Update state based on whether we had any failures this tick
+        if (hadFailure) {
+            // At least one transfer failed - enter/stay in HALTED
+            if (currentState != MachineState.HALTED) {
+                // First failure - enter HALTED with 1-tick retry interval
+                FPSCompress.LOGGER.warn("Cache broke at {} - entering HALTED", getBlockPos());
+                haltedRetryInterval = 1;
+                ticksSinceLastRetry = 0;
+                setCurrentState(MachineState.HALTED);
+            } else {
+                // Still failing - exponential backoff (double interval, cap at 100 ticks = 5 seconds)
+                haltedRetryInterval = Math.min(haltedRetryInterval * 2, 100);
+                FPSCompress.LOGGER.debug("HALTED backoff increased to {} ticks", haltedRetryInterval);
+            }
+            lastSimulationResult = failureMessage;
+        } else {
+            // All transfers succeeded - recover from HALTED if needed
+            if (currentState == MachineState.HALTED) {
+                FPSCompress.LOGGER.info("Cache recovered at {} (after {} ticks backoff) - returning to CACHED",
+                    getBlockPos(), haltedRetryInterval);
+                haltedRetryInterval = 1; // Reset for next failure
+                ticksSinceLastRetry = 0;
+                setCurrentState(MachineState.CACHED);
+                lastSimulationResult = ""; // Clear error message
+            }
+        }
+    }
+
+    /**
+     * Transfer cached output to Overworld (positive rate = production).
+     * Finds PUSH faces that can accept this resource.
+     *
+     * @param resourceId The resource ID (e.g., "minecraft:iron_ingot")
+     * @param amount Number of items to transfer
+     * @return True if successful, false if output blocked (triggers HALTED)
+     */
+    private boolean transferCachedOutput(String resourceId, int amount) {
+        // Parse resource ID to get Item
+        net.minecraft.resources.ResourceLocation resLoc;
+        try {
+            resLoc = net.minecraft.resources.ResourceLocation.parse(resourceId);
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Invalid resource ID: {}", resourceId);
+            return false;
+        }
+
+        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(resLoc);
+        if (item == net.minecraft.world.item.Items.AIR) {
+            FPSCompress.LOGGER.error("Unknown item: {}", resourceId);
+            return false;
+        }
+
+        ItemStack toTransfer = new ItemStack(item, amount);
+
+        // Try each PUSH face
+        for (Direction face : Direction.values()) {
+            FaceConfig config = getFaceConfig(face);
+            if (config.getMode() != FaceMode.PUSH) {
+                continue; // Not a PUSH face
+            }
+
+            // Get Overworld adjacent block
+            BlockPos overworldPos = getBlockPos().relative(face);
+
+            // Try to get item capability from Overworld block
+            IItemHandler overworldHandler = level.getCapability(
+                Capabilities.ItemHandler.BLOCK, overworldPos, face.getOpposite());
+            if (overworldHandler == null) {
+                continue; // No item capability
+            }
+
+            // Try inserting
+            ItemStack remainder = toTransfer.copy();
+            for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
+                remainder = overworldHandler.insertItem(slot, remainder, false);
+                if (remainder.isEmpty()) {
+                    break; // All items inserted
+                }
+            }
+
+            int transferred = toTransfer.getCount() - remainder.getCount();
+            if (transferred > 0) {
+                // Track production for GUI
+                cachedProduction.merge(resourceId, (long) transferred, Long::sum);
+
+                FPSCompress.LOGGER.debug("Cached OUTPUT: Transferred {} x{} via {} face",
+                    resourceId, transferred, face);
+
+                if (!remainder.isEmpty()) {
+                    // Partial transfer - output is getting blocked
+                    FPSCompress.LOGGER.warn("Output partially blocked for {} (transferred {}/{})",
+                        resourceId, transferred, toTransfer.getCount());
+                }
+
+                return remainder.isEmpty(); // Success if fully transferred
+            }
+        }
+
+        // No PUSH face could accept the items - output blocked
+        FPSCompress.LOGGER.warn("Output blocked for {} - no PUSH face available", resourceId);
+        return false;
+    }
+
+    /**
+     * Transfer cached input from Overworld (negative rate = consumption).
+     * Finds PULL faces that can provide this resource.
+     *
+     * @param resourceId The resource ID (e.g., "minecraft:coal")
+     * @param amount Number of items to transfer
+     * @return True if successful, false if input starved (triggers HALTED)
+     */
+    private boolean transferCachedInput(String resourceId, int amount) {
+        // Parse resource ID to get Item
+        net.minecraft.resources.ResourceLocation resLoc;
+        try {
+            resLoc = net.minecraft.resources.ResourceLocation.parse(resourceId);
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Invalid resource ID: {}", resourceId);
+            return false;
+        }
+
+        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(resLoc);
+        if (item == net.minecraft.world.item.Items.AIR) {
+            FPSCompress.LOGGER.error("Unknown item: {}", resourceId);
+            return false;
+        }
+
+        int stillNeeded = amount;
+
+        FPSCompress.LOGGER.debug("Cached INPUT: Attempting to extract {} x{}", resourceId, amount);
+
+        // Try each PULL face
+        for (Direction face : Direction.values()) {
+            if (stillNeeded <= 0) {
+                break; // Got all items needed
+            }
+
+            FaceConfig config = getFaceConfig(face);
+            if (config.getMode() != FaceMode.PULL) {
+                continue; // Not a PULL face
+            }
+
+            FPSCompress.LOGGER.debug("Cached INPUT: Trying PULL face {}", face);
+
+            // Get Overworld adjacent block
+            BlockPos overworldPos = getBlockPos().relative(face);
+
+            // Try to get item capability from Overworld block
+            IItemHandler overworldHandler = level.getCapability(
+                Capabilities.ItemHandler.BLOCK, overworldPos, face.getOpposite());
+            if (overworldHandler == null) {
+                FPSCompress.LOGGER.debug("Cached INPUT: No item handler at {} (face {})",
+                    overworldPos, face);
+                continue; // No item capability
+            }
+
+            FPSCompress.LOGGER.debug("Cached INPUT: Found item handler at {} with {} slots",
+                overworldPos, overworldHandler.getSlots());
+
+            // Try extracting the specific item type
+            for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
+                ItemStack inSlot = overworldHandler.getStackInSlot(slot);
+                if (inSlot.getItem() != item) {
+                    continue; // Wrong item type
+                }
+
+                ItemStack extracted = overworldHandler.extractItem(slot, stillNeeded, false);
+                if (!extracted.isEmpty()) {
+                    stillNeeded -= extracted.getCount();
+                    FPSCompress.LOGGER.debug("Cached INPUT: Extracted {} x{} via {} face",
+                        resourceId, extracted.getCount(), face);
+
+                    if (stillNeeded <= 0) {
+                        break; // Got all items needed
+                    }
+                }
+            }
+        }
+
+        if (stillNeeded > 0) {
+            // Couldn't get all required input - starved
+            FPSCompress.LOGGER.warn("Input starved for {} (needed {}, got {})",
+                resourceId, amount, amount - stillNeeded);
+            return false;
+        }
+
+        return true; // Successfully got all required input
     }
 }

@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -20,6 +21,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
 
     private Button controlButton;
     private MachineState lastKnownState = MachineState.BUILDING;
+    private boolean haltedConfirmationPending = false; // Two-click confirmation for HALTED resume
 
     // Synced data from server
     private MachineState syncedState = MachineState.BUILDING;
@@ -85,6 +87,61 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         }
     }
 
+    /**
+     * Draw text with word wrap support.
+     * Automatically wraps text that exceeds maxWidth onto multiple lines.
+     * Preserves Minecraft color codes (§x) across line breaks.
+     *
+     * @param graphics The graphics context
+     * @param text The text to draw (supports Minecraft color codes)
+     * @param x X position
+     * @param y Y position
+     * @param maxWidth Maximum width before wrapping
+     * @param color Text color (only used if no color codes in text)
+     * @return Number of lines drawn (for yOffset calculation)
+     */
+    private int drawWrappedText(GuiGraphics graphics, String text, int x, int y, int maxWidth, int color) {
+        // Split text by spaces to get words
+        String[] words = text.split(" ");
+        StringBuilder currentLine = new StringBuilder();
+        String lastColorCode = ""; // Track last color code for line continuation
+        int linesDrawn = 0;
+        int currentY = y;
+
+        for (String word : words) {
+            // Check if word starts with or contains a color code
+            if (word.contains("§") && word.length() >= 2) {
+                int colorIndex = word.lastIndexOf("§");
+                if (colorIndex < word.length() - 1) {
+                    lastColorCode = word.substring(colorIndex, colorIndex + 2);
+                }
+            }
+
+            String testLine = currentLine.isEmpty() ? word : currentLine + " " + word;
+            Component testComponent = Component.literal(testLine);
+            int testWidth = font.width(testComponent);
+
+            if (testWidth > maxWidth && !currentLine.isEmpty()) {
+                // Current line is full, draw it and start new line
+                graphics.drawString(font, Component.literal(currentLine.toString()), x, currentY, color, false);
+                currentY += 10; // Line height
+                linesDrawn++;
+                // Start new line with last color code to preserve formatting
+                currentLine = new StringBuilder(lastColorCode + word);
+            } else {
+                currentLine = new StringBuilder(testLine);
+            }
+        }
+
+        // Draw remaining text
+        if (!currentLine.isEmpty()) {
+            graphics.drawString(font, Component.literal(currentLine.toString()), x, currentY, color, false);
+            linesDrawn++;
+        }
+
+        return linesDrawn;
+    }
+
     @Override
     protected void init() {
         super.init();
@@ -113,6 +170,11 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
      * Get button label based on current state.
      */
     private Component getButtonLabel(MachineState state) {
+        // Special case: HALTED with confirmation pending
+        if (state == MachineState.HALTED && haltedConfirmationPending) {
+            return Component.literal("§cAre you sure?");
+        }
+
         return switch (state) {
             case BUILDING -> Component.literal("Start Simulation");
             case SIMULATING -> Component.literal("Finish Simulation");
@@ -126,12 +188,23 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
      * Sends packet to server to trigger state transition.
      */
     private void onControlButtonPressed() {
+        // Special handling for HALTED state: Two-click confirmation
+        if (syncedState == MachineState.HALTED && !haltedConfirmationPending) {
+            // First click: Show confirmation
+            haltedConfirmationPending = true;
+            controlButton.setMessage(Component.literal("§cAre you sure?"));
+            return; // Don't send packet yet
+        }
+
+        // All other states OR second click on HALTED: Send packet
         PacketDistributor.sendToServer(
             new SimulationControlPacket(menu.getPrefabPos())
         );
 
-        // Close GUI after button press
-        this.onClose();
+        // Reset confirmation state
+        haltedConfirmationPending = false;
+
+        // Keep GUI open so user can see live updates
     }
 
     @Override
@@ -188,8 +261,9 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         if (!syncedLastSimulationResult.isEmpty() && syncedState != MachineState.SIMULATING) {
             String resultColor = syncedLastSimulationResult.contains("Success") ? "§a"
                 : syncedLastSimulationResult.contains("Passthrough") ? "§e" : "§c";
-            Component resultText = Component.literal(resultColor + syncedLastSimulationResult);
-            graphics.drawString(font, resultText, 10, 60, 0xFFFFFF, false);
+            // Use word wrap with max width = GUI width - 20 (10px margin on each side)
+            drawWrappedText(graphics, resultColor + syncedLastSimulationResult, 10, 60,
+                imageWidth - 20, 0xFFFFFF);
         }
 
         // State-specific stats
@@ -202,6 +276,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         // Update button label if state changed
         if (syncedState != lastKnownState) {
             lastKnownState = syncedState;
+            haltedConfirmationPending = false; // Reset confirmation on state change
             if (controlButton != null) {
                 controlButton.setMessage(getButtonLabel(syncedState));
             }
@@ -237,11 +312,10 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                 String localizedName = getLocalizedName(resourceId);
 
                 // SIMULATING: Always show counts (both creative and survival)
-                Component resourceText = Component.literal(
-                    "§3" + localizedName + "§7: §c↓" + imported + " §a↑" + exported
-                );
-                graphics.drawString(font, resourceText, 10, yOffset, 0xFFFFFF, false);
-                yOffset += 10;
+                String resourceLine = "§3" + localizedName + "§7: §c↓" + imported + " §a↑" + exported;
+                int linesDrawn = drawWrappedText(graphics, resourceLine, 10, yOffset,
+                    imageWidth - 20, 0xFFFFFF);
+                yOffset += linesDrawn * 10;
 
                 resourceCount++;
                 if (resourceCount >= 3) {
@@ -271,7 +345,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     "§7Simulation Time: §b" + simulationTime + " ticks"
                 );
                 simulationTimeY = yOffset; // Track for tooltip
-                simulationTimeHeight = 10;
+                simulationTimeHeight = 9; // Slightly less than line height to prevent overlap
                 graphics.drawString(font, simTimeText, 10, yOffset, 0xFFFFFF, false);
                 yOffset += 10;
 
@@ -281,7 +355,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     "§7Cached Ticks: §a" + cachedTicks + " ticks"
                 );
                 cachedTicksY = yOffset; // Track for tooltip hover detection
-                cachedTicksHeight = 10;
+                cachedTicksHeight = 9; // Slightly less than line height to prevent overlap
                 graphics.drawString(font, cachedTicksText, 10, yOffset, 0xFFFFFF, false);
                 yOffset += 12;
 
@@ -306,12 +380,11 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     String rateStr = String.format("%.3f", rate);
 
                     // Show: resource: SimIn/Out CachedProd (rate/t)
-                    Component resourceText = Component.literal(
-                        "§3" + localizedName + "§7: §e" + imported + "/" + exported
-                        + " §d" + cachedProd + " §7(" + rateColor + rateStr + "/t§7)"
-                    );
-                    graphics.drawString(font, resourceText, 10, yOffset, 0xFFFFFF, false);
-                    yOffset += 10;
+                    String resourceLine = "§3" + localizedName + "§7: §e" + imported + "/" + exported
+                        + " §d" + cachedProd + " §7(" + rateColor + rateStr + "/t§7)";
+                    int linesDrawn = drawWrappedText(graphics, resourceLine, 10, yOffset,
+                        imageWidth - 20, 0xFFFFFF);
+                    yOffset += linesDrawn * 10;
 
                     resourceCount++;
                     if (resourceCount >= 2) {
@@ -336,11 +409,10 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     String rateColor = rate > 0 ? "§a" : "§c";
                     String rateStr = String.format("%.3f", rate);
 
-                    Component resourceText = Component.literal(
-                        "§3" + localizedName + "§7: " + rateColor + rateStr + "/t"
-                    );
-                    graphics.drawString(font, resourceText, 10, yOffset, 0xFFFFFF, false);
-                    yOffset += 10;
+                    String resourceLine = "§3" + localizedName + "§7: " + rateColor + rateStr + "/t";
+                    int linesDrawn = drawWrappedText(graphics, resourceLine, 10, yOffset,
+                        imageWidth - 20, 0xFFFFFF);
+                    yOffset += linesDrawn * 10;
 
                     resourceCount++;
                     if (resourceCount >= 3) {
@@ -358,20 +430,64 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         // Render background first
         super.render(graphics, mouseX, mouseY, partialTick);
 
-        // Render tooltip if hovering over button
-        if (controlButton != null && controlButton.isHoveredOrFocused()) {
-            MachineState state = menu.getCurrentState();
-            Component tooltip = switch (state) {
-                case BUILDING -> Component.literal("Load CM chunks and start measuring rates");
-                case SIMULATING -> Component.literal("Calculate rates and enter cached mode");
-                case CACHED -> Component.literal("Clear rates and return to building mode");
-                case HALTED -> Component.literal("Resume simulation after fixing inputs/outputs");
-            };
-            graphics.renderTooltip(font, tooltip, mouseX, mouseY);
+        // Check if mouse is actually over the button (not just focused)
+        boolean mouseOverButton = controlButton != null
+            && mouseX >= controlButton.getX()
+            && mouseX <= controlButton.getX() + controlButton.getWidth()
+            && mouseY >= controlButton.getY()
+            && mouseY <= controlButton.getY() + controlButton.getHeight();
+
+        // Reset confirmation if mouse moved away from button
+        if (controlButton != null && haltedConfirmationPending && !mouseOverButton) {
+            haltedConfirmationPending = false;
+            controlButton.setMessage(getButtonLabel(syncedState));
         }
 
-        // Render tooltip for "State"
-        if (stateHeight > 0) {
+        // Render tooltips
+        renderTooltips(graphics, mouseX, mouseY, mouseOverButton);
+    }
+
+    /**
+     * Render all tooltips (button and text area tooltips).
+     */
+    private void renderTooltips(GuiGraphics graphics, int mouseX, int mouseY, boolean mouseOverButton) {
+        // Check what the mouse is hovering over (priority: button > text areas)
+        boolean renderingTooltip = false;
+
+        // Priority 1: Button tooltip (if actually hovering, not just focused)
+        if (mouseOverButton) {
+            MachineState state = menu.getCurrentState();
+
+            // Don't show tooltip during confirmation state (user already knows what they're doing)
+            if (state == MachineState.HALTED && !haltedConfirmationPending) {
+                // HALTED state: Show warning about cache invalidation (first click only)
+                java.util.List<FormattedCharSequence> haltedTooltip =
+                    java.util.List.of(
+                        Component.literal("§cWarning: Will invalidate current cache!"),
+                        Component.literal("§fResume simulation to re-measure rates"),
+                        Component.literal("§7(Click twice to confirm)")
+                    ).stream()
+                    .map(Component::getVisualOrderText)
+                    .toList();
+                graphics.renderTooltip(font, haltedTooltip, mouseX, mouseY);
+                renderingTooltip = true;
+            } else if (state != MachineState.HALTED || !haltedConfirmationPending) {
+                // Other states: Simple tooltip (but not during confirmation)
+                Component tooltip = switch (state) {
+                    case BUILDING -> Component.literal("Load chunks and start measuring rates");
+                    case SIMULATING -> Component.literal("Calculate rates and enter cached mode");
+                    case CACHED -> Component.literal("Clear rates and return to building mode");
+                    default -> Component.literal(""); // Should never happen
+                };
+                if (!tooltip.getString().isEmpty()) {
+                    graphics.renderTooltip(font, tooltip, mouseX, mouseY);
+                    renderingTooltip = true;
+                }
+            }
+        }
+
+        // Priority 2: Text area tooltips (only if not already rendering button tooltip)
+        if (!renderingTooltip && stateHeight > 0) {
             int textX = leftPos + 10;
             int textY = topPos + stateY;
             int textWidth = imageWidth - 20;
@@ -387,12 +503,12 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     case SIMULATING -> java.util.List.of(
                         Component.literal("§bSIMULATING"),
                         Component.literal("§fMeasuring actual production rates"),
-                        Component.literal("§fCM chunks are loaded and ticking")
+                        Component.literal("§fFactory chunks are loaded and ticking")
                     );
                     case CACHED -> java.util.List.of(
                         Component.literal("§aCACHED"),
                         Component.literal("§fRunning virtually using cached rates"),
-                        Component.literal("§fCM chunks are §cunloaded§f (TPS saved!)")
+                        Component.literal("§fFactory chunks are §cunloaded§f (TPS saved!)")
                     );
                     case HALTED -> java.util.List.of(
                         Component.literal("§cHALTED"),
@@ -401,11 +517,13 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     );
                 };
                 renderTooltipFromComponents(graphics, tooltipComponents, mouseX, mouseY);
+                renderingTooltip = true;
             }
         }
 
         // Render tooltip for "Simulation Time" (creative + CACHED only)
-        if (menu.isCreativeMode() && syncedState == MachineState.CACHED && simulationTimeHeight > 0) {
+        if (!renderingTooltip && menu.isCreativeMode() && syncedState == MachineState.CACHED
+                && simulationTimeHeight > 0) {
             int textX = leftPos + 10;
             int textY = topPos + simulationTimeY;
             int textWidth = imageWidth - 20;
@@ -420,11 +538,13 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     Component.literal("§fSIMULATING state")
                 );
                 renderTooltipFromComponents(graphics, tooltipComponents, mouseX, mouseY);
+                renderingTooltip = true;
             }
         }
 
         // Render tooltip for "Cached Ticks" (creative + CACHED only)
-        if (menu.isCreativeMode() && syncedState == MachineState.CACHED && cachedTicksHeight > 0) {
+        if (!renderingTooltip && menu.isCreativeMode() && syncedState == MachineState.CACHED
+                && cachedTicksHeight > 0) {
             int textX = leftPos + 10;
             int textY = topPos + cachedTicksY;
             int textWidth = imageWidth - 20;
@@ -439,11 +559,13 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     Component.literal("§fsleeping or /time commands")
                 );
                 renderTooltipFromComponents(graphics, tooltipComponents, mouseX, mouseY);
+                renderingTooltip = true;
             }
         }
 
         // Render tooltip for item stats (creative + CACHED only)
-        if (menu.isCreativeMode() && syncedState == MachineState.CACHED && itemStatsHeight > 0) {
+        if (!renderingTooltip && menu.isCreativeMode() && syncedState == MachineState.CACHED
+                && itemStatsHeight > 0) {
             int textX = leftPos + 10;
             int textY = topPos + itemStatsY;
             int textWidth = imageWidth - 20;

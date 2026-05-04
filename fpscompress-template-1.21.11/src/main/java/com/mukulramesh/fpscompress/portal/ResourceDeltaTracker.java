@@ -66,16 +66,22 @@ public class ResourceDeltaTracker {
     // Map: Resource ID (e.g., "minecraft:iron_ingot") -> Deltas
     private final Map<String, ResourceDeltas> deltas = new HashMap<>();
 
+    // Track first and last activity ticks (for accurate simulation time measurement)
+    private long firstActivityTick = -1; // -1 = no activity yet
+    private long lastActivityTick = -1;
+
     /**
      * Record items imported from Overworld into CM dimension.
      * Called after successful PULL transport.
      *
      * @param resourceId The resource ID (e.g., "minecraft:coal")
      * @param amount Number of items imported
+     * @param currentTick Current game time (for tracking first/last activity)
      */
-    public void recordImport(String resourceId, long amount) {
+    public void recordImport(String resourceId, long amount, long currentTick) {
         deltas.computeIfAbsent(resourceId, k -> new ResourceDeltas())
               .addImported(amount);
+        updateActivityTicks(currentTick);
     }
 
     /**
@@ -84,10 +90,12 @@ public class ResourceDeltaTracker {
      *
      * @param resourceId The resource ID (e.g., "minecraft:iron_ingot")
      * @param amount Number of items exported
+     * @param currentTick Current game time (for tracking first/last activity)
      */
-    public void recordExport(String resourceId, long amount) {
+    public void recordExport(String resourceId, long amount, long currentTick) {
         deltas.computeIfAbsent(resourceId, k -> new ResourceDeltas())
               .addExported(amount);
+        updateActivityTicks(currentTick);
     }
 
     /**
@@ -137,6 +145,45 @@ public class ResourceDeltaTracker {
     }
 
     /**
+     * Update first/last activity ticks when resources are transferred.
+     *
+     * @param currentTick The current game time
+     */
+    private void updateActivityTicks(long currentTick) {
+        if (firstActivityTick == -1) {
+            firstActivityTick = currentTick; // First resource transfer
+        }
+        lastActivityTick = currentTick; // Update last activity
+    }
+
+    /**
+     * Get the tick when first resource transfer occurred.
+     *
+     * @return Tick number, or -1 if no activity yet
+     */
+    public long getFirstActivityTick() {
+        return firstActivityTick;
+    }
+
+    /**
+     * Get the tick when last resource transfer occurred.
+     *
+     * @return Tick number, or -1 if no activity yet
+     */
+    public long getLastActivityTick() {
+        return lastActivityTick;
+    }
+
+    /**
+     * Check if any activity has been recorded.
+     *
+     * @return True if at least one import/export happened
+     */
+    public boolean hasActivity() {
+        return firstActivityTick != -1;
+    }
+
+    /**
      * Serialize to NBT for crash recovery.
      *
      * @return NBT compound tag
@@ -153,6 +200,8 @@ public class ResourceDeltaTracker {
         }
 
         tag.put("resources", resourceList);
+        tag.putLong("firstActivityTick", firstActivityTick);
+        tag.putLong("lastActivityTick", lastActivityTick);
         return tag;
     }
 
@@ -175,6 +224,8 @@ public class ResourceDeltaTracker {
             }
         }
 
+        tracker.firstActivityTick = tag.getLong("firstActivityTick");
+        tracker.lastActivityTick = tag.getLong("lastActivityTick");
         return tracker;
     }
 
