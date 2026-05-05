@@ -1,16 +1,20 @@
 {
   "itemGroup.fpscompress": "FPS Compress",
 
-  "item.fpscompress.tps_cache_upgrade": "TPS Cache Upgrade",
-  "item.fpscompress.tps_cache_upgrade.tooltip": "Right-click a Compact Machine to enable TPS caching",
+  "block.fpscompress.prefab_machine": "PreFab Machine",
+  "block.fpscompress.importer": "Importer",
+  "block.fpscompress.exporter": "Exporter",
+
+  "item.fpscompress.prefab_upgrade_template": "PreFab Upgrade Template",
+  "item.fpscompress.prefab_upgrade_template.tooltip": "Right-click a Compact Machine to convert it to a PreFab",
 
   "item.fpscompress.simulation_wrench": "Simulation Wrench",
   "item.fpscompress.simulation_wrench.tooltip": "Right-click to control simulation state",
 
-  "fpscompress.message.upgrade_installed": "TPS Cache Upgrade installed!",
-  "fpscompress.message.already_upgraded": "TPS upgrade already installed!",
+  "fpscompress.message.upgrade_installed": "PreFab Upgrade installed!",
+  "fpscompress.message.already_upgraded": "PreFab upgrade already installed!",
   "fpscompress.message.not_compact_machine": "This only works on Compact Machines!",
-  "fpscompress.message.needs_upgrade": "This machine needs a TPS Cache Upgrade first!",
+  "fpscompress.message.needs_upgrade": "This machine needs a PreFab Upgrade Template first!",
   "fpscompress.message.simulation_started": "Simulation started! Observing production rates...",
   "fpscompress.message.simulation_complete": "Simulation complete! Machine cached.",
   "fpscompress.message.already_cached": "Machine is already running in cached mode!",

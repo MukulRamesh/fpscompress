@@ -154,10 +154,10 @@ public final class FPSCompress {
             new Item.Properties().fireResistant()));
 
     /**
-     * TPS Cache Upgrade item - Right-click a Compact Machine to enable TPS caching.
+     * PreFab Upgrade Template item - Right-click a Compact Machine to convert it to a PreFab.
      */
     public static final DeferredItem<TpsCacheUpgradeItem> TPS_CACHE_UPGRADE =
-        ITEMS.register("tps_cache_upgrade", () -> new TpsCacheUpgradeItem(new Item.Properties()));
+        ITEMS.register("prefab_upgrade_template", () -> new TpsCacheUpgradeItem(new Item.Properties()));
 
     /**
      * Simulation Wrench - Control tool for managing factory simulation states.
