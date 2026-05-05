@@ -3,12 +3,14 @@ package com.mukulramesh.fpscompress.portal;
 import com.mojang.logging.LogUtils;
 import com.mukulramesh.fpscompress.FPSCompress;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -16,6 +18,9 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -32,12 +37,24 @@ import org.slf4j.Logger;
  */
 public class ImporterBlock extends Block implements EntityBlock {
     private static final Logger LOGGER = LogUtils.getLogger();
+    public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
     public ImporterBlock() {
         super(BlockBehaviour.Properties.of()
             .strength(3.0f, 4.0f)
             .sound(SoundType.METAL)
         );
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING);
+    }
+
+    @Nullable
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return this.defaultBlockState().setValue(FACING, context.getNearestLookingDirection().getOpposite());
     }
 
     @Nullable

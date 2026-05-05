@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "fpscompress:block/importer_top",
+    "bottom": "fpscompress:block/importer_bottom",
+    "side": "fpscompress:block/importer_side"
+  }
+}
