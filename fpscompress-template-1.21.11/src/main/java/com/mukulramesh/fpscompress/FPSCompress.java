@@ -13,6 +13,7 @@ import com.mukulramesh.fpscompress.portal.ImporterBlock;
 import com.mukulramesh.fpscompress.portal.ImporterBlockEntity;
 import com.mukulramesh.fpscompress.portal.PrefabBlock;
 import com.mukulramesh.fpscompress.portal.PrefabBlockEntity;
+import com.mukulramesh.fpscompress.portal.PrefabBlockItem;
 import com.mukulramesh.fpscompress.portal.PSDExitListener;
 import com.mukulramesh.fpscompress.portal.SimulationWrenchItem;
 import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
@@ -130,11 +131,11 @@ public final class FPSCompress {
     // ===== Items =====
 
     /**
-     * PreFab Machine item (block item).
+     * PreFab Machine item (block item with tooltip support).
      * Immune to fire/lava damage to preserve factory data.
      */
-    public static final DeferredItem<BlockItem> PREFAB_ITEM =
-        ITEMS.register("prefab_machine", () -> new BlockItem(PREFAB_BLOCK.get(),
+    public static final DeferredItem<PrefabBlockItem> PREFAB_ITEM =
+        ITEMS.register("prefab_machine", () -> new PrefabBlockItem(PREFAB_BLOCK.get(),
             new Item.Properties().fireResistant()));
 
     /**

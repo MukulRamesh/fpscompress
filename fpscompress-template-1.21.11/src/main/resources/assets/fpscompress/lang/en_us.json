@@ -8,6 +8,11 @@
   "item.fpscompress.prefab_upgrade_template": "PreFab Upgrade Template",
   "item.fpscompress.prefab_upgrade_template.tooltip": "Right-click a Compact Machine to convert it to a PreFab",
 
+  "item.fpscompress.prefab_machine.state.new": "Fresh PreFab (not yet configured)",
+  "item.fpscompress.prefab_machine.state": "State: %s",
+  "item.fpscompress.prefab_machine.room": "Room: %s",
+  "item.fpscompress.prefab_machine.faces": "Configured Faces: %s/6",
+
   "item.fpscompress.simulation_wrench": "Simulation Wrench",
   "item.fpscompress.simulation_wrench.tooltip": "Right-click to control simulation state",
 
@@ -20,6 +25,11 @@
   "fpscompress.message.already_cached": "Machine is already running in cached mode!",
   "fpscompress.message.machine_halted": "Machine halted! Check inputs/outputs.",
   "fpscompress.message.unknown_state": "Unknown machine state!",
+
+  "fpscompress.state.building": "Building",
+  "fpscompress.state.simulating": "Simulating",
+  "fpscompress.state.cached": "Cached",
+  "fpscompress.state.halted": "Halted",
 
   "fpscompress.configuration.title": "FPSCompress Configs",
   "fpscompress.configuration.section.fpscompress.common.toml": "FPSCompress Configs",

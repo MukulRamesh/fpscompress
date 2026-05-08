@@ -405,17 +405,17 @@
 - Can validate caching math works first, then add portability
 
 ### Polish & UX
-- [ ] Add status display (Right-click PreFab without wrench):
+- [x] Add status display (Right-click PreFab without wrench):
   - Show current state (BUILDING/SIMULATING/CACHED/HALTED)
   - Show configured faces and their modes
   - Show current rates (items/tick, fluids/tick, FE/tick)
   - Show accumulated fractional values during CACHED mode
-- [ ] Add PreFab item tooltip:
+- [x] Add PreFab item tooltip:
   - Show state
   - Show room code
   - Show number of configured faces
-- [ ] Create texture for PreFab block (currently purple/black checkerboard)
-- [ ] Add localization entries
+- [x] Create texture for PreFab block (currently purple/black checkerboard)
+- [x] Add localization entries
 
 ### 2. External Mod Integrations (Post-MVP)
 **All external mod integration is OUT OF SCOPE for MVP**
