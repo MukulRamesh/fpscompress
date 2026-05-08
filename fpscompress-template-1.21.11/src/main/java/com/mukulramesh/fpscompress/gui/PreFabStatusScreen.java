@@ -5,9 +5,16 @@ import com.mukulramesh.fpscompress.portal.MachineState;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -16,12 +23,23 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu> {
 
-    private static final int GUI_WIDTH = 176;
-    private static final int GUI_HEIGHT = 166;
+    private static final int GUI_WIDTH = 220; // Wider for more content
+    private static final int GUI_HEIGHT = 220; // Taller for inventory display
 
     private Button controlButton;
     private MachineState lastKnownState = MachineState.BUILDING;
     private boolean haltedConfirmationPending = false; // Two-click confirmation for HALTED resume
+
+    // Tab system
+    private static final int TAB_CONTROL = 0;
+    private static final int TAB_RESOURCES = 1;
+    private int selectedTab = TAB_CONTROL;
+    private Button tabControlButton;
+    private Button tabResourcesButton;
+
+    // Scrolling support (for Tab 1 only)
+    private int scrollOffset = 0; // Pixels scrolled
+    private int maxScrollOffset = 0; // Maximum scroll (calculated during render)
 
     // Synced data from server
     private MachineState syncedState = MachineState.BUILDING;
@@ -150,11 +168,33 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         lastKnownState = menu.getCurrentState();
         syncedState = lastKnownState;
 
-        // Add control button (centered horizontally, mid-screen vertically)
+        // Add tab buttons at the top
+        int tabWidth = 80;
+        int tabHeight = 20;
+        int tabY = topPos + 5;
+
+        tabControlButton = Button.builder(
+            Component.literal("Control"),
+            button -> switchToTab(TAB_CONTROL)
+        )
+        .bounds(leftPos + 10, tabY, tabWidth, tabHeight)
+        .build();
+
+        tabResourcesButton = Button.builder(
+            Component.literal("Resources"),
+            button -> switchToTab(TAB_RESOURCES)
+        )
+        .bounds(leftPos + 95, tabY, tabWidth, tabHeight)
+        .build();
+
+        addRenderableWidget(tabControlButton);
+        addRenderableWidget(tabResourcesButton);
+
+        // Add control button (only visible in Control tab)
         int buttonWidth = 120;
         int buttonHeight = 20;
         int buttonX = leftPos + (imageWidth - buttonWidth) / 2;
-        int buttonY = topPos + 80;
+        int buttonY = topPos + imageHeight - 35; // Bottom of GUI
 
         controlButton = Button.builder(
             getButtonLabel(lastKnownState),
@@ -164,6 +204,35 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         .build();
 
         addRenderableWidget(controlButton);
+
+        // Update tab button states
+        updateTabButtons();
+    }
+
+    /**
+     * Switch to a specific tab.
+     */
+    private void switchToTab(int tab) {
+        selectedTab = tab;
+        scrollOffset = 0; // Reset scroll when switching tabs
+        updateTabButtons();
+    }
+
+    /**
+     * Update tab button appearance based on selected tab.
+     */
+    private void updateTabButtons() {
+        if (tabControlButton != null) {
+            tabControlButton.active = selectedTab != TAB_CONTROL;
+        }
+        if (tabResourcesButton != null) {
+            tabResourcesButton.active = selectedTab != TAB_RESOURCES;
+        }
+
+        // Control button only visible in Control tab
+        if (controlButton != null) {
+            controlButton.visible = selectedTab == TAB_CONTROL;
+        }
     }
 
     /**
@@ -179,7 +248,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
             case BUILDING -> Component.literal("Start Simulation");
             case SIMULATING -> Component.literal("Finish Simulation");
             case CACHED -> Component.literal("Reset to Building");
-            case HALTED -> Component.literal("Resume Simulation");
+            case HALTED -> Component.literal("Reset Cache");
         };
     }
 
@@ -233,44 +302,11 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         // Don't call super - we'll draw our own labels
 
-        // Title
-        Component titleText = Component.literal("PreFab Status & Control");
-        int titleWidth = font.width(titleText);
-        graphics.drawString(font, titleText, (imageWidth - titleWidth) / 2, 10, 0xFFFFFF, false);
-
-        // Current State
-        String stateColor = switch (syncedState) {
-            case BUILDING -> "§e";
-            case SIMULATING -> "§b";
-            case CACHED -> "§a";
-            case HALTED -> "§c";
-        };
-        Component stateText = Component.literal("State: " + stateColor + syncedState.name());
-        stateY = 30; // Track for tooltip
-        stateHeight = 10;
-        graphics.drawString(font, stateText, 10, 30, 0xFFFFFF, false);
-
-        // Room Code
-        String roomCode = menu.getRoomCode();
-        Component roomText = roomCode != null
-            ? Component.literal("Room: §3" + roomCode)
-            : Component.literal("Room: §cNot linked");
-        graphics.drawString(font, roomText, 10, 45, 0xFFFFFF, false);
-
-        // Last Simulation Result (only show if not empty and not currently simulating)
-        if (!syncedLastSimulationResult.isEmpty() && syncedState != MachineState.SIMULATING) {
-            String resultColor = syncedLastSimulationResult.contains("Success") ? "§a"
-                : syncedLastSimulationResult.contains("Passthrough") ? "§e" : "§c";
-            // Use word wrap with max width = GUI width - 20 (10px margin on each side)
-            drawWrappedText(graphics, resultColor + syncedLastSimulationResult, 10, 60,
-                imageWidth - 20, 0xFFFFFF);
-        }
-
-        // State-specific stats
-        if (syncedState == MachineState.SIMULATING) {
-            renderSimulatingStats(graphics);
-        } else if (syncedState == MachineState.CACHED) {
-            renderCachedStats(graphics);
+        // Render content based on selected tab
+        if (selectedTab == TAB_CONTROL) {
+            renderControlTab(graphics);
+        } else if (selectedTab == TAB_RESOURCES) {
+            renderResourcesTab(graphics, mouseX, mouseY);
         }
 
         // Update button label if state changed
@@ -284,149 +320,312 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     }
 
     /**
-     * Render simulation stats (SIMULATING state).
+     * Render Control tab (state info, simulation stats, control button).
      */
-    private void renderSimulatingStats(GuiGraphics graphics) {
-        long elapsedTicks = syncedCurrentTick - syncedSimulationStartTick;
+    private void renderControlTab(GuiGraphics graphics) {
+        int yOffset = 35; // Below tabs
 
-        // Elapsed time
-        Component elapsedText = Component.literal("§7Elapsed: §b" + elapsedTicks + " ticks");
-        graphics.drawString(font, elapsedText, 10, 60, 0xFFFFFF, false);
+        // Current State
+        String stateColor = switch (syncedState) {
+            case BUILDING -> "§e";
+            case SIMULATING -> "§b";
+            case CACHED -> "§a";
+            case HALTED -> "§c";
+        };
+        Component stateText = Component.literal("State: " + stateColor + syncedState.name());
+        stateY = yOffset;
+        stateHeight = 10;
+        graphics.drawString(font, stateText, 10, yOffset, 0xFFFFFF, false);
+        yOffset += 15;
 
-        // Resource stats
-        int yOffset = 110;
-        if (syncedLiveStats.isEmpty()) {
-            Component noDataText = Component.literal("§7No resources tracked yet...");
-            graphics.drawString(font, noDataText, 10, yOffset, 0xFFFFFF, false);
-        } else {
-            Component statsHeaderText = Component.literal("§7Live Stats:");
-            graphics.drawString(font, statsHeaderText, 10, yOffset, 0xFFFFFF, false);
-            yOffset += 12;
+        // Room Code
+        String roomCode = menu.getRoomCode();
+        Component roomText = roomCode != null
+            ? Component.literal("Room: §3" + roomCode)
+            : Component.literal("Room: §cNot linked");
+        graphics.drawString(font, roomText, 10, yOffset, 0xFFFFFF, false);
+        yOffset += 20;
 
-            int resourceCount = 0;
+        // Last Simulation Result
+        if (!syncedLastSimulationResult.isEmpty() && syncedState != MachineState.SIMULATING) {
+            String resultColor = syncedLastSimulationResult.contains("Success") ? "§a"
+                : syncedLastSimulationResult.contains("Passthrough") ? "§e" : "§c";
+            int linesDrawn = drawWrappedText(graphics, resultColor + syncedLastSimulationResult,
+                10, yOffset, imageWidth - 20, 0xFFFFFF);
+            yOffset += linesDrawn * 10 + 10;
+        }
+
+        // State-specific basic stats (simplified for Control tab)
+        if (syncedState == MachineState.SIMULATING) {
+            long elapsedTicks = syncedCurrentTick - syncedSimulationStartTick;
+            Component elapsedText = Component.literal("§7Elapsed: §b" + elapsedTicks + " ticks");
+            graphics.drawString(font, elapsedText, 10, yOffset, 0xFFFFFF, false);
+            yOffset += 10;
+
+            if (menu.isCreativeMode()) {
+                Component deltaText = Component.literal("§7[Delta Accounting Active]");
+                graphics.drawString(font, deltaText, 10, yOffset, 0x808080, false);
+                yOffset += 10;
+            }
+
+            int resourceCount = syncedLiveStats.size();
+            Component countText = Component.literal("§7Tracking " + resourceCount + " resource types");
+            graphics.drawString(font, countText, 10, yOffset, 0xFFFFFF, false);
+
+        } else if (syncedState == MachineState.CACHED || syncedState == MachineState.HALTED) {
+            if (menu.isCreativeMode()) {
+                long simulationTime = syncedSimulationEndTick - syncedSimulationStartTick;
+                Component simTimeText = Component.literal("§7Simulation: §b" + simulationTime + " ticks");
+                graphics.drawString(font, simTimeText, 10, yOffset, 0xFFFFFF, false);
+                yOffset += 10;
+
+                long cachedTicks = syncedCurrentTick - syncedCachedStateStartTick;
+                Component cachedTicksText = Component.literal("§7Cached: §a" + cachedTicks + " ticks");
+                graphics.drawString(font, cachedTicksText, 10, yOffset, 0xFFFFFF, false);
+                yOffset += 10;
+            }
+
+            int resourceCount = syncedCachedRates.size();
+            Component countText = Component.literal("§7Cached " + resourceCount + " resource types");
+            graphics.drawString(font, countText, 10, yOffset, 0xFFFFFF, false);
+            yOffset += 15;
+
+            Component hintText = Component.literal("§7→ Switch to Resources tab for details");
+            graphics.drawString(font, hintText, 10, yOffset, 0x808080, false);
+        }
+    }
+
+    /**
+     * Render Resources tab (inventory-style item grid).
+     */
+    private void renderResourcesTab(GuiGraphics graphics, int mouseX, int mouseY) {
+        int startY = 35; // Below tabs
+
+        // Show which state we're displaying
+        String stateColor = switch (syncedState) {
+            case BUILDING -> "§e";
+            case SIMULATING -> "§b";
+            case CACHED -> "§a";
+            case HALTED -> "§c";
+        };
+        Component headerText = Component.literal(stateColor + syncedState.name() + " §7Resources:");
+        graphics.drawString(font, headerText, 10, startY, 0xFFFFFF, false);
+        startY += 15;
+
+        // Separate resources by consumed (negative rate) vs produced (positive rate)
+        java.util.List<ResourceDisplayInfo> consumed = new java.util.ArrayList<>();
+        java.util.List<ResourceDisplayInfo> produced = new java.util.ArrayList<>();
+
+        if (syncedState == MachineState.SIMULATING) {
+            // SIMULATING: Show based on import/export
             for (java.util.Map.Entry<String, long[]> entry : syncedLiveStats.entrySet()) {
                 String resourceId = entry.getKey();
                 long imported = entry.getValue()[0];
                 long exported = entry.getValue()[1];
 
-                String localizedName = getLocalizedName(resourceId);
-
-                // SIMULATING: Always show counts (both creative and survival)
-                String resourceLine = "§3" + localizedName + "§7: §c↓" + imported + " §a↑" + exported;
-                int linesDrawn = drawWrappedText(graphics, resourceLine, 10, yOffset,
-                    imageWidth - 20, 0xFFFFFF);
-                yOffset += linesDrawn * 10;
-
-                resourceCount++;
-                if (resourceCount >= 3) {
-                    Component moreText = Component.literal("§7...");
-                    graphics.drawString(font, moreText, 10, yOffset, 0xFFFFFF, false);
-                    break;
+                if (imported > 0) {
+                    consumed.add(new ResourceDisplayInfo(resourceId, -imported, imported, exported));
                 }
+                if (exported > 0) {
+                    produced.add(new ResourceDisplayInfo(resourceId, exported, imported, exported));
+                }
+            }
+        } else if (syncedState == MachineState.CACHED || syncedState == MachineState.HALTED) {
+            // CACHED/HALTED: Show based on rate sign
+            for (java.util.Map.Entry<String, Double> entry : syncedCachedRates.entrySet()) {
+                String resourceId = entry.getKey();
+                double rate = entry.getValue();
+
+                long[] counts = syncedLiveStats.get(resourceId);
+                long imported = counts != null ? counts[0] : 0;
+                long exported = counts != null ? counts[1] : 0;
+                long cachedProdRaw = syncedCachedProduction.getOrDefault(resourceId, 0L);
+                long cachedProd = rate < 0 ? -cachedProdRaw : cachedProdRaw;
+
+                if (rate < 0) {
+                    consumed.add(new ResourceDisplayInfo(resourceId, cachedProd, imported, exported, rate));
+                } else {
+                    produced.add(new ResourceDisplayInfo(resourceId, cachedProd, imported, exported, rate));
+                }
+            }
+        }
+
+        // Grid parameters
+        int slotSize = 18; // 16px item + 1px padding each side
+        int slotsPerRow = 5;
+        int columnGap = 10; // Gap between consumed and produced columns
+
+        // Calculate center line
+        int centerX = imageWidth / 2;
+
+        // Labels above grids
+        Component consumedLabel = Component.literal("§cConsumed");
+        int consumedLabelWidth = font.width(consumedLabel);
+        graphics.drawString(font, consumedLabel,
+            centerX - columnGap / 2 - consumedLabelWidth - 5, startY, 0xFFFFFF, false);
+
+        Component producedLabel = Component.literal("§aProduced");
+        graphics.drawString(font, producedLabel, centerX + columnGap / 2 + 5, startY, 0xFFFFFF, false);
+
+        int gridStartY = startY + 12; // Below labels
+
+        // Render consumed items (left side, right-aligned)
+        renderItemGrid(graphics, consumed, centerX - columnGap / 2, gridStartY,
+            slotsPerRow, slotSize, true, mouseX, mouseY);
+
+        // Render divider line
+        int dividerX = centerX;
+        int dividerTop = gridStartY;
+        int dividerBottom = imageHeight - 40;
+        graphics.fill(dividerX - 1, dividerTop, dividerX, dividerBottom, 0xFF444444);
+
+        // Render produced items (right side, left-aligned)
+        renderItemGrid(graphics, produced, centerX + columnGap / 2, gridStartY,
+            slotsPerRow, slotSize, false, mouseX, mouseY);
+    }
+
+    /**
+     * Render a grid of items.
+     * @param rightAlign If true, grid grows leftward; if false, grows rightward
+     */
+    // CHECKSTYLE.OFF: ParameterNumber - Grid rendering requires positioning parameters
+    private void renderItemGrid(GuiGraphics graphics, java.util.List<ResourceDisplayInfo> items,
+                                 int baseX, int baseY, int slotsPerRow, int slotSize,
+                                 boolean rightAlign, int mouseX, int mouseY) {
+    // CHECKSTYLE.ON: ParameterNumber
+        for (int i = 0; i < items.size(); i++) {
+            ResourceDisplayInfo info = items.get(i);
+            int row = i / slotsPerRow;
+            int col = i % slotsPerRow;
+
+            int slotX, slotY;
+            if (rightAlign) {
+                // Right-aligned: slots grow leftward
+                slotX = baseX - (col + 1) * slotSize;
+            } else {
+                // Left-aligned: slots grow rightward
+                slotX = baseX + col * slotSize;
+            }
+            slotY = baseY + row * slotSize;
+
+            // Draw slot background (renderLabels coordinates are already relative to GUI)
+            graphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0xFF8B8B8B);
+
+            // Render item/fluid (also uses relative coordinates in renderLabels)
+            ItemStack stack = getItemStackForResource(info.getResourceId());
+            if (!stack.isEmpty()) {
+                graphics.renderItem(stack, slotX, slotY);
+            } else {
+                // Fallback: draw question mark for unknown resources
+                graphics.drawString(font, "?", slotX + 4, slotY + 4, 0xFFFFFF, false);
+            }
+
+            // Check if mouse is over this slot for tooltip (convert to screen coords)
+            int screenX = leftPos + slotX;
+            int screenY = topPos + slotY;
+            if (mouseX >= screenX && mouseX < screenX + 16
+                    && mouseY >= screenY && mouseY < screenY + 16) {
+                // Store for tooltip rendering
+                hoveredResource = info;
             }
         }
     }
 
     /**
-     * Render cached stats (CACHED state).
+     * Convert resource ID to ItemStack for rendering.
      */
-    private void renderCachedStats(GuiGraphics graphics) {
-        int yOffset = 110;
+    private ItemStack getItemStackForResource(String resourceId) {
+        try {
+            ResourceLocation rl = ResourceLocation.parse(resourceId);
 
-        if (syncedCachedRates.isEmpty()) {
-            Component noRatesText = Component.literal("§cNo rates cached");
-            graphics.drawString(font, noRatesText, 10, yOffset, 0xFFFFFF, false);
-        } else {
-            // Creative mode: Show simulation time, cached ticks, and production counts
-            if (menu.isCreativeMode()) {
-                // Show simulation time (static - used to determine rate)
-                long simulationTime = syncedSimulationEndTick - syncedSimulationStartTick;
-                Component simTimeText = Component.literal(
-                    "§7Simulation Time: §b" + simulationTime + " ticks"
-                );
-                simulationTimeY = yOffset; // Track for tooltip
-                simulationTimeHeight = 9; // Slightly less than line height to prevent overlap
-                graphics.drawString(font, simTimeText, 10, yOffset, 0xFFFFFF, false);
-                yOffset += 10;
+            // Try as item first
+            Item item = BuiltInRegistries.ITEM.get(rl);
+            if (item != Items.AIR) {
+                return new ItemStack(item);
+            }
 
-                // Show cached ticks (dynamic - time spent in CACHED state)
-                long cachedTicks = syncedCurrentTick - syncedCachedStateStartTick;
-                Component cachedTicksText = Component.literal(
-                    "§7Cached Ticks: §a" + cachedTicks + " ticks"
-                );
-                cachedTicksY = yOffset; // Track for tooltip hover detection
-                cachedTicksHeight = 9; // Slightly less than line height to prevent overlap
-                graphics.drawString(font, cachedTicksText, 10, yOffset, 0xFFFFFF, false);
-                yOffset += 12;
-
-                // Show resources with counts + rates + production
-                itemStatsY = yOffset; // Start of item stats area for tooltip
-                int resourceCount = 0;
-                for (java.util.Map.Entry<String, Double> entry : syncedCachedRates.entrySet()) {
-                    String resourceId = entry.getKey();
-                    double rate = entry.getValue();
-                    String localizedName = getLocalizedName(resourceId);
-
-                    // Get counts from liveStats (simulation-time counts)
-                    long[] counts = syncedLiveStats.get(resourceId);
-                    long imported = counts != null ? counts[0] : 0;
-                    long exported = counts != null ? counts[1] : 0;
-
-                    // Get cached production (accumulated during CACHED)
-                    long cachedProd = syncedCachedProduction.getOrDefault(resourceId, 0L);
-
-                    // Format rate
-                    String rateColor = rate > 0 ? "§a" : "§c";
-                    String rateStr = String.format("%.3f", rate);
-
-                    // Show: resource: SimIn/Out CachedProd (rate/t)
-                    String resourceLine = "§3" + localizedName + "§7: §e" + imported + "/" + exported
-                        + " §d" + cachedProd + " §7(" + rateColor + rateStr + "/t§7)";
-                    int linesDrawn = drawWrappedText(graphics, resourceLine, 10, yOffset,
-                        imageWidth - 20, 0xFFFFFF);
-                    yOffset += linesDrawn * 10;
-
-                    resourceCount++;
-                    if (resourceCount >= 2) {
-                        Component moreText = Component.literal("§7...");
-                        graphics.drawString(font, moreText, 10, yOffset, 0xFFFFFF, false);
-                        break;
-                    }
-                }
-                itemStatsHeight = yOffset - itemStatsY; // Track total height for tooltip
-            } else {
-                // Survival mode: Show only rates
-                Component ratesHeaderText = Component.literal("§7Cached Rates:");
-                graphics.drawString(font, ratesHeaderText, 10, yOffset, 0xFFFFFF, false);
-                yOffset += 12;
-
-                int resourceCount = 0;
-                for (java.util.Map.Entry<String, Double> entry : syncedCachedRates.entrySet()) {
-                    String resourceId = entry.getKey();
-                    double rate = entry.getValue();
-                    String localizedName = getLocalizedName(resourceId);
-
-                    String rateColor = rate > 0 ? "§a" : "§c";
-                    String rateStr = String.format("%.3f", rate);
-
-                    String resourceLine = "§3" + localizedName + "§7: " + rateColor + rateStr + "/t";
-                    int linesDrawn = drawWrappedText(graphics, resourceLine, 10, yOffset,
-                        imageWidth - 20, 0xFFFFFF);
-                    yOffset += linesDrawn * 10;
-
-                    resourceCount++;
-                    if (resourceCount >= 3) {
-                        Component moreText = Component.literal("§7...");
-                        graphics.drawString(font, moreText, 10, yOffset, 0xFFFFFF, false);
-                        break;
-                    }
-                    }
+            // Try as fluid
+            Fluid fluid = BuiltInRegistries.FLUID.get(rl);
+            if (fluid != Fluids.EMPTY) {
+                // Get bucket item for fluid
+                Item bucketItem = fluid.getBucket();
+                if (bucketItem != Items.AIR) {
+                    return new ItemStack(bucketItem);
                 }
             }
+
+            // Fallback: empty stack
+            return ItemStack.EMPTY;
+
+        } catch (RuntimeException e) {
+            return ItemStack.EMPTY;
+        }
+    }
+
+    // Tooltip tracking
+    private ResourceDisplayInfo hoveredResource = null;
+
+    /**
+     * Resource display information for inventory grid.
+     */
+    private static final class ResourceDisplayInfo {
+        private final String resourceId;
+        private final long displayCount; // Main count to show (negative for consumed)
+        private final long imported;
+        private final long exported;
+        private final Double rate; // Nullable, only for CACHED states
+
+        ResourceDisplayInfo(String resourceId, long displayCount, long imported, long exported) {
+            this(resourceId, displayCount, imported, exported, null);
+        }
+
+        ResourceDisplayInfo(String resourceId, long displayCount,
+                           long imported, long exported, Double rate) {
+            this.resourceId = resourceId;
+            this.displayCount = displayCount;
+            this.imported = imported;
+            this.exported = exported;
+            this.rate = rate;
+        }
+
+        public String getResourceId() {
+            return resourceId;
+        }
+
+        public long getDisplayCount() {
+            return displayCount;
+        }
+
+        public long getImported() {
+            return imported;
+        }
+
+        public long getExported() {
+            return exported;
+        }
+
+        public Double getRate() {
+            return rate;
+        }
+    }
+
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        // Scroll up = positive, scroll down = negative
+        int scrollAmount = (int) (scrollY * 10); // 10 pixels per scroll notch
+        scrollOffset -= scrollAmount; // Invert: scroll down increases offset
+
+        // Clamp to valid range
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScrollOffset));
+        return true;
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Reset hovered resource each frame
+        hoveredResource = null;
+
         // Render background first
         super.render(graphics, mouseX, mouseY, partialTick);
 
@@ -445,6 +644,54 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
 
         // Render tooltips
         renderTooltips(graphics, mouseX, mouseY, mouseOverButton);
+
+        // Render resource tooltip if hovering over an item
+        if (hoveredResource != null) {
+            renderResourceTooltip(graphics, mouseX, mouseY);
+        }
+    }
+
+    /**
+     * Render tooltip for hovered resource in inventory grid.
+     */
+    private void renderResourceTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        java.util.List<Component> tooltip = new java.util.ArrayList<>();
+
+        // Item name
+        String localizedName = getLocalizedName(hoveredResource.getResourceId());
+        tooltip.add(Component.literal("§f" + localizedName));
+
+        // Add stats based on state
+        if (syncedState == MachineState.SIMULATING) {
+            tooltip.add(Component.literal("§7Simulation Stats:"));
+            if (hoveredResource.getImported() > 0) {
+                tooltip.add(Component.literal("§c  Imported: "
+                    + hoveredResource.getImported()));
+            }
+            if (hoveredResource.getExported() > 0) {
+                tooltip.add(Component.literal("§a  Exported: "
+                    + hoveredResource.getExported()));
+            }
+        } else if (syncedState == MachineState.CACHED || syncedState == MachineState.HALTED) {
+            if (hoveredResource.getRate() != null) {
+                double rate = hoveredResource.getRate();
+                String rateColor = rate > 0 ? "§a" : "§c";
+                String rateStr = String.format("%.3f", rate);
+                tooltip.add(Component.literal(rateColor + "Rate: " + rateStr + "/tick"));
+            }
+
+            if (menu.isCreativeMode()) {
+                tooltip.add(Component.literal("§7Simulation: §e"
+                    + hoveredResource.getImported() + "/" + hoveredResource.getExported()));
+
+                String displaySign = hoveredResource.getDisplayCount() >= 0 ? "+" : "";
+                tooltip.add(Component.literal("§dCached: " + displaySign
+                    + hoveredResource.getDisplayCount()));
+            }
+        }
+
+        // Render tooltip
+        graphics.renderTooltip(font, tooltip, java.util.Optional.empty(), mouseX, mouseY);
     }
 
     /**
@@ -512,8 +759,8 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     );
                     case HALTED -> java.util.List.of(
                         Component.literal("§cHALTED"),
-                        Component.literal("§fSimulation failed or cache invalid"),
-                        Component.literal("§fFix inputs/outputs and resume")
+                        Component.literal("§fCache broken (input starved or output blocked)"),
+                        Component.literal("§fClick 'Reset Cache' to return to BUILDING")
                     );
                 };
                 renderTooltipFromComponents(graphics, tooltipComponents, mouseX, mouseY);
