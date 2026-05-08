@@ -155,6 +155,51 @@ public class PreFabConfigMenu extends AbstractContainerMenu {
     }
 
     /**
+     * Get PreFab BlockEntity.
+     */
+    private PrefabBlockEntity getPrefabBlockEntity(Player player) {
+        BlockEntity be = player.level().getBlockEntity(prefabPos);
+        if (be instanceof PrefabBlockEntity prefab) {
+            return prefab;
+        }
+        return null;
+    }
+
+    /**
+     * Get all tracked resources from the PreFab's delta tracker.
+     * Used for GUI display of initial/final state (creative mode only).
+     */
+    public java.util.Set<String> getTrackedResources(Player player) {
+        PrefabBlockEntity prefab = getPrefabBlockEntity(player);
+        if (prefab != null) {
+            return prefab.getDeltaTracker().getAllTrackedResources();
+        }
+        return java.util.Collections.emptySet();
+    }
+
+    /**
+     * Get initial state for a resource (creative mode only).
+     */
+    public long getInitialState(Player player, String resourceId) {
+        PrefabBlockEntity prefab = getPrefabBlockEntity(player);
+        if (prefab != null) {
+            return prefab.getDeltaTracker().getInitialState(resourceId);
+        }
+        return 0;
+    }
+
+    /**
+     * Get final state for a resource (creative mode only).
+     */
+    public long getFinalState(Player player, String resourceId) {
+        PrefabBlockEntity prefab = getPrefabBlockEntity(player);
+        if (prefab != null) {
+            return prefab.getDeltaTracker().getFinalState(resourceId);
+        }
+        return 0;
+    }
+
+    /**
      * Send face configurations to server for saving.
      */
     public void saveToServer() {

@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -68,7 +69,7 @@ public class TpsCacheUpgradeItem extends Item {
             return InteractionResult.FAIL;
         }
 
-        // Get CM's room code via reflection
+        // Get CM's room code and size via reflection
         FPSCompress.LOGGER.info("Attempting to upgrade CM at {} to PreFab", context.getClickedPos());
         String roomCode = getRoomCodeFromCM(cmBE);
         if (roomCode == null) {
@@ -80,6 +81,16 @@ public class TpsCacheUpgradeItem extends Item {
             return InteractionResult.FAIL;
         }
         FPSCompress.LOGGER.info("Got room code: {}", roomCode);
+
+        // Get room size (internal dimensions - can be non-cubic)
+        int[] roomDimensions = getRoomDimensionsFromCM(cmBE);
+        if (roomDimensions == null) {
+            FPSCompress.LOGGER.warn("Failed to get room dimensions from CM - defaulting to null");
+            // Non-fatal: We can still upgrade, but validation will be limited
+        } else {
+            FPSCompress.LOGGER.info("Got room dimensions: {}x{}x{}",
+                roomDimensions[0], roomDimensions[1], roomDimensions[2]);
+        }
 
         // Replace block: CM → PreFab
         BlockPos pos = context.getClickedPos();
@@ -119,6 +130,13 @@ public class TpsCacheUpgradeItem extends Item {
             FPSCompress.LOGGER.info("Initializing PreFab BlockEntity");
             prefabBE.setRoomCode(roomCode);
             prefabBE.setCurrentState(MachineState.BUILDING);
+
+            // Set room dimensions if available
+            if (roomDimensions != null) {
+                prefabBE.setRoomSize(roomDimensions[0], roomDimensions[1], roomDimensions[2]);
+                FPSCompress.LOGGER.info("Set room dimensions to {}x{}x{}",
+                    roomDimensions[0], roomDimensions[1], roomDimensions[2]);
+            }
 
             // Try to get cached coordinates (with null checks)
             try {
@@ -239,6 +257,98 @@ public class TpsCacheUpgradeItem extends Item {
         }
 
         FPSCompress.LOGGER.error("=== DEBUG: Failed to get room code ===");
+        return null;
+    }
+
+    /**
+     * Get the room dimensions from a Compact Machine BlockEntity using reflection.
+     * CM rooms can be non-cubic (e.g., 5x3x7).
+     *
+     * @param cmBE The Compact Machine BlockEntity
+     * @return Array of [sizeX, sizeY, sizeZ], or null if not available
+     */
+    @Nullable
+    private int[] getRoomDimensionsFromCM(BoundCompactMachineBlockEntity cmBE) {
+        // Cast to Object to avoid compile-time interface check
+        Object cmObj = cmBE;
+
+        FPSCompress.LOGGER.info("=== DEBUG: Getting room dimensions from CM ===");
+
+        try {
+            // List methods that might contain room size info
+            FPSCompress.LOGGER.info("Looking for room dimension methods:");
+            for (Method m : cmObj.getClass().getMethods()) {
+                String name = m.getName().toLowerCase(Locale.ROOT);
+                if (name.contains("size") || name.contains("dimension") || name.contains("bounds")) {
+                    FPSCompress.LOGGER.info("  - {} returns {}", m.getName(), m.getReturnType().getName());
+                }
+            }
+
+            // Strategy 1: Try roomSize() which might return a BlockPos or similar
+            try {
+                Method roomSizeMethod = cmObj.getClass().getMethod("roomSize");
+                Object result = roomSizeMethod.invoke(cmObj);
+
+                if (result instanceof BlockPos pos) {
+                    // BlockPos used to represent dimensions
+                    int[] dims = new int[]{pos.getX(), pos.getY(), pos.getZ()};
+                    FPSCompress.LOGGER.info("SUCCESS: Room dimensions from BlockPos: {}x{}x{}",
+                        dims[0], dims[1], dims[2]);
+                    return dims;
+                } else if (result instanceof Integer size) {
+                    // Single integer = cubic room
+                    int[] dims = new int[]{size, size, size};
+                    FPSCompress.LOGGER.info("SUCCESS: Cubic room {}x{}x{}", size, size, size);
+                    return dims;
+                } else if (result != null) {
+                    FPSCompress.LOGGER.info("roomSize() returned unexpected type: {}",
+                        result.getClass().getName());
+                }
+            } catch (NoSuchMethodException e) {
+                FPSCompress.LOGGER.debug("roomSize() method not found");
+            }
+
+            // Strategy 2: Try separate width/height/depth methods
+            try {
+                Method widthMethod = cmObj.getClass().getMethod("width");
+                Method heightMethod = cmObj.getClass().getMethod("height");
+                Method depthMethod = cmObj.getClass().getMethod("depth");
+
+                int width = (Integer) widthMethod.invoke(cmObj);
+                int height = (Integer) heightMethod.invoke(cmObj);
+                int depth = (Integer) depthMethod.invoke(cmObj);
+
+                int[] dims = new int[]{width, height, depth};
+                FPSCompress.LOGGER.info("SUCCESS: Room dimensions {}x{}x{}", width, height, depth);
+                return dims;
+            } catch (NoSuchMethodException e) {
+                FPSCompress.LOGGER.debug("width/height/depth methods not found");
+            }
+
+            // Strategy 3: Try outerBounds() and calculate from AABB
+            try {
+                Method boundsMethod = cmObj.getClass().getMethod("outerBounds");
+                Object aabbResult = boundsMethod.invoke(cmObj);
+
+                if (aabbResult instanceof net.minecraft.world.phys.AABB aabb) {
+                    int sizeX = (int) (aabb.maxX - aabb.minX);
+                    int sizeY = (int) (aabb.maxY - aabb.minY);
+                    int sizeZ = (int) (aabb.maxZ - aabb.minZ);
+
+                    int[] dims = new int[]{sizeX, sizeY, sizeZ};
+                    FPSCompress.LOGGER.info("SUCCESS: Room dimensions from AABB: {}x{}x{}",
+                        sizeX, sizeY, sizeZ);
+                    return dims;
+                }
+            } catch (NoSuchMethodException e) {
+                FPSCompress.LOGGER.debug("outerBounds() method not found");
+            }
+
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Failed to get room dimensions from CM block", e);
+        }
+
+        FPSCompress.LOGGER.warn("=== DEBUG: Could not determine room dimensions ===");
         return null;
     }
 }
