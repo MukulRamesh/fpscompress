@@ -152,6 +152,9 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // SpotBugs annotations for @SuppressFBWarnings
+    compileOnly 'com.github.spotbugs:spotbugs-annotations:4.8.3'
+
     // Compact Machines dependency - required for Devs 1, 2, and 4 (CM API access)
     // Using compileOnly since we only need API access at compile time
     // Version 7.0.81 (compactmachines-neoforge-7.0.81.jar) for Minecraft 1.21.1
