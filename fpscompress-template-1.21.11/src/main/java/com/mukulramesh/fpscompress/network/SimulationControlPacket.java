@@ -55,14 +55,14 @@ public record SimulationControlPacket(BlockPos prefabPos) implements CustomPacke
             MachineState currentState = prefab.getCurrentState();
             switch (currentState) {
                 case BUILDING -> {
-                    prefab.startSimulation();
+                    prefab.startSimulation(player);
                     player.displayClientMessage(
                         Component.literal("§aStarted simulation - measuring rates..."),
                         true
                     );
                 }
                 case SIMULATING -> {
-                    prefab.finishSimulation();
+                    prefab.finishSimulation(player);
                     MachineState newState = prefab.getCurrentState();
                     if (newState == MachineState.CACHED) {
                         player.displayClientMessage(
@@ -84,9 +84,9 @@ public record SimulationControlPacket(BlockPos prefabPos) implements CustomPacke
                     );
                 }
                 case HALTED -> {
-                    prefab.resumeSimulation();
+                    prefab.resetToBuilding();
                     player.displayClientMessage(
-                        Component.literal("§aResumed simulation"),
+                        Component.literal("§eReset cache to building mode"),
                         true
                     );
                 }
