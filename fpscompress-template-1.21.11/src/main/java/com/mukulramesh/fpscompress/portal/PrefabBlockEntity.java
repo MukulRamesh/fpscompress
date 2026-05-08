@@ -2,6 +2,7 @@ package com.mukulramesh.fpscompress.portal;
 
 import com.mukulramesh.fpscompress.FPSCompress;
 import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
+import com.mukulramesh.fpscompress.scanner.InventoryScanner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -30,6 +31,9 @@ import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import com.mukulramesh.fpscompress.spatial.CMInterceptorImpl;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.AABB;
 
 /**
  * BlockEntity for PreFab blocks - upgraded Compact Machines that store factory state.
@@ -48,6 +52,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     @Nullable
     private BlockPos roomCenter;
+
+    // Room dimensions (internal size - can be non-cubic, e.g., 5x3x7)
+    @Nullable
+    private Integer roomSizeX;
+    @Nullable
+    private Integer roomSizeY;
+    @Nullable
+    private Integer roomSizeZ;
 
     // Machine state
     private MachineState currentState = MachineState.BUILDING;
@@ -108,6 +120,37 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         setChanged();
     }
 
+    @Nullable
+    public Integer getRoomSizeX() {
+        return roomSizeX;
+    }
+
+    @Nullable
+    public Integer getRoomSizeY() {
+        return roomSizeY;
+    }
+
+    @Nullable
+    public Integer getRoomSizeZ() {
+        return roomSizeZ;
+    }
+
+    public void setRoomSize(int sizeX, int sizeY, int sizeZ) {
+        this.roomSizeX = sizeX;
+        this.roomSizeY = sizeY;
+        this.roomSizeZ = sizeZ;
+        setChanged();
+    }
+
+    /**
+     * Check if room dimensions are available.
+     *
+     * @return true if all three dimensions are set
+     */
+    public boolean hasRoomDimensions() {
+        return roomSizeX != null && roomSizeY != null && roomSizeZ != null;
+    }
+
     // ===== Machine State =====
 
     public MachineState getCurrentState() {
@@ -117,6 +160,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     public void setCurrentState(MachineState state) {
         this.currentState = state;
         setChanged();
+    }
+
+    /**
+     * Get delta tracker for GUI display (creative mode only).
+     */
+    public ResourceDeltaTracker getDeltaTracker() {
+        return deltaTracker;
     }
 
     // ===== Face Configuration =====
@@ -376,6 +426,17 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.putLong("roomCenter", roomCenter.asLong());
         }
 
+        // Save room dimensions
+        if (roomSizeX != null) {
+            tag.putInt("roomSizeX", roomSizeX);
+        }
+        if (roomSizeY != null) {
+            tag.putInt("roomSizeY", roomSizeY);
+        }
+        if (roomSizeZ != null) {
+            tag.putInt("roomSizeZ", roomSizeZ);
+        }
+
         // Save machine state
         tag.putString("state", currentState.name());
 
@@ -456,6 +517,17 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
         if (tag.contains("roomCenter")) {
             roomCenter = BlockPos.of(tag.getLong("roomCenter"));
+        }
+
+        // Load room dimensions
+        if (tag.contains("roomSizeX")) {
+            roomSizeX = tag.getInt("roomSizeX");
+        }
+        if (tag.contains("roomSizeY")) {
+            roomSizeY = tag.getInt("roomSizeY");
+        }
+        if (tag.contains("roomSizeZ")) {
+            roomSizeZ = tag.getInt("roomSizeZ");
         }
 
         // Load machine state
@@ -846,13 +918,216 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         );
     }
 
+    /**
+     * Get room bounds AABB for inventory scanning.
+     * Uses Machine Wall scanning to find room boundaries.
+     *
+     * @param roomCode The room code
+     * @return AABB bounds of the room
+     * @throws IllegalStateException if room bounds cannot be determined
+     */
+    private AABB getRoomBoundsFromCM(String roomCode) {
+        try {
+            ServerLevel cmLevel = getCMLevel();
+            if (cmLevel == null || level == null || level.isClientSide()) {
+                throw new IllegalStateException("CM level not available");
+            }
+
+            net.minecraft.server.MinecraftServer server = level.getServer();
+            if (server == null) {
+                throw new IllegalStateException("Server not available");
+            }
+
+            RoomCoordinateCache cache = RoomCoordinateCache.get(server);
+            BlockPos center = cache.getRoomCenterByRoomCode(roomCode);
+
+            if (center == null) {
+                throw new IllegalStateException("Room center not cached for room: " + roomCode);
+            }
+
+            // Try multiple known wall block IDs (CM versions may differ)
+            Block wallBlock = null;
+            String[] wallBlockIds = {
+                "compactmachines:solid_wall",  // Primary (most common)
+                "compactmachines:wall",         // Fallback
+                "compactmachines:machine_wall"  // Alternative name
+            };
+
+            for (String blockId : wallBlockIds) {
+                Block candidate = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
+                // Registry.get() never returns null for DefaultedRegistry, but may return AIR
+                if (!candidate.equals(net.minecraft.world.level.block.Blocks.AIR)) {
+                    wallBlock = candidate;
+                    FPSCompress.LOGGER.debug("Found wall block: {}", blockId);
+                    break;
+                }
+            }
+
+            if (wallBlock == null) {
+                throw new IllegalStateException("No valid CM wall block found in registry");
+            }
+
+            // Scan outward from center in all 6 directions to find walls
+            int minX = scanForWall(cmLevel, center, Direction.WEST, wallBlock);
+            int maxX = scanForWall(cmLevel, center, Direction.EAST, wallBlock);
+            int minY = scanForWall(cmLevel, center, Direction.DOWN, wallBlock);
+            int maxY = scanForWall(cmLevel, center, Direction.UP, wallBlock);
+            int minZ = scanForWall(cmLevel, center, Direction.NORTH, wallBlock);
+            int maxZ = scanForWall(cmLevel, center, Direction.SOUTH, wallBlock);
+
+            // Add +1 to max coordinates to make AABB inclusive of interior (exclude walls)
+            AABB bounds = new AABB(minX + 1, minY + 1, minZ + 1, maxX, maxY, maxZ);
+            FPSCompress.LOGGER.info("Room bounds via Machine Wall scan: {}", bounds);
+            return bounds;
+
+        } catch (IllegalStateException e) {
+            // Re-throw ISE as-is (expected failure cases)
+            throw e;
+        } catch (RuntimeException e) {
+            // Wrap unexpected runtime exceptions
+            FPSCompress.LOGGER.error("Failed to determine room bounds: {}", e.getMessage());
+            throw new RuntimeException("Cannot determine room bounds", e);
+        }
+    }
+
+    /**
+     * Send inventory scan results to player chat (debug output).
+     * Shows each resource and its count.
+     *
+     * @param player The player to send messages to
+     * @param inventory The scanned inventory (resource ID -> count)
+     * @param label Label for the scan ("Initial" or "Final")
+     */
+    private void sendInventoryScanToChat(@Nullable Player player, Map<String, Long> inventory, String label) {
+        if (player == null) {
+            return; // No player to send to (shouldn't happen, but safety check)
+        }
+
+        player.displayClientMessage(
+            Component.literal("§6=== " + label + " Scan Results ==="), false);
+
+        if (inventory.isEmpty()) {
+            player.displayClientMessage(
+                Component.literal("§7No resources found in room"), false);
+        } else {
+            player.displayClientMessage(
+                Component.literal("§7Found " + inventory.size() + " resource types:"), false);
+
+            // Sort by resource ID for consistent display
+            inventory.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    String resourceId = entry.getKey();
+                    long count = entry.getValue();
+
+                    // Get localized name (or fallback to ID)
+                    String displayName = getLocalizedResourceName(resourceId);
+
+                    // Format: "  Iron Ingot: 64"
+                    player.displayClientMessage(
+                        Component.literal("  §3" + displayName + "§7: §e" + count), false);
+                });
+        }
+    }
+
+    /**
+     * Get localized display name for a resource ID.
+     * Handles items, fluids, and energy.
+     *
+     * @param resourceId The resource ID (e.g., "minecraft:iron_ingot" or "forge:energy")
+     * @return Localized display name
+     */
+    private String getLocalizedResourceName(String resourceId) {
+        // Special case: forge:energy
+        if ("forge:energy".equals(resourceId)) {
+            return "Energy (FE)";
+        }
+
+        try {
+            // Try as item (DefaultedRegistry.get() never returns null, but may return AIR)
+            net.minecraft.world.item.Item item = BuiltInRegistries.ITEM
+                .get(ResourceLocation.parse(resourceId));
+            if (!item.equals(net.minecraft.world.item.Items.AIR)) {
+                return item.getName(new ItemStack(item)).getString();
+            }
+
+            // Try as fluid (DefaultedRegistry.get() never returns null, but may return EMPTY)
+            net.minecraft.world.level.material.Fluid fluid = BuiltInRegistries.FLUID
+                .get(ResourceLocation.parse(resourceId));
+            if (!fluid.equals(net.minecraft.world.level.material.Fluids.EMPTY)) {
+                return fluid.getFluidType().getDescription().getString();
+            }
+        } catch (RuntimeException e) {
+            // Fallback to ID if lookup fails (e.g., invalid resource location)
+        }
+
+        // Fallback: return short ID (remove namespace)
+        return resourceId.contains(":") ? resourceId.substring(resourceId.indexOf(':') + 1) : resourceId;
+    }
+
+    /**
+     * Scan outward from center in given direction until Machine Wall found.
+     * Returns coordinate of wall (inclusive).
+     *
+     * @param level The level
+     * @param center Center position
+     * @param dir Direction to scan
+     * @param wallBlock The wall block to look for
+     * @return Coordinate of wall in the direction's axis
+     * @throws IllegalStateException if wall not found within max distance
+     */
+    private int scanForWall(ServerLevel level, BlockPos center, Direction dir, Block wallBlock) {
+        BlockPos.MutableBlockPos pos = center.mutable();
+        int maxDistance = 20; // Safety limit (largest CM room is ~13x13x13)
+
+        for (int i = 0; i < maxDistance; i++) {
+            pos.move(dir);
+            BlockState state = level.getBlockState(pos);
+
+            // Debug: Log first few blocks encountered
+            if (i < 3) {
+                FPSCompress.LOGGER.debug("Scanning {} at distance {}: {} at {}",
+                    dir, i, BuiltInRegistries.BLOCK.getKey(state.getBlock()), pos.toShortString());
+            }
+
+            if (state.is(wallBlock)) {
+                FPSCompress.LOGGER.debug("Found wall block {} in direction {} at distance {}",
+                    BuiltInRegistries.BLOCK.getKey(wallBlock), dir, i);
+                // Return coordinate based on direction
+                return switch (dir.getAxis()) {
+                    case X -> pos.getX();
+                    case Y -> pos.getY();
+                    case Z -> pos.getZ();
+                };
+            }
+        }
+
+        // Enhanced error message with what we actually found
+        BlockPos.MutableBlockPos debugPos = center.mutable();
+        StringBuilder foundBlocks = new StringBuilder();
+        for (int i = 0; i < Math.min(5, maxDistance); i++) {
+            debugPos.move(dir);
+            BlockState state = level.getBlockState(debugPos);
+            foundBlocks.append("\n  Distance ").append(i + 1).append(": ")
+                .append(BuiltInRegistries.BLOCK.getKey(state.getBlock()));
+        }
+
+        throw new IllegalStateException(
+            "Machine Wall (" + BuiltInRegistries.BLOCK.getKey(wallBlock)
+            + ") not found in direction " + dir + " after " + maxDistance + " blocks."
+            + "\nScanned from: " + center.toShortString()
+            + "\nBlocks found:" + foundBlocks.toString());
+    }
+
     // ===== State Transition Methods (Phase 4) =====
 
     /**
      * Transition BUILDING → SIMULATING.
-     * Loads CM chunks, resets delta tracker, starts rate measurement.
+     * Performs initial inventory scan, then loads CM chunks and starts rate measurement.
+     *
+     * @param player The player starting the simulation (for debug chat output)
      */
-    public void startSimulation() {
+    public void startSimulation(@Nullable Player player) {
         if (currentState != MachineState.BUILDING) {
             FPSCompress.LOGGER.warn("Cannot start simulation from state {}", currentState);
             return;
@@ -875,30 +1150,70 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Load CM chunks
-        CMInterceptorImpl.getInstance().setRoomChunkState(cmLevel, roomCode, true);
+        // Phase 1: Load chunks temporarily for initial scan
+        CMInterceptorImpl interceptor = CMInterceptorImpl.getInstance();
+        interceptor.setRoomChunkState(cmLevel, roomCode, true);
+        FPSCompress.LOGGER.info("PreFab at {} starting initial scan (chunks loaded)", worldPosition);
 
-        // Reset delta tracker (MVP: only tracks imports/exports, no inventory scanning)
-        deltaTracker = new ResourceDeltaTracker();
+        try {
+            AABB roomBounds = getRoomBoundsFromCM(roomCode);
 
-        // Clear previous simulation result
-        lastSimulationResult = "";
+            // Get room center from cache for scanner
+            net.minecraft.server.MinecraftServer server = level.getServer();
+            RoomCoordinateCache cache = RoomCoordinateCache.get(server);
+            BlockPos roomCtr = cache.getRoomCenterByRoomCode(roomCode);
 
-        // Record start time
-        simulationStartTick = level.getGameTime();
+            // Phase 2: Async scan (off main thread, game stays playable)
+            InventoryScanner.scanRoomAsync(cmLevel, roomCtr, roomBounds)
+                .thenAccept(inventory -> {
+                    // Callback to main thread
+                    level.getServer().execute(() -> {
+                        try {
+                            // Phase 3: Store initial state
+                            deltaTracker = new ResourceDeltaTracker();
+                            deltaTracker.captureInitialState(inventory);
+                            FPSCompress.LOGGER.info("Initial scan complete: {} resource types", inventory.size());
 
-        // Transition state
-        setCurrentState(MachineState.SIMULATING);
+                            // Debug: Send scan results to player chat
+                            sendInventoryScanToChat(player, inventory, "Initial");
 
-        FPSCompress.LOGGER.info("PreFab at {} started simulation (tick {})",
-            getBlockPos(), simulationStartTick);
+                            // Phase 4: Unload chunks (return to deterministic state)
+                            interceptor.setRoomChunkState(cmLevel, roomCode, false);
+
+                            // Phase 5: Load chunks and start simulation
+                            interceptor.setRoomChunkState(cmLevel, roomCode, true);
+
+                            // Phase 6: Clear previous result and enter SIMULATING
+                            lastSimulationResult = "";
+                            simulationStartTick = level.getGameTime();
+                            setCurrentState(MachineState.SIMULATING);
+
+                            FPSCompress.LOGGER.info("PreFab at {} entered SIMULATING state", worldPosition);
+                        } catch (Exception e) {
+                            FPSCompress.LOGGER.error("Failed to complete initial scan", e);
+                        }
+                    });
+                })
+                .exceptionally(ex -> {
+                    level.getServer().execute(() -> {
+                        FPSCompress.LOGGER.error("Initial scan failed for PreFab at {}", worldPosition, ex);
+                        interceptor.setRoomChunkState(cmLevel, roomCode, false); // Cleanup
+                    });
+                    return null;
+                });
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Failed to start initial scan", e);
+            interceptor.setRoomChunkState(cmLevel, roomCode, false); // Cleanup
+        }
     }
 
     /**
      * Transition SIMULATING → CACHED.
-     * Calculates rates from import/export deltas, unloads CM chunks.
+     * Performs final inventory scan, calculates rates using full formula, unloads CM chunks.
+     *
+     * @param player The player finishing the simulation (for debug chat output)
      */
-    public void finishSimulation() {
+    public void finishSimulation(@Nullable Player player) {
         if (currentState != MachineState.SIMULATING) {
             FPSCompress.LOGGER.warn("Cannot finish simulation from state {}", currentState);
             return;
@@ -921,6 +1236,73 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         // Use activity-based time window (first input to last output)
         simulationStartTick = deltaTracker.getFirstActivityTick();
         simulationEndTick = deltaTracker.getLastActivityTick();
+
+        // Phase 1: Unload chunks (stop factory)
+        CMInterceptorImpl interceptor = CMInterceptorImpl.getInstance();
+        interceptor.setRoomChunkState(cmLevel, roomCode, false);
+        FPSCompress.LOGGER.info("PreFab at {} unloaded chunks for final scan", worldPosition);
+
+        // Phase 2: Load chunks temporarily for final scan
+        interceptor.setRoomChunkState(cmLevel, roomCode, true);
+
+        try {
+            AABB roomBounds = getRoomBoundsFromCM(roomCode);
+
+            // Get room center from cache for scanner
+            net.minecraft.server.MinecraftServer server = level.getServer();
+            RoomCoordinateCache cache = RoomCoordinateCache.get(server);
+            BlockPos roomCtr = cache.getRoomCenterByRoomCode(roomCode);
+
+            // Phase 3: Async final scan (game stays playable)
+            InventoryScanner.scanRoomAsync(cmLevel, roomCtr, roomBounds)
+                .thenAccept(finalInventory -> {
+                    level.getServer().execute(() -> {
+                        try {
+                            // Phase 4: Store final state
+                            deltaTracker.captureFinalState(finalInventory);
+                            FPSCompress.LOGGER.info("Final scan complete: {} resource types", finalInventory.size());
+
+                            // Debug: Send scan results to player chat
+                            sendInventoryScanToChat(player, finalInventory, "Final");
+
+                            // Phase 5: Unload chunks (return to unloaded state)
+                            interceptor.setRoomChunkState(cmLevel, roomCode, false);
+
+                            // Phase 6: Calculate rates using FULL formula
+                            calculateRatesAndTransition();
+
+                        } catch (Exception e) {
+                            FPSCompress.LOGGER.error("Failed to process final scan", e);
+                            lastSimulationResult = "Scan processing failed";
+                            setCurrentState(MachineState.HALTED);
+                            setChanged();
+                        }
+                    });
+                })
+                .exceptionally(ex -> {
+                    level.getServer().execute(() -> {
+                        FPSCompress.LOGGER.error("Final scan failed", ex);
+                        lastSimulationResult = "Scan failed";
+                        setCurrentState(MachineState.HALTED);
+                        interceptor.setRoomChunkState(cmLevel, roomCode, false); // Cleanup
+                        setChanged();
+                    });
+                    return null;
+                });
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Failed to start final scan", e);
+            lastSimulationResult = "Failed to start final scan";
+            setCurrentState(MachineState.HALTED);
+            interceptor.setRoomChunkState(cmLevel, roomCode, false);
+            setChanged();
+        }
+    }
+
+    /**
+     * Calculate rates using full formula and transition to CACHED/BUILDING/HALTED.
+     * Separated from finishSimulation() for clarity.
+     */
+    private void calculateRatesAndTransition() {
         long totalTicks = simulationEndTick - simulationStartTick;
 
         if (totalTicks == 0) {
@@ -929,29 +1311,47 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             FPSCompress.LOGGER.warn("All activity in single tick - using 1 tick for rate calculation");
         }
 
-        // Calculate rates for all tracked resources (MVP: Net = Exported - Imported)
+        // Calculate rates for all tracked resources using FULL formula
         clearCachedRates();
 
         // Debug: Check what's in deltaTracker
         java.util.Set<String> trackedResources = deltaTracker.getAllTrackedResources();
         FPSCompress.LOGGER.info("▶ finishSimulation: deltaTracker has {} tracked resources",
             trackedResources.size());
-        for (String res : trackedResources) {
-            FPSCompress.LOGGER.info("  - {}: imported={}, exported={}",
-                res, deltaTracker.getTotalImported(res), deltaTracker.getTotalExported(res));
-        }
 
         for (String resourceId : trackedResources) {
-            long netProduction = deltaTracker.calculateNet(resourceId);
-            double ratePerTick = (double) netProduction / totalTicks;
+            long initial = deltaTracker.getInitialState(resourceId);
+            long finalState = deltaTracker.getFinalState(resourceId);
+            long imported = deltaTracker.getTotalImported(resourceId);
+            long exported = deltaTracker.getTotalExported(resourceId);
+
+            long netFull = deltaTracker.calculateNetFull(resourceId);
+
+            // Log detailed breakdown
+            FPSCompress.LOGGER.info("  {}: Initial={}, Final={}, Imported={}, Exported={}, Net={}",
+                resourceId, initial, finalState, imported, exported, netFull);
+
+            // Skip passthrough from internal storage (net ~= 0, but internal change != 0)
+            // Tolerance: 1 item count (not rate!)
+            if (Math.abs(netFull) <= 1) {
+                long internalChange = finalState - initial;
+                if (Math.abs(internalChange) > 1) {
+                    FPSCompress.LOGGER.info("    Passthrough from internal storage (internal: {}), "
+                        + "excluding from rates", internalChange);
+                    continue; // Don't cache this resource
+                }
+            }
+
+            // Calculate rate per tick
+            double ratePerTick = (double) netFull / totalTicks;
 
             FPSCompress.LOGGER.info("▶ Resource {}: net={}, rate={}, storing={}",
-                resourceId, netProduction, ratePerTick, (ratePerTick != 0.0));
+                resourceId, netFull, ratePerTick, (ratePerTick != 0.0));
 
             if (ratePerTick != 0.0) { // Only store non-zero rates
                 setCachedRate(resourceId, ratePerTick);
                 FPSCompress.LOGGER.info("Calculated rate for {}: {} items/tick (net: {} over {} ticks)",
-                    resourceId, ratePerTick, netProduction, totalTicks);
+                    resourceId, ratePerTick, netFull, totalTicks);
             }
         }
 
@@ -963,9 +1363,6 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             setCurrentState(MachineState.BUILDING);
             return;
         }
-
-        // Unload CM chunks (performance gain!)
-        CMInterceptorImpl.getInstance().setRoomChunkState(cmLevel, roomCode, false);
 
         // Record when CACHED state starts and reset production counters
         cachedStateStartTick = level.getGameTime();
@@ -982,11 +1379,11 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     }
 
     /**
-     * Transition CACHED → BUILDING.
+     * Transition CACHED/HALTED → BUILDING.
      * Clears rates, keeps CM chunks UNLOADED (player must manually enter to reconfigure).
      */
     public void resetToBuilding() {
-        if (currentState != MachineState.CACHED) {
+        if (currentState != MachineState.CACHED && currentState != MachineState.HALTED) {
             FPSCompress.LOGGER.warn("Cannot reset from state {}", currentState);
             return;
         }
@@ -1015,7 +1412,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
         // Treat as fresh simulation start
         setCurrentState(MachineState.BUILDING);
-        startSimulation();
+        startSimulation(null); // No player context (unused method)
 
         FPSCompress.LOGGER.info("PreFab at {} resumed simulation", getBlockPos());
     }

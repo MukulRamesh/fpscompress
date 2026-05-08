@@ -25,12 +25,14 @@ public class ResourceDeltaTracker {
 
     /**
      * Tracks deltas for a single resource type.
-     * MVP: Only totalImported and totalExported.
-     * Post-MVP: Will add initialState and finalState for anti-cheat.
+     * Includes totalImported, totalExported, initialState, and finalState
+     * for full delta accounting formula.
      */
     private static final class ResourceDeltas {
         private long totalImported = 0;
         private long totalExported = 0;
+        private long initialState = 0;
+        private long finalState = 0;
 
         void addImported(long amount) {
             totalImported += amount;
@@ -48,10 +50,28 @@ public class ResourceDeltaTracker {
             return totalExported;
         }
 
+        long getInitialState() {
+            return initialState;
+        }
+
+        long getFinalState() {
+            return finalState;
+        }
+
+        void setInitialState(long amount) {
+            initialState = amount;
+        }
+
+        void setFinalState(long amount) {
+            finalState = amount;
+        }
+
         CompoundTag toNBT() {
             CompoundTag tag = new CompoundTag();
             tag.putLong("imported", totalImported);
             tag.putLong("exported", totalExported);
+            tag.putLong("initial", initialState);
+            tag.putLong("final", finalState);
             return tag;
         }
 
@@ -59,6 +79,8 @@ public class ResourceDeltaTracker {
             ResourceDeltas deltas = new ResourceDeltas();
             deltas.totalImported = tag.getLong("imported");
             deltas.totalExported = tag.getLong("exported");
+            deltas.initialState = tag.getLong("initial");
+            deltas.finalState = tag.getLong("final");
             return deltas;
         }
     }
@@ -104,13 +126,60 @@ public class ResourceDeltaTracker {
      *
      * @param resourceId The resource ID
      * @return Net production (positive = produced, negative = consumed, zero = passthrough)
+     * @deprecated Use {@link #calculateNetFull(String)} for post-MVP validation with initial/final state
      */
+    @Deprecated
     public long calculateNet(String resourceId) {
         ResourceDeltas d = deltas.get(resourceId);
         if (d == null) {
             return 0;
         }
         return d.getTotalExported() - d.getTotalImported();
+    }
+
+    /**
+     * Calculate net production using full delta accounting formula.
+     * Formula: Net = (Final - Initial) + (Exported - Imported)
+     *
+     * This accounts for both:
+     * - Resource flow through PreFab faces (Exported - Imported)
+     * - Internal storage changes in CM dimension (Final - Initial)
+     *
+     * @param resourceId The resource ID
+     * @return Net production (positive = produced, negative = consumed, zero = passthrough)
+     */
+    public long calculateNetFull(String resourceId) {
+        ResourceDeltas d = deltas.get(resourceId);
+        if (d == null) {
+            return 0;
+        }
+        return (d.getFinalState() - d.getInitialState()) + (d.getTotalExported() - d.getTotalImported());
+    }
+
+    /**
+     * Capture initial state snapshot from inventory scanner.
+     * Called before simulation starts (chunks unloaded → scan → start).
+     *
+     * @param inventory Map of resource ID to quantity
+     */
+    public void captureInitialState(Map<String, Long> inventory) {
+        for (Map.Entry<String, Long> entry : inventory.entrySet()) {
+            deltas.computeIfAbsent(entry.getKey(), k -> new ResourceDeltas())
+                  .setInitialState(entry.getValue());
+        }
+    }
+
+    /**
+     * Capture final state snapshot from inventory scanner.
+     * Called after simulation finishes (chunks unloaded → scan → calculate rates).
+     *
+     * @param inventory Map of resource ID to quantity
+     */
+    public void captureFinalState(Map<String, Long> inventory) {
+        for (Map.Entry<String, Long> entry : inventory.entrySet()) {
+            deltas.computeIfAbsent(entry.getKey(), k -> new ResourceDeltas())
+                  .setFinalState(entry.getValue());
+        }
     }
 
     /**
@@ -133,6 +202,28 @@ public class ResourceDeltaTracker {
     public long getTotalExported(String resourceId) {
         ResourceDeltas d = deltas.get(resourceId);
         return d != null ? d.getTotalExported() : 0;
+    }
+
+    /**
+     * Get initial state for a resource (for GUI display).
+     *
+     * @param resourceId The resource ID
+     * @return Initial state quantity
+     */
+    public long getInitialState(String resourceId) {
+        ResourceDeltas d = deltas.get(resourceId);
+        return d != null ? d.getInitialState() : 0;
+    }
+
+    /**
+     * Get final state for a resource (for GUI display).
+     *
+     * @param resourceId The resource ID
+     * @return Final state quantity
+     */
+    public long getFinalState(String resourceId) {
+        ResourceDeltas d = deltas.get(resourceId);
+        return d != null ? d.getFinalState() : 0;
     }
 
     /**

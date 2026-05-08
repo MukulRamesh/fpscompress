@@ -3,7 +3,6 @@ package com.mukulramesh.fpscompress.portal;
 import com.mojang.logging.LogUtils;
 import com.mukulramesh.fpscompress.FPSCompress;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
