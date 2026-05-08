@@ -1,7 +1,7 @@
 # Validation via Delta Accounting
 
-**Status**: Design proposal (not implemented)  
-**Date**: 2026-05-02  
+**Status**: Design proposal (not implemented)
+**Date**: 2026-05-02
 **Purpose**: Measure factory production/consumption rates using input/output deltas
 
 ---
@@ -221,29 +221,29 @@ The inventory scanning code below is for **v1.0+ anti-cheat** work (post-MVP).
 ```java
 public class ResourceDeltaTracker {
     private Map<ResourceKey, ResourceDeltas> deltas = new HashMap<>();
-    
+
     public void recordImport(ResourceKey resource, long amount) {
         deltas.computeIfAbsent(resource, k -> new ResourceDeltas())
               .totalImported += amount;
     }
-    
+
     public void recordExport(ResourceKey resource, long amount) {
         deltas.get(resource).totalExported += amount;
     }
-    
+
     public void captureInitialState(Map<ResourceKey, Long> inventory) {
         for (var entry : inventory.entrySet()) {
             deltas.computeIfAbsent(entry.getKey(), k -> new ResourceDeltas())
                   .initialState = entry.getValue();
         }
     }
-    
+
     public void captureFinalState(Map<ResourceKey, Long> inventory) {
         for (var entry : inventory.entrySet()) {
             deltas.get(entry.getKey()).finalState = entry.getValue();
         }
     }
-    
+
     public long calculateNet(ResourceKey resource) {
         ResourceDeltas d = deltas.get(resource);
         return (d.finalState - d.initialState) + (d.totalExported - d.totalImported);
@@ -271,7 +271,7 @@ tracker.captureFinalState(finalInventory);
 // Helper method
 private Map<ResourceKey, Long> scanAllMachineInventories(ServerLevel level) {
     Map<ResourceKey, Long> totals = new HashMap<>();
-    
+
     // Scan all loaded block entities in CM dimension
     for (BlockEntity be : level.blockEntities()) {
         IItemHandler handler = be.getCapability(ItemHandler.BLOCK);
@@ -286,7 +286,7 @@ private Map<ResourceKey, Long> scanAllMachineInventories(ServerLevel level) {
         }
         // Similar for fluids, energy
     }
-    
+
     return totals;
 }
 ```
@@ -307,12 +307,7 @@ private Map<ResourceKey, Long> scanAllMachineInventories(ServerLevel level) {
 ✅ **Acceptable MVP limitations**:
 - Players can cheat with hidden chests → Address in v1.0+ with redstone protocol
 - Doesn't track intermediate transformations → Each resource tracked independently is fine
-- Time window approximation → Use full simulation time, require steady state
 
-❌ **Must Fix Before Using**:
-- **Don't use first→last time window** → Use full simulation time instead
-- **Detect zero activity** → Transition to HALTED if no imports/exports
-- **Require steady state** → Don't end simulation with items in-flight
 
 ---
 
