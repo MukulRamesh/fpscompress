@@ -21,6 +21,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
@@ -414,11 +415,121 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // ===== NBT Serialization =====
 
+    /**
+     * Apply migration rules when loading PreFab from item NBT.
+     * Handles state transitions for PreFab-as-Item portability:
+     * - SIMULATING → BUILDING (partial measurement invalid after chunks unload)
+     * - HALTED → BUILDING (location-specific condition no longer applies)
+     * - CACHED → preserved (portable production data)
+     *
+     * @param tag The NBT tag from item or world save
+     */
+    private void applyItemNBTMigration(CompoundTag tag) {
+        // Check schema version for future migrations
+        int schemaVersion = tag.contains("schemaVersion") ? tag.getInt("schemaVersion") : 0;
+
+        if (schemaVersion == 0) {
+            // Legacy NBT (pre-versioning) - no migrations needed yet
+            FPSCompress.LOGGER.debug("Loading PreFab with legacy NBT (no schema version)");
+        }
+
+        // Load machine state with migration rules
+        if (tag.contains("state")) {
+            String stateStr = tag.getString("state");
+
+            // Migration Rule 1: SIMULATING → BUILDING
+            // Rationale: deltaTracker contains partial measurement tied to specific chunk state.
+            // When PreFab breaks, chunks unload and transport stops. Partial deltaTracker
+            // data becomes invalid. Player must restart simulation from BUILDING.
+            if ("SIMULATING".equals(stateStr)) {
+                currentState = MachineState.BUILDING;
+                deltaTracker = new ResourceDeltaTracker(); // Clear partial measurement
+                FPSCompress.LOGGER.info("PreFab item had SIMULATING state - reset to BUILDING "
+                    + "(partial measurement invalid after chunk unload)");
+            } else if ("HALTED".equals(stateStr)) {
+                // Migration Rule 2: HALTED → BUILDING
+                // Rationale: HALTED indicates location-specific condition (starved inputs or
+                // blocked outputs from adjacent blocks). When PreFab moves to new location,
+                // old conditions no longer apply. Reset optimization state.
+                currentState = MachineState.BUILDING;
+                haltedRetryInterval = 1; // Reset backoff optimization
+                ticksSinceLastRetry = 0;
+                FPSCompress.LOGGER.info("PreFab item had HALTED state - reset to BUILDING "
+                    + "(location-specific condition no longer applies)");
+            } else {
+                // Preserve other states (BUILDING, CACHED)
+                try {
+                    currentState = MachineState.valueOf(stateStr);
+                } catch (IllegalArgumentException e) {
+                    FPSCompress.LOGGER.warn("Unknown machine state '{}' - defaulting to BUILDING", stateStr);
+                    currentState = MachineState.BUILDING;
+                }
+            }
+        }
+
+        // Recalculate cachedStateStartTick from current time (if CACHED)
+        // Rationale: cachedStateStartTick is used for GUI display ("Running for X seconds").
+        // When PreFab moves, reset the timer to current game time.
+        if (currentState == MachineState.CACHED && level != null) {
+            cachedStateStartTick = level.getGameTime();
+            FPSCompress.LOGGER.debug("PreFab item restored CACHED state - reset start tick to {}",
+                cachedStateStartTick);
+        }
+    }
+
+    /**
+     * Validate loaded NBT data for corruption or inconsistencies.
+     * Catches edge cases where NBT schema is valid but data is logically inconsistent.
+     * Called at end of loadAdditional().
+     */
+    private void validateLoadedData() {
+        // Edge Case 1: CACHED state but no rates
+        // This should never happen (CACHED requires rates), but handle gracefully.
+        if (currentState == MachineState.CACHED && cachedRates.isEmpty()) {
+            FPSCompress.LOGGER.warn("PreFab loaded with CACHED state but no rates - resetting to BUILDING");
+            currentState = MachineState.BUILDING;
+            itemAccumulators.clear();
+            cachedProduction.clear();
+        }
+
+        // Edge Case 2: Not CACHED but has rates
+        // Rates should only exist in CACHED state. Clear invalid data.
+        if (currentState != MachineState.CACHED && !cachedRates.isEmpty()) {
+            FPSCompress.LOGGER.warn("PreFab loaded with rates but not CACHED - clearing rates "
+                + "(state: {})", currentState);
+            cachedRates.clear();
+            itemAccumulators.clear();
+            cachedProduction.clear();
+        }
+
+        // Edge Case 3: Room linkage incomplete
+        // roomCode without roomCenter is invalid (can't locate room).
+        if (roomCode != null && roomCenter == null) {
+            FPSCompress.LOGGER.warn("PreFab has roomCode '{}' but no roomCenter - clearing roomCode",
+                roomCode);
+            roomCode = null;
+        }
+
+        // Edge Case 4: Face configs with invalid UUID links
+        // Face in PULL/PUSH mode but no targetUUID means it can't work. Reset to DISABLED.
+        for (Map.Entry<Direction, FaceConfig> entry : faceConfigs.entrySet()) {
+            FaceConfig config = entry.getValue();
+            if (config.getMode() != FaceMode.DISABLED && config.getTargetUUID() == null) {
+                FPSCompress.LOGGER.warn("Face {} has mode {} but no UUID - resetting to DISABLED",
+                    entry.getKey(), config.getMode());
+                config.setMode(FaceMode.DISABLED);
+            }
+        }
+    }
+
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
 
-        // Save room linkage
+        // Schema version for future migrations (PreFab-as-Item feature)
+        tag.putInt("schemaVersion", 1);
+
+        // Save room linkage (always persist)
         if (roomCode != null) {
             tag.putString("roomCode", roomCode);
         }
@@ -426,7 +537,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.putLong("roomCenter", roomCenter.asLong());
         }
 
-        // Save room dimensions
+        // Save room dimensions (always persist)
         if (roomSizeX != null) {
             tag.putInt("roomSizeX", roomSizeX);
         }
@@ -437,18 +548,18 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.putInt("roomSizeZ", roomSizeZ);
         }
 
-        // Save machine state
+        // Save machine state (always persist - migration handled on load)
         tag.putString("state", currentState.name());
 
-        // Save face configurations
+        // Save face configurations (always persist)
         CompoundTag facesTag = new CompoundTag();
         for (Map.Entry<Direction, FaceConfig> entry : faceConfigs.entrySet()) {
             facesTag.put(entry.getKey().getName(), entry.getValue().toNBT());
         }
         tag.put("faceConfigs", facesTag);
 
-        // Save cached rates
-        if (!cachedRates.isEmpty()) {
+        // Save cached rates (only if CACHED state - portable data)
+        if (currentState == MachineState.CACHED && !cachedRates.isEmpty()) {
             ListTag ratesList = new ListTag();
             for (Map.Entry<String, Double> entry : cachedRates.entrySet()) {
                 CompoundTag rateEntry = new CompoundTag();
@@ -459,57 +570,50 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.put("rates", ratesList);
         }
 
-        // Phase 4: Save rate measurement state
-        if (currentState == MachineState.SIMULATING) {
-            tag.put("deltaTracker", deltaTracker.toNBT());
-            tag.putLong("simulationStartTick", simulationStartTick);
+        // Save fractional accumulators (only if CACHED state - portable data)
+        if (currentState == MachineState.CACHED && !itemAccumulators.isEmpty()) {
+            ListTag accumList = new ListTag();
+            for (Map.Entry<String, Double> entry : itemAccumulators.entrySet()) {
+                CompoundTag accumEntry = new CompoundTag();
+                accumEntry.putString("id", entry.getKey());
+                accumEntry.putDouble("accum", entry.getValue());
+                accumList.add(accumEntry);
+            }
+            tag.put("itemAccumulators", accumList);
         }
 
-        // Save CACHED state tracking
+        // Save accumulated production (only if CACHED state - portable data)
+        if (currentState == MachineState.CACHED && !cachedProduction.isEmpty()) {
+            ListTag prodList = new ListTag();
+            for (Map.Entry<String, Long> entry : cachedProduction.entrySet()) {
+                CompoundTag prodEntry = new CompoundTag();
+                prodEntry.putString("id", entry.getKey());
+                prodEntry.putLong("amount", entry.getValue());
+                prodList.add(prodEntry);
+            }
+            tag.put("cachedProduction", prodList);
+        }
+
+        // Save simulation end tick (only if CACHED state - for GUI display)
         if (currentState == MachineState.CACHED) {
             tag.putLong("simulationEndTick", simulationEndTick);
-            tag.putLong("cachedStateStartTick", cachedStateStartTick);
-
-            // Save accumulated production
-            if (!cachedProduction.isEmpty()) {
-                ListTag prodList = new ListTag();
-                for (Map.Entry<String, Long> entry : cachedProduction.entrySet()) {
-                    CompoundTag prodEntry = new CompoundTag();
-                    prodEntry.putString("id", entry.getKey());
-                    prodEntry.putLong("amount", entry.getValue());
-                    prodList.add(prodEntry);
-                }
-                tag.put("cachedProduction", prodList);
-            }
-
-            // Phase 5: Save fractional accumulators
-            if (!itemAccumulators.isEmpty()) {
-                ListTag accumList = new ListTag();
-                for (Map.Entry<String, Double> entry : itemAccumulators.entrySet()) {
-                    CompoundTag accumEntry = new CompoundTag();
-                    accumEntry.putString("id", entry.getKey());
-                    accumEntry.putDouble("accum", entry.getValue());
-                    accumList.add(accumEntry);
-                }
-                tag.put("itemAccumulators", accumList);
-            }
         }
 
-        // Save last simulation result
-        if (!lastSimulationResult.isEmpty()) {
-            tag.putString("lastSimulationResult", lastSimulationResult);
-        }
-
-        // Save HALTED backoff state
-        if (currentState == MachineState.HALTED) {
-            tag.putInt("haltedRetryInterval", haltedRetryInterval);
-            tag.putInt("ticksSinceLastRetry", ticksSinceLastRetry);
-        }
+        // TRANSIENT FIELDS (not saved for PreFab-as-Item portability):
+        // - deltaTracker (only valid during active simulation)
+        // - simulationStartTick (recalculate on simulation start)
+        // - cachedStateStartTick (recalculate from current game time)
+        // - haltedRetryInterval/ticksSinceLastRetry (optimization state)
+        // - importerCache/exporterCache (rebuild from registry)
+        // - lastSimulationResult (UI-only message)
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
+
+        // Apply migration rules for PreFab-as-Item (must happen first)
+        applyItemNBTMigration(tag);
 
         // Load room linkage
         if (tag.contains("roomCode")) {
@@ -530,14 +634,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             roomSizeZ = tag.getInt("roomSizeZ");
         }
 
-        // Load machine state
-        if (tag.contains("state")) {
-            try {
-                currentState = MachineState.valueOf(tag.getString("state"));
-            } catch (IllegalArgumentException e) {
-                currentState = MachineState.BUILDING;
-            }
-        }
+        // Machine state already loaded by applyItemNBTMigration() with migration rules applied
 
         // Load face configurations
         if (tag.contains("faceConfigs")) {
@@ -549,7 +646,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Load cached rates
+        // Load cached rates (only if CACHED state)
         if (tag.contains("rates")) {
             cachedRates.clear();
             ListTag ratesList = tag.getList("rates", Tag.TAG_COMPOUND);
@@ -561,44 +658,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Phase 4: Load rate measurement state
-        if (tag.contains("deltaTracker")) {
-            deltaTracker = ResourceDeltaTracker.fromNBT(tag.getCompound("deltaTracker"));
-        }
-        if (tag.contains("simulationStartTick")) {
-            simulationStartTick = tag.getLong("simulationStartTick");
-        }
-
-        // Load CACHED state tracking
-        if (tag.contains("simulationEndTick")) {
-            simulationEndTick = tag.getLong("simulationEndTick");
-        }
-        if (tag.contains("cachedStateStartTick")) {
-            cachedStateStartTick = tag.getLong("cachedStateStartTick");
-        }
-        if (tag.contains("cachedProduction")) {
-            cachedProduction.clear();
-            ListTag prodList = tag.getList("cachedProduction", Tag.TAG_COMPOUND);
-            for (int i = 0; i < prodList.size(); i++) {
-                CompoundTag prodEntry = prodList.getCompound(i);
-                String id = prodEntry.getString("id");
-                long amount = prodEntry.getLong("amount");
-                cachedProduction.put(id, amount);
-            }
-        }
-        if (tag.contains("lastSimulationResult")) {
-            lastSimulationResult = tag.getString("lastSimulationResult");
-        }
-
-        // Load HALTED backoff state
-        if (tag.contains("haltedRetryInterval")) {
-            haltedRetryInterval = tag.getInt("haltedRetryInterval");
-        }
-        if (tag.contains("ticksSinceLastRetry")) {
-            ticksSinceLastRetry = tag.getInt("ticksSinceLastRetry");
-        }
-
-        // Phase 5: Load fractional accumulators
+        // Load fractional accumulators (only if CACHED state)
         if (tag.contains("itemAccumulators")) {
             itemAccumulators.clear();
             ListTag accumList = tag.getList("itemAccumulators", Tag.TAG_COMPOUND);
@@ -609,6 +669,34 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 itemAccumulators.put(id, accum);
             }
         }
+
+        // Load accumulated production (only if CACHED state)
+        if (tag.contains("cachedProduction")) {
+            cachedProduction.clear();
+            ListTag prodList = tag.getList("cachedProduction", Tag.TAG_COMPOUND);
+            for (int i = 0; i < prodList.size(); i++) {
+                CompoundTag prodEntry = prodList.getCompound(i);
+                String id = prodEntry.getString("id");
+                long amount = prodEntry.getLong("amount");
+                cachedProduction.put(id, amount);
+            }
+        }
+
+        // Load simulation end tick (only if CACHED state - for GUI display)
+        if (tag.contains("simulationEndTick")) {
+            simulationEndTick = tag.getLong("simulationEndTick");
+        }
+
+        // TRANSIENT FIELDS (not loaded - will be initialized/rebuilt):
+        // - deltaTracker (already initialized in constructor)
+        // - simulationStartTick (will be set when simulation starts)
+        // - cachedStateStartTick (recalculated by applyItemNBTMigration)
+        // - haltedRetryInterval/ticksSinceLastRetry (reset to defaults)
+        // - importerCache/exporterCache (empty - rebuilt on first lookup)
+        // - lastSimulationResult (empty - no error message on load)
+
+        // Validate loaded data for edge cases
+        validateLoadedData();
     }
 
     // ===== MenuProvider Implementation =====
@@ -1119,6 +1207,78 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             + "\nBlocks found:" + foundBlocks.toString());
     }
 
+    // ===== Importer/Exporter Buffer Scanning =====
+
+    /**
+     * Scan Importer/Exporter buffers and add to resource totals.
+     * This prevents buffer contents from inflating rate calculations.
+     *
+     * @param cmLevel The CM dimension level
+     * @param totals The resource totals map (modified in-place)
+     */
+    private void scanImporterExporterBuffers(ServerLevel cmLevel, Map<String, Long> totals) {
+        // Scan all configured faces for Importer/Exporter links
+        for (Direction face : Direction.values()) {
+            FaceConfig config = getFaceConfig(face);
+            UUID targetUUID = config.getTargetUUID();
+            if (targetUUID == null) {
+                continue; // Face not linked
+            }
+
+            if (config.getMode() == FaceMode.PULL) {
+                // PULL face links to Importer - scan its buffer
+                ImporterBlockEntity importer = findImporterByUUID(cmLevel, targetUUID);
+                if (importer != null) {
+                    scanImporterBuffer(importer, totals);
+                }
+            } else if (config.getMode() == FaceMode.PUSH) {
+                // PUSH face links to Exporter - scan its buffer
+                ExporterBlockEntity exporter = findExporterByUUID(cmLevel, targetUUID);
+                if (exporter != null) {
+                    scanExporterBuffer(exporter, totals);
+                }
+            }
+        }
+    }
+
+    /**
+     * Scan Importer buffer and add items to totals.
+     *
+     * @param importer The Importer block entity
+     * @param totals The resource totals map (modified in-place)
+     */
+    private void scanImporterBuffer(ImporterBlockEntity importer, Map<String, Long> totals) {
+        ItemStackHandler inventory = importer.getInventory();
+        for (int slot = 0; slot < inventory.getSlots(); slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (!stack.isEmpty()) {
+                String resourceId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                totals.merge(resourceId, (long) stack.getCount(), Long::sum);
+                FPSCompress.LOGGER.debug("Importer {} buffer slot {}: {} x{}",
+                    importer.getImporterUUID(), slot, resourceId, stack.getCount());
+            }
+        }
+    }
+
+    /**
+     * Scan Exporter buffer and add items to totals.
+     *
+     * @param exporter The Exporter block entity
+     * @param totals The resource totals map (modified in-place)
+     */
+    private void scanExporterBuffer(ExporterBlockEntity exporter, Map<String, Long> totals) {
+        ItemStackHandler inventory = exporter.getInventory();
+        for (int slot = 0; slot < inventory.getSlots(); slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (!stack.isEmpty()) {
+                String resourceId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                totals.merge(resourceId, (long) stack.getCount(), Long::sum);
+                FPSCompress.LOGGER.debug("Exporter {} buffer slot {}: {} x{}",
+                    exporter.getExporterUUID(), slot, resourceId, stack.getCount());
+            }
+        }
+    }
+
     // ===== State Transition Methods (Phase 4) =====
 
     /**
@@ -1169,10 +1329,15 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                     // Callback to main thread
                     level.getServer().execute(() -> {
                         try {
-                            // Phase 3: Store initial state
+                            // Phase 3a: Add Importer/Exporter buffer contents to inventory
+                            scanImporterExporterBuffers(cmLevel, inventory);
+                            FPSCompress.LOGGER.info("Added Importer/Exporter buffer contents to initial scan");
+
+                            // Phase 3b: Store initial state (including buffers)
                             deltaTracker = new ResourceDeltaTracker();
                             deltaTracker.captureInitialState(inventory);
-                            FPSCompress.LOGGER.info("Initial scan complete: {} resource types", inventory.size());
+                            FPSCompress.LOGGER.info("Initial scan complete: {} resource types (includes buffers)",
+                                inventory.size());
 
                             // Debug: Send scan results to player chat
                             sendInventoryScanToChat(player, inventory, "Initial");
@@ -1258,9 +1423,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 .thenAccept(finalInventory -> {
                     level.getServer().execute(() -> {
                         try {
-                            // Phase 4: Store final state
+                            // Phase 4a: Add Importer/Exporter buffer contents to final inventory
+                            scanImporterExporterBuffers(cmLevel, finalInventory);
+                            FPSCompress.LOGGER.info("Added Importer/Exporter buffer contents to final scan");
+
+                            // Phase 4b: Store final state (including buffers)
                             deltaTracker.captureFinalState(finalInventory);
-                            FPSCompress.LOGGER.info("Final scan complete: {} resource types", finalInventory.size());
+                            FPSCompress.LOGGER.info("Final scan complete: {} resource types (includes buffers)",
+                                finalInventory.size());
 
                             // Debug: Send scan results to player chat
                             sendInventoryScanToChat(player, finalInventory, "Final");

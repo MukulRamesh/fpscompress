@@ -1,8 +1,8 @@
 # FPSCompress TODO List - Conduit Architecture
 
-**Last Updated**: 2026-05-03  
+**Last Updated**: 2026-05-08  
 **Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)  
-**Current Phase**: Phase 5 Complete ✅ → MVP COMPLETE! 🎉
+**Current Phase**: MVP COMPLETE ✅ + Post-MVP Features In Progress 🚀
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
@@ -292,6 +292,15 @@
 
 **Result**: ✅ Core caching system working - factories run virtually without CM chunks loaded!
 
+**Post-MVP Enhancement** (2026-05-08): ✅ Importer/Exporter Buffer Scanning
+- [x] Added `scanImporterExporterBuffers()` method to scan buffer contents
+- [x] Added `scanImporterBuffer()` to read Importer's 9-slot inventory
+- [x] Added `scanExporterBuffer()` to read Exporter's 9-slot inventory
+- [x] Modified `startSimulation()` to include buffer contents in initial scan
+- [x] Modified `finishSimulation()` to include buffer contents in final scan
+- **Why**: Prevents items sitting in buffers from inflating rate calculations
+- **Example**: 64 iron in Exporter buffer during BUILDING → now counted in initial state, not as production
+
 ---
 
 ### Phase 6: Simulation Wrench Control
@@ -359,13 +368,26 @@
 **All of these are explicitly OUT OF SCOPE for MVP. Only implement after core caching works perfectly.**
 
 ### 1. PreFab-as-Item System (Major Feature - Post-MVP)
+**Status**: ✅ **FOUNDATION COMPLETE** (2026-05-08)  
 **Vision**: PreFabs as portable items that store complete factory state
-- [ ] Refactor PreFabBlockEntity data to be item-centric:
-  - Store face configs in item NBT (not BlockEntity NBT)
-  - Store cached rates in item NBT
-  - Store room linkage in item NBT
-- [ ] When PreFab block breaks → All data goes into item
-- [ ] When PreFab item placed → Data loads from item into BlockEntity
+
+**Phase 1: Item-Centric Data Storage** ✅ COMPLETE:
+- [x] Refactor PreFabBlockEntity data to be item-centric:
+  - [x] Added schema versioning (`schemaVersion = 1`) for future migrations
+  - [x] Store face configs in item NBT (always persist)
+  - [x] Store cached rates in item NBT (only if CACHED state)
+  - [x] Store room linkage in item NBT (always persist)
+  - [x] Store accumulators in item NBT (only if CACHED state)
+- [x] When PreFab block breaks → All data goes into item (via existing `getDrops()`)
+- [x] When PreFab item placed → Data loads from item into BlockEntity
+- [x] Added migration rules for state transitions:
+  - SIMULATING → BUILDING (partial measurement invalid after chunk unload)
+  - HALTED → BUILDING (location-specific condition no longer applies)
+  - CACHED → preserved (portable production data!)
+- [x] Added validation for corrupt/inconsistent NBT data
+- [x] Reduced PreFab hardness from 5.0 to 3.75 (25% faster to break)
+
+**Phase 2: Factory Controller Block** (NOT YET IMPLEMENTED):
 - [ ] Factory Controller block:
   - Inventory that accepts PreFab items
   - Each PreFab item in inventory runs its cached production
