@@ -510,14 +510,17 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             roomCode = null;
         }
 
-        // Edge Case 4: Face configs with invalid UUID links
-        // Face in PULL/PUSH mode but no targetUUID means it can't work. Reset to DISABLED.
-        for (Map.Entry<Direction, FaceConfig> entry : faceConfigs.entrySet()) {
-            FaceConfig config = entry.getValue();
-            if (config.getMode() != FaceMode.DISABLED && config.getTargetUUID() == null) {
-                FPSCompress.LOGGER.warn("Face {} has mode {} but no UUID - resetting to DISABLED",
-                    entry.getKey(), config.getMode());
-                config.setMode(FaceMode.DISABLED);
+        // Edge Case 4: Face configs with invalid UUID links (only validate for non-CACHED states)
+        // CACHED state doesn't need UUID links (uses cached rates directly).
+        // BUILDING/SIMULATING/HALTED states need UUIDs to function.
+        if (currentState != MachineState.CACHED) {
+            for (Map.Entry<Direction, FaceConfig> entry : faceConfigs.entrySet()) {
+                FaceConfig config = entry.getValue();
+                if (config.getMode() != FaceMode.DISABLED && config.getTargetUUID() == null) {
+                    FPSCompress.LOGGER.warn("Face {} has mode {} but no UUID (state: {}) - resetting to DISABLED",
+                        entry.getKey(), config.getMode(), currentState);
+                    config.setMode(FaceMode.DISABLED);
+                }
             }
         }
     }
