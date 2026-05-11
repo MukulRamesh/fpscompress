@@ -12,6 +12,8 @@
   "item.fpscompress.prefab_machine.state": "State: %s",
   "item.fpscompress.prefab_machine.room": "Room: %s",
   "item.fpscompress.prefab_machine.faces": "Configured Faces: %s/6",
+  "item.fpscompress.prefab_machine.rates_header": "Production Rates:",
+  "item.fpscompress.prefab_machine.rates_more": "...and %s more",
 
   "item.fpscompress.simulation_wrench": "Simulation Wrench",
   "item.fpscompress.simulation_wrench.tooltip": "Right-click to control simulation state",
