@@ -79,9 +79,13 @@ public class PrefabBlockItem extends BlockItem {
             Component.literal(String.valueOf(configuredCount)).withStyle(ChatFormatting.YELLOW)
         ).withStyle(ChatFormatting.GRAY));
 
-        // Line 4+: Cached Rates (only if CACHED state)
-        if (blockEntityTag.contains("state") && "CACHED".equals(blockEntityTag.getString("state"))) {
-            addCachedRates(blockEntityTag, tooltipComponents);
+        // Line 4+: Cached Rates (if CACHED or HALTED state)
+        // HALTED is a temporary pause during CACHED operation, so show rates for both
+        if (blockEntityTag.contains("state")) {
+            String state = blockEntityTag.getString("state");
+            if ("CACHED".equals(state) || "HALTED".equals(state)) {
+                addCachedRates(blockEntityTag, tooltipComponents);
+            }
         }
     }
 

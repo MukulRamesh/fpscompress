@@ -419,7 +419,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * Apply migration rules when loading PreFab from item NBT.
      * Handles state transitions for PreFab-as-Item portability:
      * - SIMULATING → BUILDING (partial measurement invalid after chunks unload)
-     * - HALTED → BUILDING (location-specific condition no longer applies)
+     * - HALTED → CACHED (location-specific condition no longer applies, but rates preserved)
      * - CACHED → preserved (portable production data)
      *
      * @param tag The NBT tag from item or world save
@@ -447,15 +447,16 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 FPSCompress.LOGGER.info("PreFab item had SIMULATING state - reset to BUILDING "
                     + "(partial measurement invalid after chunk unload)");
             } else if ("HALTED".equals(stateStr)) {
-                // Migration Rule 2: HALTED → BUILDING
-                // Rationale: HALTED indicates location-specific condition (starved inputs or
-                // blocked outputs from adjacent blocks). When PreFab moves to new location,
-                // old conditions no longer apply. Reset optimization state.
-                currentState = MachineState.BUILDING;
+                // Migration Rule 2: HALTED → CACHED
+                // Rationale: HALTED is a temporary pause during CACHED operation. When PreFab
+                // moves to new location, old HALTED condition no longer applies (different
+                // adjacent blocks). Restore to CACHED state and let it try running again.
+                // Cached rates are preserved - they're still valid!
+                currentState = MachineState.CACHED;
                 haltedRetryInterval = 1; // Reset backoff optimization
                 ticksSinceLastRetry = 0;
-                FPSCompress.LOGGER.info("PreFab item had HALTED state - reset to BUILDING "
-                    + "(location-specific condition no longer applies)");
+                FPSCompress.LOGGER.info("PreFab item had HALTED state - restored to CACHED "
+                    + "(cached rates preserved, new location may work)");
             } else {
                 // Preserve other states (BUILDING, CACHED)
                 try {
@@ -467,7 +468,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Recalculate cachedStateStartTick from current time (if CACHED)
+        // Recalculate cachedStateStartTick from current time (if CACHED or migrated from HALTED)
         // Rationale: cachedStateStartTick is used for GUI display ("Running for X seconds").
         // When PreFab moves, reset the timer to current game time.
         if (currentState == MachineState.CACHED && level != null) {
@@ -483,19 +484,22 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * Called at end of loadAdditional().
      */
     private void validateLoadedData() {
-        // Edge Case 1: CACHED state but no rates
-        // This should never happen (CACHED requires rates), but handle gracefully.
-        if (currentState == MachineState.CACHED && cachedRates.isEmpty()) {
-            FPSCompress.LOGGER.warn("PreFab loaded with CACHED state but no rates - resetting to BUILDING");
+        // Edge Case 1: CACHED/HALTED state but no rates
+        // This should never happen (both states require rates), but handle gracefully.
+        if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
+                && cachedRates.isEmpty()) {
+            FPSCompress.LOGGER.warn("PreFab loaded with {} state but no rates - resetting to BUILDING",
+                currentState);
             currentState = MachineState.BUILDING;
             itemAccumulators.clear();
             cachedProduction.clear();
         }
 
-        // Edge Case 2: Not CACHED but has rates
-        // Rates should only exist in CACHED state. Clear invalid data.
-        if (currentState != MachineState.CACHED && !cachedRates.isEmpty()) {
-            FPSCompress.LOGGER.warn("PreFab loaded with rates but not CACHED - clearing rates "
+        // Edge Case 2: Not CACHED/HALTED but has rates
+        // Rates should only exist in CACHED/HALTED states. Clear invalid data.
+        if (currentState != MachineState.CACHED && currentState != MachineState.HALTED
+                && !cachedRates.isEmpty()) {
+            FPSCompress.LOGGER.warn("PreFab loaded with rates but not CACHED/HALTED - clearing rates "
                 + "(state: {})", currentState);
             cachedRates.clear();
             itemAccumulators.clear();
@@ -510,10 +514,10 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             roomCode = null;
         }
 
-        // Edge Case 4: Face configs with invalid UUID links (only validate for non-CACHED states)
-        // CACHED state doesn't need UUID links (uses cached rates directly).
-        // BUILDING/SIMULATING/HALTED states need UUIDs to function.
-        if (currentState != MachineState.CACHED) {
+        // Edge Case 4: Face configs with invalid UUID links (only validate for BUILDING/SIMULATING)
+        // CACHED and HALTED states don't need UUID links (use cached rates directly, CM chunks unloaded).
+        // BUILDING/SIMULATING states need UUIDs to function.
+        if (currentState != MachineState.CACHED && currentState != MachineState.HALTED) {
             for (Map.Entry<Direction, FaceConfig> entry : faceConfigs.entrySet()) {
                 FaceConfig config = entry.getValue();
                 if (config.getMode() != FaceMode.DISABLED && config.getTargetUUID() == null) {
@@ -561,8 +565,10 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
         tag.put("faceConfigs", facesTag);
 
-        // Save cached rates (only if CACHED state - portable data)
-        if (currentState == MachineState.CACHED && !cachedRates.isEmpty()) {
+        // Save cached rates (only if CACHED or HALTED state - portable data)
+        // HALTED is a temporary pause during CACHED operation, so rates are still valid
+        if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
+                && !cachedRates.isEmpty()) {
             ListTag ratesList = new ListTag();
             for (Map.Entry<String, Double> entry : cachedRates.entrySet()) {
                 CompoundTag rateEntry = new CompoundTag();
@@ -573,8 +579,9 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.put("rates", ratesList);
         }
 
-        // Save fractional accumulators (only if CACHED state - portable data)
-        if (currentState == MachineState.CACHED && !itemAccumulators.isEmpty()) {
+        // Save fractional accumulators (only if CACHED or HALTED state - portable data)
+        if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
+                && !itemAccumulators.isEmpty()) {
             ListTag accumList = new ListTag();
             for (Map.Entry<String, Double> entry : itemAccumulators.entrySet()) {
                 CompoundTag accumEntry = new CompoundTag();
@@ -585,8 +592,9 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.put("itemAccumulators", accumList);
         }
 
-        // Save accumulated production (only if CACHED state - portable data)
-        if (currentState == MachineState.CACHED && !cachedProduction.isEmpty()) {
+        // Save accumulated production (only if CACHED or HALTED state - portable data)
+        if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
+                && !cachedProduction.isEmpty()) {
             ListTag prodList = new ListTag();
             for (Map.Entry<String, Long> entry : cachedProduction.entrySet()) {
                 CompoundTag prodEntry = new CompoundTag();
@@ -597,8 +605,8 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.put("cachedProduction", prodList);
         }
 
-        // Save simulation end tick (only if CACHED state - for GUI display)
-        if (currentState == MachineState.CACHED) {
+        // Save simulation end tick (only if CACHED or HALTED state - for GUI display)
+        if (currentState == MachineState.CACHED || currentState == MachineState.HALTED) {
             tag.putLong("simulationEndTick", simulationEndTick);
         }
 
