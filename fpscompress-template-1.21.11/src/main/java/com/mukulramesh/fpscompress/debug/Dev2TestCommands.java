@@ -4,11 +4,18 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mukulramesh.fpscompress.FPSCompress;
 import com.mukulramesh.fpscompress.spatial.CMInterceptorImpl;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +30,7 @@ import org.slf4j.LoggerFactory;
  * - /fps_dev2 diagnostics - Show current interceptor state
  * - /fps_dev2 test-room <roomCode> - Run comprehensive room test
  * - /fps_dev2 cleanup - Clean up all chunk tickets
+ * - /fps_dev2 give-test-prefab - Give PreFab with dirt→diamond conversion rates
  *
  * @author Dev 2 - Testing Team
  */
@@ -76,6 +84,9 @@ public final class Dev2TestCommands {
                         )
                         .then(Commands.literal("cleanup")
                                 .executes(Dev2TestCommands::cleanup)
+                        )
+                        .then(Commands.literal("give-test-prefab")
+                                .executes(Dev2TestCommands::giveTestPrefab)
                         )
         );
     }
@@ -497,6 +508,108 @@ public final class Dev2TestCommands {
                     String.format("§c[Dev2 Test] ERROR: %s", e.getMessage())
             ));
             LOGGER.error("Cleanup failed", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Give player a test PreFab with pre-configured cached rates.
+     * Converts 1 dirt/tick → 1 diamond/tick.
+     *
+     * Command: /fps_dev2 give-test-prefab
+     */
+    private static int giveTestPrefab(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+
+        try {
+            // Must be executed by a player
+            if (!(source.getEntity() instanceof ServerPlayer player)) {
+                source.sendFailure(Component.literal("§c[Dev2 Test] This command must be run by a player"));
+                return 0;
+            }
+
+            source.sendSuccess(() -> Component.literal("§e[Dev2 Test] Creating test PreFab..."), false);
+
+            // Create PreFab item
+            ItemStack prefabItem = new ItemStack(FPSCompress.PREFAB_ITEM.get());
+
+            // Build NBT data for CACHED PreFab
+            CompoundTag nbt = new CompoundTag();
+
+            // Schema version
+            nbt.putInt("schemaVersion", 1);
+
+            // Machine state: CACHED
+            nbt.putString("state", "CACHED");
+
+            // Room code (fake)
+            nbt.putString("roomCode", "test_5x5x5");
+
+            // Face configs (3 faces configured: 1 PULL, 2 PUSH)
+            CompoundTag facesTag = new CompoundTag();
+
+            // NORTH face: PULL (input)
+            CompoundTag northFace = new CompoundTag();
+            northFace.putString("mode", "PULL");
+            northFace.putString("resourceType", "ITEMS");
+            facesTag.put("north", northFace);
+
+            // SOUTH face: PUSH (output)
+            CompoundTag southFace = new CompoundTag();
+            southFace.putString("mode", "PUSH");
+            southFace.putString("resourceType", "ITEMS");
+            facesTag.put("south", southFace);
+
+            // EAST face: PUSH (secondary output)
+            CompoundTag eastFace = new CompoundTag();
+            eastFace.putString("mode", "PUSH");
+            eastFace.putString("resourceType", "ITEMS");
+            facesTag.put("east", eastFace);
+
+            nbt.put("faceConfigs", facesTag);
+
+            // Cached rates: INPUT 1 dirt/tick, OUTPUT 1 diamond/tick
+            ListTag ratesList = new ListTag();
+
+            // Input: minecraft:dirt at -1.0/tick (negative = consumption)
+            CompoundTag dirtRate = new CompoundTag();
+            dirtRate.putString("id", "minecraft:dirt");
+            dirtRate.putDouble("rate", -1.0);
+            ratesList.add(dirtRate);
+
+            // Output: minecraft:diamond at 1.0/tick (positive = production)
+            CompoundTag diamondRate = new CompoundTag();
+            diamondRate.putString("id", "minecraft:diamond");
+            diamondRate.putDouble("rate", 1.0);
+            ratesList.add(diamondRate);
+
+            nbt.put("rates", ratesList);
+
+            // Add block entity ID (required for proper loading)
+            nbt.putString("id", "fpscompress:prefab_machine");
+
+            // Set NBT on item using DataComponents system
+            prefabItem.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
+
+            // Give item to player
+            if (player.addItem(prefabItem)) {
+                source.sendSuccess(() -> Component.literal(
+                    "§a[Dev2 Test] ✓ Test PreFab given! Hover over it to see the tooltip"), true);
+                source.sendSuccess(() -> Component.literal(
+                    "§7  Input: 1 Dirt/tick → Output: 1 Diamond/tick"), false);
+                LOGGER.info("Test PreFab given to player {}", player.getName().getString());
+                return 1;
+            } else {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] Failed to give item (inventory full?)"));
+                return 0;
+            }
+
+        } catch (Exception e) {
+            source.sendFailure(Component.literal(
+                    String.format("§c[Dev2 Test] ERROR: %s", e.getMessage())
+            ));
+            LOGGER.error("give-test-prefab failed", e);
             return 0;
         }
     }
