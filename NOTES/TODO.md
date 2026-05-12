@@ -184,33 +184,75 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Estimated effort**: 2-3 weeks
 **Priority**: LOW (trust players for now, address exploits post-release if needed)
 
-### Network Visualization
+### PreFab Face Visualization
 **Status**: Not started
-**Goal**: In-game overlay showing resource flow between PreFab faces and Importers/Exporters
+**Goal**: Show which PreFab faces are configured to PULL/PUSH at a glance
 
 **Implementation**:
 - [ ] Keybind to toggle visualization mode (e.g., "V" key)
-- [ ] Render particle beams:
-  - [ ] PreFab PULL face → Linked Importer (blue particles)
-  - [ ] Linked Exporter → PreFab PUSH face (green particles)
-  - [ ] Particle density = transfer rate (faster rate = more particles)
-- [ ] Overlay labels:
-  - [ ] Show resource name above particles ("Iron Ore: 0.5/tick")
-  - [ ] Show Importer/Exporter names/UUIDs
-  - [ ] Show face modes (PULL/PUSH/DISABLED) with color coding
-- [ ] Performance optimizations:
+- [ ] Visual indicators for each face:
+  - [ ] PULL faces: Blue glowing overlay/particles
+  - [ ] PUSH faces: Green glowing overlay/particles
+  - [ ] DISABLED faces: No indicator
+  - [ ] Render as see-through (not occluded by blocks) using GL depth test tricks
+- [ ] Show active transfer state:
+  - [ ] Brighter glow when actively transferring resources
+  - [ ] Dim glow when idle (waiting for resources)
+  - [ ] Pulsing animation for HALTED state faces
+- [ ] Performance:
   - [ ] Only render when player within 32 blocks of PreFab
-  - [ ] Limit particle count (max 100 particles per PreFab)
-  - [ ] Cache particle paths (recalculate only on config change)
-- [ ] Test: Multi-face PreFab with 4+ Importers/Exporters
+  - [ ] Client-side only (no server packets needed)
+  - [ ] Cache rendering state, update only on config change
+- [ ] Test: PreFab with all 6 faces configured differently
 
 **Use Cases**:
-- Debug complex factories (identify bottlenecks)
-- Visualize resource flow for tutorials/showcases
-- Quickly identify misconfigured faces
+- Quick visual check of face configuration (no need to open GUI)
+- Identify which side to connect chests/pipes to
+- Debug misconfigured faces (forgot to set a face to PUSH)
 
-**Estimated effort**: 1-2 weeks
-**Priority**: LOW (debug feature, not gameplay-critical)
+**Estimated effort**: 3-5 days
+**Priority**: MEDIUM (significant UX improvement)
+
+### Factory Controller Flow Graph (Requires Factory Controller Block)
+**Status**: Not started (depends on Factory Controller implementation)
+**Goal**: Interactive UI showing resource flow between PreFabs in a Controller
+
+**Implementation**:
+- [ ] **Prerequisites**:
+  - [ ] Factory Controller block implemented
+  - [ ] PreFab naming system implemented (not yet done)
+- [ ] Graph UI screen:
+  - [ ] Draggable canvas (click-and-drag to pan)
+  - [ ] Zoomable (mouse wheel to zoom in/out, range: 0.5x to 2.0x)
+  - [ ] Grid background for reference
+- [ ] Node rendering:
+  - [ ] PreFab nodes: Black square with PreFab name overlay (text)
+  - [ ] Input nodes: Importer top texture (frequency item visible)
+  - [ ] Output nodes: Exporter top texture (frequency item visible)
+  - [ ] Node size scales with zoom level
+- [ ] Edge rendering:
+  - [ ] Lines connecting PreFabs to Input/Output nodes
+  - [ ] Color-coded by resource type (iron = orange, coal = black, etc.)
+  - [ ] Line thickness = transfer rate (thicker = more items/tick)
+  - [ ] Animated flow direction (particles moving along edges)
+- [ ] Interactivity:
+  - [ ] Click node to highlight connected edges
+  - [ ] Hover node to show tooltip (resource rates, state, etc.)
+  - [ ] Right-click node to open PreFab status GUI
+- [ ] Auto-layout algorithm:
+  - [ ] Initial layout: Force-directed graph (nodes repel, edges attract)
+  - [ ] Manual override: Drag nodes to custom positions (saved to NBT)
+  - [ ] Reset button: Recalculate auto-layout
+- [ ] Test: Controller with 5+ PreFabs, multiple resource types
+
+**Use Cases**:
+- Visualize complex factory networks (many PreFabs, shared resources)
+- Identify bottlenecks (which PreFab is HALTED, which edge is slow)
+- Tutorial/documentation tool (screenshot graph for guides)
+- Design factory layouts before building in-game
+
+**Estimated effort**: 2-3 weeks
+**Priority**: LOW (Factory Controller not implemented yet, focus on that first)
 
 ### Statistics Tracking
 **Status**: Partially implemented
