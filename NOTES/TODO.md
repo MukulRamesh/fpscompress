@@ -57,32 +57,43 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Concept**:
 - 1-slot inventory (only accepts PreFab items)
 - When PreFab inserted: Block "consumes" it and absorbs its cached rates
+- **Accumulation**: Can eat multiple PreFabs - rates are summed together
+- **Active state**: If all total rates >= 0, block is active and produces
+- **Inactive state**: If any total rate < 0, block becomes inactive (net negative inputs)
 - Runs absorbed production rates automatically (no chunk loading needed)
-- **Input restriction**: If any absorbed rate is negative (requires input), block does nothing
-- **Output-only**: Only processes PreFabs with all positive rates (pure producers)
 - Pushes outputs to adjacent inventories (like a hopper)
 
 **Implementation**:
 - [ ] Create `FractalFactoryBlock` and `FractalFactoryBlockEntity`
 - [ ] Add 1-slot inventory (only accepts PreFab items)
+- [ ] Rate accumulation system:
+  - [ ] Store `Map<String, Double> totalRates` (sum of all absorbed PreFab rates)
+  - [ ] Store `List<String> absorbedPreFabNames` (for GUI display)
 - [ ] On PreFab insertion:
   - [ ] Read cached rates from PreFab item NBT
-  - [ ] Validate all rates are positive (no negative/input rates)
-  - [ ] If valid: Absorb rates and consume PreFab item
-  - [ ] If invalid: Reject insertion with chat message ("Requires input resources")
+  - [ ] Add rates to `totalRates` (accumulate across multiple PreFabs)
+  - [ ] Recalculate active state: Check if any `totalRates` entry is negative
+  - [ ] If any negative: Set inactive state (display warning in GUI)
+  - [ ] If all non-negative: Set active state
+  - [ ] Consume PreFab item (add name to list)
+  - [ ] Send chat feedback: "Absorbed [PreFab Name] (Total: X PreFabs, State: Active/Inactive)"
 - [ ] Tick logic:
+  - [ ] Only tick if in active state (all totalRates >= 0)
   - [ ] Use same fractional accumulator pattern as PreFabBlockEntity
-  - [ ] Accumulate production for each absorbed rate
+  - [ ] Accumulate production for each total rate
   - [ ] When accumulator >= 1.0: Push whole items to adjacent inventories
   - [ ] If output blocked: Pause accumulation (don't lose progress)
 - [ ] Visual indicator:
-  - [ ] Idle state: Dim glow
-  - [ ] Active production: Bright glow with particle effects
-  - [ ] Output blocked: Red pulsing glow
+  - [ ] Inactive state (negative rates): Red glow, no particles
+  - [ ] Idle state (active, no output): Dim green glow
+  - [ ] Active production: Bright green glow with particle effects
+  - [ ] Output blocked: Yellow pulsing glow
 - [ ] Status GUI:
-  - [ ] Show absorbed PreFab name (if naming implemented)
-  - [ ] Show active production rates
-  - [ ] Show accumulated fractional values
+  - [ ] Show number of absorbed PreFabs
+  - [ ] Show list of absorbed PreFab names (if naming implemented)
+  - [ ] Show total rates per resource (sum across all PreFabs)
+  - [ ] Highlight negative rates in red (causing inactive state)
+  - [ ] Show accumulated fractional values (if active)
   - [ ] Show time running / total produced
 - [ ] NBT serialization:
   - [ ] Save absorbed rates
@@ -92,22 +103,27 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - [ ] Unique block texture (fractal/recursive theme)
   - [ ] Animated texture when producing
 - [ ] Test cases:
-  - [ ] Insert pure-output PreFab (only positive rates) → Works
-  - [ ] Insert mixed PreFab (has negative rates) → Rejected
-  - [ ] Output blocked → Pauses cleanly
-  - [ ] Break block → Drops with absorbed data
+  - [ ] Insert single PreFab with all positive rates → Active, produces
+  - [ ] Insert PreFab with negative rates → Inactive (red glow)
+  - [ ] Insert second PreFab that cancels out negatives → Becomes active
+  - [ ] Example: PreFab A (coal: -1.0/tick), PreFab B (coal: +2.0/tick) → Total: +1.0/tick (active)
+  - [ ] Output blocked → Yellow glow, pauses cleanly
+  - [ ] Break block → Drops nothing (PreFabs consumed permanently)
+  - [ ] Reset button in GUI → Clears all absorbed PreFabs and rates
 
 **Use Cases**:
-- Compact end-game production (no need for Controller inventory)
-- "Fire and forget" factories (insert PreFab, walk away)
-- Simple automation (fewer blocks than full Controller setup)
-- Renewable resource generation (auto-smelters, mob farms, etc.)
+- **Combine multiple PreFabs**: Stack complementary factories (one produces coal, one consumes coal)
+- **Self-sufficient loops**: PreFab A outputs iron, PreFab B needs iron input → Net positive output
+- **Compact end-game production**: No need for Controller inventory management
+- **"Fire and forget" factories**: Insert PreFabs, walk away, collect outputs
+- **Balancing act**: Player must carefully balance inputs/outputs to stay active
 
 **Design Rationale**:
-- **Why output-only**: Simplifies logistics (no input pipes needed)
-- **Why consume PreFab**: Prevents item duplication exploits
-- **Why single-slot**: Keeps block simple and focused
-- **Why "Fractal"**: Factory-within-factory recursion (PreFab absorbed into block)
+- **Why allow negative rates**: Enables combining complementary PreFabs (producer + consumer)
+- **Why inactive on net negative**: Can't run without external inputs (logically consistent)
+- **Why consume PreFab**: Prevents item duplication exploits, encourages commitment
+- **Why single-slot**: Keeps block simple (insert one at a time, rate accumulation happens automatically)
+- **Why "Fractal"**: Recursive factory-within-factory absorption (multiple PreFabs → one block)
 
 **Estimated effort**: 1 week
 **Priority**: MEDIUM (simpler alternative to Factory Controller, good for early-game)
