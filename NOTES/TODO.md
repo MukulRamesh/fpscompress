@@ -214,26 +214,34 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Priority**: LOW (debug feature, not gameplay-critical)
 
 ### Statistics Tracking
-**Status**: Not started
+**Status**: Partially implemented
 **Goal**: Track cumulative statistics for each PreFab (total resources transported, uptime, etc.)
 
-**Implementation**:
-- [ ] Add statistics fields to `PreFabBlockEntity`:
-  - [ ] `Map<String, Long> totalImported` (cumulative count per resource)
-  - [ ] `Map<String, Long> totalExported` (cumulative count per resource)
+**Already Implemented** (see [PrefabBlockEntity.java:79](../fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/portal/PrefabBlockEntity.java#L79)):
+- [x] `Map<String, Long> cachedProduction` - Tracks produced/consumed during CACHED state
+- [x] Production counter increments in `tickCachedProduction()` ([line 1785](../fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/portal/PrefabBlockEntity.java#L1785))
+- [x] NBT serialization for cachedProduction ([lines 595-606](../fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/portal/PrefabBlockEntity.java#L595-L606))
+- [x] GUI access via `getCachedProduction()` method
+
+**Not Yet Implemented**:
+- [ ] Add lifetime statistics fields to `PreFabBlockEntity`:
+  - [ ] `Map<String, Long> totalImported` (cumulative across all simulations)
+  - [ ] `Map<String, Long> totalExported` (cumulative across all simulations)
   - [ ] `long ticksInCachedMode` (total time running cached)
   - [ ] `long ticksInSimulatingMode` (total time simulating)
   - [ ] `long ticksInHaltedMode` (total time halted)
   - [ ] `int haltCount` (number of times entered HALTED state)
-- [ ] Update statistics during transport:
-  - [ ] Increment counters in `tickCachedProduction()` and `tick()`
-  - [ ] Track state transition timestamps
+  - [ ] `int simulationCount` (number of simulations completed)
+- [ ] Update statistics during operation:
+  - [ ] Track state time in `tick()` method (increment appropriate counter)
+  - [ ] Track state transitions in `setCurrentState()` (increment haltCount, simulationCount)
+  - [ ] Accumulate import/export in `handlePullFace()` and `handlePushFace()`
 - [ ] Add "Statistics" tab to status GUI:
-  - [ ] Display top 10 imported/exported resources
+  - [ ] Display top 10 imported/exported resources (lifetime)
   - [ ] Show uptime breakdown (% time in each state)
   - [ ] Show efficiency metrics (halt rate, average cache duration)
   - [ ] Export button: Save stats to JSON file (for spreadsheet analysis)
-- [ ] NBT serialization for all statistics (persist across world reload)
+- [ ] NBT serialization for lifetime statistics
 - [ ] Optional: Reset button (clear all stats, prompt for confirmation)
 
 **Use Cases**:
