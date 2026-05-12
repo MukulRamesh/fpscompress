@@ -21,6 +21,35 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ## 🔲 Pending Tasks
 
+### Core System Improvements
+
+**Crafting Recipes**:
+- [ ] Add crafting recipe for PreFab Upgrade Template
+- [ ] Add crafting recipe for Simulation Wrench
+- [ ] Add crafting recipe for Importer block
+- [ ] Add crafting recipe for Exporter block
+- [ ] Ensure recipes are balanced (not too cheap/expensive)
+- [ ] Test recipes in survival mode
+
+**Importer/Exporter Frequency System** (Terminology & Visual Update):
+- [ ] Rename "filter" to "frequency" across codebase:
+  - [ ] Update `ImporterBlockEntity` and `ExporterBlockEntity` field names
+  - [ ] Update GUI labels and tooltips
+  - [ ] Update localization entries in `en_us.json`
+  - [ ] Update documentation (CLAUDE.md, IMPORTER_EXPORTER_SYSTEM.md, etc.)
+- [ ] Visual frequency indicator:
+  - [ ] Render frequency item on all 6 sides of Importer/Exporter blocks
+  - [ ] Style: Unbreakable, uninteractable, invisible item frame aesthetic
+  - [ ] Use block entity renderer (similar to chest/sign rendering)
+  - [ ] Update when frequency item changes (right-click with new item)
+  - [ ] Test: Verify visibility from all angles in-game
+
+**Why "frequency" instead of "filter"**:
+- More intuitive metaphor: Importers/Exporters "tune" to specific item frequencies
+- Aligns with radio/signal terminology (fits conduit architecture)
+- "Filter" implies blocking unwanted items; "frequency" implies selective transport
+- Visual indicator reinforces the concept (item appears on block faces)
+
 ### Post-MVP: Factory Controller Block
 - [ ] Factory Controller block:
   - Inventory that accepts PreFab items
@@ -77,13 +106,152 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Priority**: MEDIUM (MVP backoff sufficient, these are polish)
 **Performance gain**: Current 99% → Post-MVP 99.9%+
 
-### Post-MVP: Advanced Features
-- [ ] Item/fluid whitelist filters (per-face)
-- [ ] Blacklist filters
-- [ ] Priority system (which face to prioritize)
-- [ ] Anti-cheat validation (detect hidden batteries during SIMULATING)
-- [ ] Network view (visualize resource flow)
-- [ ] Statistics tracking (total resources transported)
+### Post-MVP: Per-Face Resource Filters
+**Status**: Not started
+**Goal**: Allow PreFab faces to filter specific items/fluids instead of accepting ALL
+
+**Implementation**:
+- [ ] Add `Set<ResourceLocation> allowedResources` to `FaceConfig.java`
+- [ ] Add `Set<ResourceLocation> blockedResources` to `FaceConfig.java`
+- [ ] Extend face config GUI:
+  - [ ] Add "Configure Filter" button when face mode is PULL/PUSH
+  - [ ] Item selection screen (show all registered items)
+  - [ ] Toggle between whitelist mode (only allowed) and blacklist mode (block specific)
+  - [ ] Display active filters in face config GUI (e.g., "PULL ITEMS: Iron, Gold, Diamond")
+- [ ] Update transport logic:
+  - [ ] Check whitelist/blacklist before transferring items
+  - [ ] Skip transport if resource blocked by filter
+  - [ ] Log filtered resources in debug mode
+- [ ] NBT serialization for filter lists (save/load with face configs)
+- [ ] Test: Whitelist (only iron/gold), Blacklist (no cobblestone)
+
+**Use Cases**:
+- Dedicated iron-only input face
+- Prevent trash items from entering factory
+- Separate fluid types across different faces
+
+**Estimated effort**: 1 week
+**Priority**: MEDIUM (nice-to-have, not required for basic caching)
+
+---
+
+### Post-MVP: Face Priority System
+**Status**: Not started
+**Goal**: Control which PreFab face is checked first when multiple faces can handle a resource
+
+**Problem**:
+- Factory produces iron ingots
+- NORTH face = PUSH to storage chest
+- SOUTH face = PUSH to processing line
+- Both can accept iron - which gets priority?
+
+**Implementation**:
+- [ ] Add `int priority` field to `FaceConfig.java` (default: 0, higher = checked first)
+- [ ] Add priority spinner to face config GUI (+/- buttons, range 0-100)
+- [ ] Modify `tickCachedProduction()` to sort faces by priority before attempting transfer
+- [ ] Update status GUI to show face priority (e.g., "NORTH PUSH (Priority: 50)")
+- [ ] NBT serialization for priority values
+- [ ] Test: High-priority face fills first, low-priority face only if high blocked
+
+**Use Cases**:
+- Fill primary storage before overflow storage
+- Prioritize critical processing over secondary outputs
+- Control resource routing without external pipes
+
+**Estimated effort**: 3-4 days
+**Priority**: LOW (workaround: configure only one PUSH face per resource)
+
+---
+
+### Post-MVP: Anti-Cheat Validation
+**Status**: Not started
+**Goal**: Detect hidden batteries/storage during SIMULATING phase
+
+**Problem**:
+- Player places chest inside CM factory (hidden storage)
+- During SIMULATING: Factory "produces" from chest (not real production)
+- PreFab caches inflated rate
+- During CACHED: PreFab produces infinite resources (exploit)
+
+**Implementation** (see VALIDATION_REDSTONE_PROTOCOL.md for full spec):
+- [ ] Add bidirectional redstone protocol:
+  - [ ] PreFab sends "shutdown request" signal to all Importers/Exporters
+  - [ ] Importers/Exporters propagate redstone signal through factory
+  - [ ] Machines gracefully finish current operations
+  - [ ] Exporters send "shutdown complete" signal back to PreFab
+- [ ] Snapshot initial state (scan all Importer/Exporter buffers)
+- [ ] Wait for factory to fully drain (no items in-flight)
+- [ ] Snapshot final state (scan buffers again)
+- [ ] Calculate net production: `Net = (Final - Initial) + (Exported - Imported)`
+- [ ] If `Net > 0` for inputs OR `Net < 0` for outputs → INVALID (hidden storage detected)
+- [ ] Display warning in GUI: "Invalid simulation - hidden storage detected"
+
+**Estimated effort**: 2-3 weeks
+**Priority**: LOW (trust players for now, address exploits post-release if needed)
+
+---
+
+### Post-MVP: Network Visualization
+**Status**: Not started
+**Goal**: In-game overlay showing resource flow between PreFab faces and Importers/Exporters
+
+**Implementation**:
+- [ ] Keybind to toggle visualization mode (e.g., "V" key)
+- [ ] Render particle beams:
+  - [ ] PreFab PULL face → Linked Importer (blue particles)
+  - [ ] Linked Exporter → PreFab PUSH face (green particles)
+  - [ ] Particle density = transfer rate (faster rate = more particles)
+- [ ] Overlay labels:
+  - [ ] Show resource name above particles ("Iron Ore: 0.5/tick")
+  - [ ] Show Importer/Exporter names/UUIDs
+  - [ ] Show face modes (PULL/PUSH/DISABLED) with color coding
+- [ ] Performance optimizations:
+  - [ ] Only render when player within 32 blocks of PreFab
+  - [ ] Limit particle count (max 100 particles per PreFab)
+  - [ ] Cache particle paths (recalculate only on config change)
+- [ ] Test: Multi-face PreFab with 4+ Importers/Exporters
+
+**Use Cases**:
+- Debug complex factories (identify bottlenecks)
+- Visualize resource flow for tutorials/showcases
+- Quickly identify misconfigured faces
+
+**Estimated effort**: 1-2 weeks
+**Priority**: LOW (debug feature, not gameplay-critical)
+
+---
+
+### Post-MVP: Statistics Tracking
+**Status**: Not started
+**Goal**: Track cumulative statistics for each PreFab (total resources transported, uptime, etc.)
+
+**Implementation**:
+- [ ] Add statistics fields to `PreFabBlockEntity`:
+  - [ ] `Map<String, Long> totalImported` (cumulative count per resource)
+  - [ ] `Map<String, Long> totalExported` (cumulative count per resource)
+  - [ ] `long ticksInCachedMode` (total time running cached)
+  - [ ] `long ticksInSimulatingMode` (total time simulating)
+  - [ ] `long ticksInHaltedMode` (total time halted)
+  - [ ] `int haltCount` (number of times entered HALTED state)
+- [ ] Update statistics during transport:
+  - [ ] Increment counters in `tickCachedProduction()` and `tick()`
+  - [ ] Track state transition timestamps
+- [ ] Add "Statistics" tab to status GUI:
+  - [ ] Display top 10 imported/exported resources
+  - [ ] Show uptime breakdown (% time in each state)
+  - [ ] Show efficiency metrics (halt rate, average cache duration)
+  - [ ] Export button: Save stats to JSON file (for spreadsheet analysis)
+- [ ] NBT serialization for all statistics (persist across world reload)
+- [ ] Optional: Reset button (clear all stats, prompt for confirmation)
+
+**Use Cases**:
+- Monitor factory efficiency over time
+- Identify frequently halted PreFabs (optimize input/output)
+- Compare production rates across multiple factories
+- Generate reports for server admins (most-used PreFabs)
+
+**Estimated effort**: 1 week
+**Priority**: LOW (QoL feature, not gameplay-critical)
 
 ---
 
