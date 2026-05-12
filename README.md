@@ -59,36 +59,27 @@ During CACHED mode:
 
 ## Current Status
 
-**⚠️ This mod is in active development (MVP phase).**
+**⚠️ This mod is in active development.**
 
-Currently implemented:
-- ✅ Basic PreFab block structure
-- ✅ State machine framework
-- ✅ Compact Machines integration
-- ✅ Chunk loading control
+Core systems implemented:
+- ✅ Face configuration system with GUI
+- ✅ Importer/Exporter blocks with UUID linking
+- ✅ Resource transport (PULL/PUSH modes)
+- ✅ Rate measurement with delta accounting
+- ✅ Cached production with fractional math
+- ✅ PreFab-as-Item portability system
+- ✅ Enhanced GUI with live status and resource display
+- ✅ HALTED state recovery with preserved rates
+- ✅ Vanilla block support (chests, furnaces, hoppers)
 
-In progress (see [TODO_NEW.md](TODO_NEW.md)):
-- 🔨 Face configuration system
-- 🔨 Importer/Exporter blocks
-- 🔨 Resource transport
-- 🔨 Rate measurement
-- 🔨 Cached production
-
-## MVP Scope
-
-**Included:**
-- Single PreFab block support
-- Importer/Exporter gate blocks
-- Face configuration (PULL/PUSH modes, UUID linking)
-- Rate measurement and caching
-- Vanilla block support (chests, furnaces, hoppers)
-
-**Not included (post-MVP):**
-- AE2/Refined Storage integration
-- Factory Controller block
-- Multiple PreFab management
-- Advanced filters
-- Anti-cheat validation
+In progress:
+- 🔨 AE2/Refined Storage integration
+- 🔨 Factory Controller block
+- 🔨 Multiple PreFab management
+- 🔨 Advanced filters
+- 🔨 Anti-cheat validation
+- 🔨 Polish and bug fixes
+- 🔨 Performance optimizations
 
 ## Building
 
@@ -113,7 +104,7 @@ Run in development:
 
 ## License
 
-[Add your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Credits
 
