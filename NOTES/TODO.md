@@ -63,7 +63,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - Store inactive factories compactly
 
 ### External Mod Integrations
-**All external mod integration is OUT OF SCOPE for MVP**
 - [ ] AE2 integration (Applied Energistics 2)
 - [ ] Refined Storage integration
 - [ ] Mekanism pipes/conduits
