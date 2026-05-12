@@ -50,6 +50,68 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - "Filter" implies blocking unwanted items; "frequency" implies selective transport
 - Visual indicator reinforces the concept (item appears on block faces)
 
+### Fractal Factory Block
+**Status**: Not started
+**Goal**: Simple single-slot block that "eats" PreFabs and produces their outputs autonomously
+
+**Concept**:
+- 1-slot inventory (only accepts PreFab items)
+- When PreFab inserted: Block "consumes" it and absorbs its cached rates
+- Runs absorbed production rates automatically (no chunk loading needed)
+- **Input restriction**: If any absorbed rate is negative (requires input), block does nothing
+- **Output-only**: Only processes PreFabs with all positive rates (pure producers)
+- Pushes outputs to adjacent inventories (like a hopper)
+
+**Implementation**:
+- [ ] Create `FractalFactoryBlock` and `FractalFactoryBlockEntity`
+- [ ] Add 1-slot inventory (only accepts PreFab items)
+- [ ] On PreFab insertion:
+  - [ ] Read cached rates from PreFab item NBT
+  - [ ] Validate all rates are positive (no negative/input rates)
+  - [ ] If valid: Absorb rates and consume PreFab item
+  - [ ] If invalid: Reject insertion with chat message ("Requires input resources")
+- [ ] Tick logic:
+  - [ ] Use same fractional accumulator pattern as PreFabBlockEntity
+  - [ ] Accumulate production for each absorbed rate
+  - [ ] When accumulator >= 1.0: Push whole items to adjacent inventories
+  - [ ] If output blocked: Pause accumulation (don't lose progress)
+- [ ] Visual indicator:
+  - [ ] Idle state: Dim glow
+  - [ ] Active production: Bright glow with particle effects
+  - [ ] Output blocked: Red pulsing glow
+- [ ] Status GUI:
+  - [ ] Show absorbed PreFab name (if naming implemented)
+  - [ ] Show active production rates
+  - [ ] Show accumulated fractional values
+  - [ ] Show time running / total produced
+- [ ] NBT serialization:
+  - [ ] Save absorbed rates
+  - [ ] Save accumulators
+  - [ ] Save production statistics
+- [ ] Textures:
+  - [ ] Unique block texture (fractal/recursive theme)
+  - [ ] Animated texture when producing
+- [ ] Test cases:
+  - [ ] Insert pure-output PreFab (only positive rates) → Works
+  - [ ] Insert mixed PreFab (has negative rates) → Rejected
+  - [ ] Output blocked → Pauses cleanly
+  - [ ] Break block → Drops with absorbed data
+
+**Use Cases**:
+- Compact end-game production (no need for Controller inventory)
+- "Fire and forget" factories (insert PreFab, walk away)
+- Simple automation (fewer blocks than full Controller setup)
+- Renewable resource generation (auto-smelters, mob farms, etc.)
+
+**Design Rationale**:
+- **Why output-only**: Simplifies logistics (no input pipes needed)
+- **Why consume PreFab**: Prevents item duplication exploits
+- **Why single-slot**: Keeps block simple and focused
+- **Why "Fractal"**: Factory-within-factory recursion (PreFab absorbed into block)
+
+**Estimated effort**: 1 week
+**Priority**: MEDIUM (simpler alternative to Factory Controller, good for early-game)
+
 ### Factory Controller Block
 - [ ] Factory Controller block:
   - Inventory that accepts PreFab items
