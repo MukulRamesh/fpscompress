@@ -21,6 +21,8 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ## 🔲 Pending Tasks
 
+**Organization Note**: Tasks are roughly organized by priority and dependencies. Higher-priority or prerequisite tasks appear earlier in the list.
+
 ### Core System Improvements
 
 **Crafting Recipes**:
@@ -174,6 +176,35 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 **Estimated effort**: 2-3 weeks
 **Priority**: MEDIUM-HIGH (enables Fractal Factory mass production, good progression system)
+
+### PreFab Face Visualization
+**Status**: Not started
+**Goal**: Show which PreFab faces are configured to PULL/PUSH at a glance
+
+**Implementation**:
+- [ ] Keybind to toggle visualization mode (e.g., "V" key)
+- [ ] Visual indicators for each face:
+  - [ ] PULL faces: Blue glowing overlay/particles
+  - [ ] PUSH faces: Green glowing overlay/particles
+  - [ ] DISABLED faces: No indicator
+  - [ ] Render as see-through (not occluded by blocks) using GL depth test tricks
+- [ ] Show active transfer state:
+  - [ ] Brighter glow when actively transferring resources
+  - [ ] Dim glow when idle (waiting for resources)
+  - [ ] Pulsing animation for HALTED state faces
+- [ ] Performance:
+  - [ ] Only render when player within 32 blocks of PreFab
+  - [ ] Client-side only (no server packets needed)
+  - [ ] Cache rendering state, update only on config change
+- [ ] Test: PreFab with all 6 faces configured differently
+
+**Use Cases**:
+- Quick visual check of face configuration (no need to open GUI)
+- Identify which side to connect chests/pipes to
+- Debug misconfigured faces (forgot to set a face to PUSH)
+
+**Estimated effort**: 3-5 days
+**Priority**: MEDIUM (significant UX improvement)
 
 ### Fractal Factory Block
 **Status**: Not started
@@ -386,35 +417,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 **Estimated effort**: 2-3 weeks
 **Priority**: LOW (trust players for now, address exploits post-release if needed)
-
-### PreFab Face Visualization
-**Status**: Not started
-**Goal**: Show which PreFab faces are configured to PULL/PUSH at a glance
-
-**Implementation**:
-- [ ] Keybind to toggle visualization mode (e.g., "V" key)
-- [ ] Visual indicators for each face:
-  - [ ] PULL faces: Blue glowing overlay/particles
-  - [ ] PUSH faces: Green glowing overlay/particles
-  - [ ] DISABLED faces: No indicator
-  - [ ] Render as see-through (not occluded by blocks) using GL depth test tricks
-- [ ] Show active transfer state:
-  - [ ] Brighter glow when actively transferring resources
-  - [ ] Dim glow when idle (waiting for resources)
-  - [ ] Pulsing animation for HALTED state faces
-- [ ] Performance:
-  - [ ] Only render when player within 32 blocks of PreFab
-  - [ ] Client-side only (no server packets needed)
-  - [ ] Cache rendering state, update only on config change
-- [ ] Test: PreFab with all 6 faces configured differently
-
-**Use Cases**:
-- Quick visual check of face configuration (no need to open GUI)
-- Identify which side to connect chests/pipes to
-- Debug misconfigured faces (forgot to set a face to PUSH)
-
-**Estimated effort**: 3-5 days
-**Priority**: MEDIUM (significant UX improvement)
 
 ### Factory Controller Flow Graph (Requires Factory Controller Block)
 **Status**: Not started (depends on Factory Controller implementation)
