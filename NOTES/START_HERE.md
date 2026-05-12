@@ -2,8 +2,8 @@
 
 **Welcome!** This is the entry point for understanding the FPSCompress mod architecture.
 
-**Last Updated**: 2026-04-28  
-**Status**: Clean codebase, ready for MVP implementation
+**Last Updated**: 2026-05-11  
+**Status**: Core MVP systems complete, polish and advanced features in progress
 
 ---
 
@@ -69,9 +69,10 @@
 ## 🏗️ Codebase Status
 
 ### Current State
-- ✅ **Cleaned up** - Deprecated code archived to `deprecated/` folder
-- ⚠️ **Needs refactoring** - Some files still reference old virtual buffer system
-- 🚧 **Ready for MVP** - Clear path forward with new conduit architecture
+- ✅ **Core systems implemented** - Face config, Importer/Exporter, transport, rate measurement, caching
+- ✅ **PreFab-as-Item system** - Portable factories with cached rates
+- ✅ **Enhanced GUI** - Live status display with resource tracking
+- 🔨 **In progress** - Advanced features, integrations, and polish
 
 ### Active Source Files (19 files)
 Located in `fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/`
@@ -81,27 +82,34 @@ Located in `fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompre
 - `FPSCompressClient.java`
 - `Config.java`
 
-**Portal system** (11):
-- `PrefabBlock.java` ← **NEEDS REFACTOR**
-- `PrefabBlockEntity.java` ← **NEEDS REFACTOR**
-- `CapabilityRegistration.java` ← **NEEDS REWRITE**
-- `IVirtualMachineData.java` ← **NEEDS RENAME**
-- `SimulationWrenchItem.java` ← **NEEDS MODIFY**
-- `MachineState.java` ✅ Keep as-is
-- `RoomCoordinateCache.java` ✅ Keep as-is
-- `TpsCacheUpgradeItem.java` ✅ Keep as-is
-- `DimensionTeleportListener.java` ✅ Keep as-is
-- `PSDExitListener.java` ✅ Keep as-is
-- `PlayerPositionCache.java` ✅ Keep as-is
+**Portal system**:
+- `PrefabBlock.java` ✅ Implemented
+- `PrefabBlockEntity.java` ✅ Implemented with face configs
+- `PrefabBlockItem.java` ✅ PreFab-as-Item system
+- `ImporterBlock.java` / `ImporterBlockEntity.java` ✅ Implemented
+- `ExporterBlock.java` / `ExporterBlockEntity.java` ✅ Implemented
+- `SimulationWrenchItem.java` ✅ State control
+- `TpsCacheUpgradeItem.java` ✅ CM → PreFab upgrade
+- `MachineState.java` ✅ State machine
+- `RoomCoordinateCache.java` ✅ Coordinate mapping
+- `DimensionTeleportListener.java` ✅ Teleport handling
+- `PSDExitListener.java` ✅ Exit handling
+- `PlayerPositionCache.java` ✅ Position tracking
 
 **Spatial system** (2):
 - `CMInterceptorImpl.java` ✅ Keep as-is (chunk loading)
 - `ICMInterceptor.java` ✅ Keep as-is (interface)
 
-**Other** (3):
-- `component/FPSDataComponents.java` ⚠️ Review (might deprecate)
-- `portal/FPSDataAttachments.java` ⚠️ Review (might deprecate)
-- `debug/Dev2TestCommands.java` ✅ Keep (debug commands)
+**GUI system**:
+- `gui/PreFabConfigScreen.java` ✅ Face configuration GUI
+- `gui/PreFabConfigMenu.java` ✅ Menu handler
+- `network/FaceConfigPacket.java` ✅ Network sync
+- `network/SimulationControlPacket.java` ✅ State control sync
+
+**Data & Components**:
+- `component/FPSDataComponents.java` ✅ PreFab item data
+- `portal/FPSDataAttachments.java` ✅ Block entity data
+- `debug/Dev2TestCommands.java` ✅ Debug commands
 
 ### Archived Files (23 files)
 Located in `fpscompress-template-1.21.11/deprecated/`
@@ -123,29 +131,38 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 
 ## 🎯 What to Do Next
 
-### For Developers (Implementing MVP)
+### For Developers (Contributing)
 
-**Option 1: Start fresh with MVP** (Recommended)
-1. Read MVP_SCOPE.md to understand scope
-2. Follow TODO_NEW.md Phase 1: Create face config data structures
-3. Skip refactoring old files until Phase 2+
-4. Build new features alongside old code
+**Core systems are complete!** Consider working on:
 
-**Option 2: Refactor first, then implement**
-1. Read CLEANUP_SUMMARY.md "Files That Need Refactoring" section
-2. Remove VirtualBufferStorage dependencies from PrefabBlockEntity
-3. Rewrite CapabilityRegistration for face-based capabilities
-4. Then start TODO_NEW.md Phase 1
+1. **Advanced Features** (see README.md "In progress" section)
+   - AE2/Refined Storage integration
+   - Factory Controller block for multiple PreFabs
+   - Advanced filtering (item/fluid whitelists)
+   - Anti-cheat validation system
 
-**Recommendation**: **Option 1** - Start fresh. Don't spend time refactoring code that will be replaced anyway.
+2. **Polish & Bug Fixes**
+   - Edge case handling
+   - Performance optimizations
+   - User experience improvements
+   - Documentation updates
 
-### For Testers (Testing MVP)
+3. **Testing**
+   - Test with modded machines (Create, Mekanism, etc.)
+   - Stress test with large factories
+   - Multi-PreFab scenarios
+   - Edge cases (chunk boundaries, dimension transitions)
 
-**Wait for MVP Phase 4** (Cached Production) to be complete, then:
-1. Read MVP_SCOPE.md "MVP Test Case" section
-2. Follow testing plan in TODO_NEW.md
-3. Test with vanilla blocks only (chests, furnaces, hoppers)
-4. Verify chunks unload during CACHED mode (F3 screen)
+### For Testers (Testing Current Build)
+
+**Core systems are functional!** Test:
+1. Build a factory in a Compact Machine
+2. Place Importers/Exporters inside the CM
+3. Upgrade CM to PreFab with TPS Upgrade item
+4. Configure faces with Simulation Wrench
+5. Start simulation, verify rate measurement
+6. Finish simulation, verify cached production works
+7. Break PreFab, verify it becomes portable item with preserved state
 
 ### For Architects (Understanding System)
 
@@ -210,18 +227,18 @@ cd "fpscompress-template-1.21.11"
 
 ## 📊 Project Status
 
-**Architecture**: ✅ Defined (conduit-based caching)  
+**Architecture**: ✅ Defined and implemented (conduit-based caching)  
 **Documentation**: ✅ Complete and organized  
-**Codebase**: ⚠️ Partially refactored (deprecated code archived)  
-**MVP Phase 1**: 🚧 Not started (face config data structures)  
-**MVP Phase 2**: 🚧 Not started (transport logic)  
-**MVP Phase 3**: 🚧 Not started (rate measurement)  
-**MVP Phase 4**: 🚧 Not started (cached production)  
-**MVP Phase 5**: 🚧 Not started (wrench control)  
-**MVP Phase 6**: 🚧 Not started (face config GUI)  
-**MVP Phase 7**: 🚧 Not started (dynamic capabilities)  
+**Codebase**: ✅ Core systems complete  
+**Phase 1**: ✅ Complete (face config data structures)  
+**Phase 2**: ✅ Complete (Importer/Exporter blocks)  
+**Phase 3**: ✅ Complete (transport logic)  
+**Phase 4**: ✅ Complete (rate measurement)  
+**Phase 5**: ✅ Complete (cached production)  
+**Phase 6**: ✅ Complete (wrench control + GUI)  
+**Phase 7+**: ✅ Complete (PreFab-as-Item, enhanced GUI, room filtering)  
 
-**Estimated MVP completion**: 4-6 weeks (following TODO_NEW.md)
+**Current Focus**: Advanced features, integrations, and polish
 
 ---
 
@@ -233,21 +250,25 @@ cd "fpscompress-template-1.21.11"
 - Read README_ARCHITECTURE.md
 - Understand: "Cache rates → Run without chunks → Better TPS"
 
-### Day 2: Understand the Scope
-- Read MVP_SCOPE.md
-- Understand: "MVP = One PreFab + Face config + Caching, NO integrations"
-
-### Day 3: Understand the Architecture
+### Day 2: Understand the Implementation
 - Read ARCHITECTURE_CONDUIT.md
 - Understand: "Conduits not storage, PULL/PUSH faces, fractional math"
+- Core system is complete, review existing code
 
-### Day 4: Understand the Implementation Plan
-- Read TODO_NEW.md
-- Understand: "7 phases, start with face config, test at each phase"
+### Day 3: Review Current Code
+- Browse source files in `../fpscompress-template-1.21.11/src/main/java/`
+- Key files: PrefabBlockEntity.java, ImporterBlock.java, ExporterBlock.java
+- Understand how face configs, transport, and caching work
 
-### Day 5: Start Coding
-- Create FaceMode.java, ResourceFilter.java, FaceConfig.java
-- Follow TODO_NEW.md Phase 1 tasks
+### Day 4: Understand Next Steps
+- Read TODO_NEW.md to see what's left
+- Read MVP_SCOPE.md "Post-MVP Features" section
+- Identify areas where you can contribute
+
+### Day 5: Start Contributing
+- Pick a feature from "In progress" section of README.md
+- Or improve existing features (better GUI, performance, etc.)
+- Or add test coverage and edge case handling
 
 ---
 
