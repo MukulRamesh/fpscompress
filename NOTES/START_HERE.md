@@ -195,8 +195,8 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 - [CLAUDE.md](CLAUDE.md) - Project guidelines
 
 ### Code
-- [Source files](fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/) - Active code
-- [Deprecated code](fpscompress-template-1.21.11/deprecated/) - Archived code
+- [Source files](../fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/) - Active code
+- [Deprecated code](../fpscompress-template-1.21.11/deprecated/) - Archived code
 
 ### Build
 ```bash
