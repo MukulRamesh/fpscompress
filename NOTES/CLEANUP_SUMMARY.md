@@ -1,11 +1,11 @@
 # Codebase Cleanup Summary
 
-**Date**: 2026-04-28  
-**Action**: Archived deprecated code from virtual buffer architecture
+**Date**: 2026-04-28 (archived) → 2026-05-12 (deleted)
+**Action**: Deleted deprecated code from virtual buffer architecture (preserved in git history)
 
 ---
 
-## Files Archived to `deprecated/` Folder
+## Files Deleted from Project
 
 ### Java Source Files (8 files)
 
@@ -197,13 +197,13 @@
 
 ## Statistics
 
-**Total Files Archived**: 20 files (8 Java + 12 docs)  
+**Total Files Deleted**: 24 files (10 Java + 14 docs)  
 **Total Files Remaining**: 19 Java files  
 **Files Needing Refactor**: 5 files (PrefabBlockEntity, CapabilityRegistration, IVirtualMachineData, SimulationWrenchItem, PrefabBlock)  
 **New Files to Create**: ~10 files (Phase 1-7)
 
-**Code Reduction**: ~30% fewer source files  
-**Documentation Reduction**: ~60% fewer doc files
+**Code Reduction**: ~35% fewer source files  
+**Documentation Reduction**: ~65% fewer doc files
 
 ---
 
@@ -216,24 +216,23 @@
 
 ---
 
-## Rollback Instructions
+## Recovery Instructions
 
-If you need to restore deprecated files:
+If you need to restore deleted files, they are preserved in git history:
 
 ```bash
-# Restore all Java files
-cp -r fpscompress-template-1.21.11/deprecated/capabilities/* src/main/java/com/mukulramesh/fpscompress/capabilities/
-cp -r fpscompress-template-1.21.11/deprecated/portal/* src/main/java/com/mukulramesh/fpscompress/portal/
-cp -r fpscompress-template-1.21.11/deprecated/spatial/* src/main/java/com/mukulramesh/fpscompress/spatial/
-cp -r fpscompress-template-1.21.11/deprecated/debug/* src/main/java/com/mukulramesh/fpscompress/debug/
-cp -r fpscompress-template-1.21.11/deprecated/integration/* src/main/java/com/mukulramesh/fpscompress/integration/
+# View deleted files
+git log --all --full-history -- "fpscompress-template-1.21.11/deprecated/**"
 
-# Restore all docs
-cp fpscompress-template-1.21.11/deprecated/docs/* .
+# Restore specific file from git history (use commit before deletion)
+git checkout 60bedae -- fpscompress-template-1.21.11/deprecated/portal/VirtualBufferStorage.java
+
+# Or restore entire deprecated folder
+git checkout 60bedae -- fpscompress-template-1.21.11/deprecated/
 ```
 
-**However**: You shouldn't need to rollback. The new architecture is simpler and better aligned with the mod's goal.
+**Note**: Files were deleted in commit `11737a0` (2026-05-12). Use commit `60bedae` to restore.
 
 ---
 
-**See `deprecated/README.md` for details on archived files.**
+**All deleted code is permanently preserved in git history.**

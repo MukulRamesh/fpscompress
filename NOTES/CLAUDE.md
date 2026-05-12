@@ -50,9 +50,9 @@ FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compressi
 
 ### Current State
 
-**Codebase Status**: Cleaned up, deprecated code archived
+**Codebase Status**: Cleaned up, deprecated code removed
 - Active source: 19 Java files in `src/main/java/`
-- Deprecated code: Moved to `deprecated/` folder (old virtual buffer system)
+- Deprecated code: Deleted from project (preserved in git history)
 - Documentation: Complete, organized (see START_HERE.md)
 
 **Implementation Status**: Architecture defined, ready for Phase 1
@@ -453,8 +453,7 @@ interceptor.setRoomChunkState(roomCode, false);
 - **CM_API_INTEGRATION.md** - Compact Machines integration details
 
 **Reference**:
-- **CLEANUP_SUMMARY.md** - What was archived and why
-- **deprecated/** folder - Old virtual buffer system code
+- **CLEANUP_SUMMARY.md** - What was deleted and why (old code in git history)
 
 ---
 

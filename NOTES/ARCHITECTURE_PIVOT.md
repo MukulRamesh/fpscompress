@@ -259,18 +259,17 @@ public class ResourceTransporter {
 - ✅ Created ARCHITECTURE_PIVOT.md (this file)
 
 ### Step 2: Clean Up Old Code
-```bash
-# Move old files to deprecated folder
-mkdir deprecated
-mv src/main/java/com/mukulramesh/fpscompress/portal/VirtualBufferStorage.java deprecated/
-mv src/main/java/com/mukulramesh/fpscompress/capabilities/Virtual*.java deprecated/
-mv src/main/java/com/mukulramesh/fpscompress/spatial/CapabilityRouter.java deprecated/
+**Status**: ✅ **COMPLETE** - All deprecated files deleted from project (2026-05-12)
 
-# Remove old testing docs
-mv TESTING_*.md deprecated/
-mv STORAGE_VIEWER_FEATURE.md deprecated/
-mv TEST_BUFFER_CAPACITY.md deprecated/
-```
+Previously archived (2026-04-28), now deleted (preserved in git history):
+- VirtualBufferStorage.java
+- Virtual*.java (ItemHandler, FluidHandler, EnergyStorage)
+- CapabilityRouter.java
+- BufferTestCommand.java
+- All TESTING_*.md docs
+- All deprecated documentation (24 files total)
+
+See commit `11737a0` in git history to restore if needed.
 
 ### Step 3: Implement New Architecture
 Follow TODO.md phases:
@@ -366,11 +365,11 @@ During CACHED, fractional accumulators run in parallel for each resource.
 5. Easier to understand (pipes concept familiar to players)
 
 **Migration Path**:
-1. Archive old virtual buffer code
-2. Implement face config system
-3. Implement transport logic
-4. Implement rate measurement + caching (unchanged)
-5. Implement GUI (last step)
+1. ✅ Delete old virtual buffer code (preserved in git history)
+2. ✅ Implement face config system
+3. ✅ Implement transport logic
+4. ✅ Implement rate measurement + caching (unchanged)
+5. ✅ Implement GUI (last step)
 
 ---
 

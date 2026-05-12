@@ -54,11 +54,9 @@
 - 📘 **CLAUDE.md** - Project guidelines and build commands
 - 📘 **CM_API_INTEGRATION.md** - Compact Machines integration details
 - 📘 **ARCHITECTURE_PIVOT.md** - Why we changed architectures (history)
-- 📘 **CLEANUP_SUMMARY.md** - What was archived (history)
+- 📘 **CLEANUP_SUMMARY.md** - What was deleted (history)
 
-### Deprecated Documentation
-- 📦 **TODO.md** - OLD roadmap (points to TODO.md)
-- 📦 **fpscompress-template-1.21.11/deprecated/** - Archived code and docs
+### Meta Documentation
 
 ### Meta Documentation
 - 📄 **notes.md** - Original design notes
@@ -111,16 +109,16 @@ Located in `fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompre
 - `portal/FPSDataAttachments.java` ✅ Block entity data
 - `debug/Dev2TestCommands.java` ✅ Debug commands
 
-### Archived Files (23 files)
-Located in `fpscompress-template-1.21.11/deprecated/`
+### Deleted Files (24 files)
+Removed from project (preserved in git history - commit `11737a0`)
 
-**Java files** (8):
+**Java files** (10):
 - Virtual buffer storage system
 - Capability routers
 - Old test commands
 - Unused interfaces
 
-**Documentation** (15):
+**Documentation** (14):
 - Old testing guides
 - Implementation notes from virtual buffer architecture
 - Deprecated handoff docs
@@ -179,11 +177,8 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 ### Q: Where do I start coding?
 **A**: Read MVP_SCOPE.md, then follow TODO.md Phase 1 (Face Config Data Structures).
 
-### Q: Why is there deprecated code?
-**A**: Architecture changed from virtual buffer storage to conduit transport. Old code archived, not deleted.
-
-### Q: Can I delete the deprecated folder?
-**A**: Not yet. Wait until MVP is stable and tested. See `deprecated/README.md` for details.
+### Q: Why was code deleted?
+**A**: Architecture changed from virtual buffer storage to conduit transport. Old code removed to reduce project clutter. All files preserved in git history (commit `11737a0`).
 
 ### Q: What's the goal of this mod?
 **A**: Cache factory production rates so factories can run without loading chunks (performance optimization).
@@ -213,7 +208,6 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 
 ### Code
 - [Source files](../fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/) - Active code
-- [Deprecated code](../fpscompress-template-1.21.11/deprecated/) - Archived code
 
 ### Build
 ```bash

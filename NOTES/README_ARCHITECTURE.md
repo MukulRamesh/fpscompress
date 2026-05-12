@@ -221,16 +221,17 @@ src/main/java/com/mukulramesh/fpscompress/
     └── FaceEnergyStorage.java          # Per-face IEnergyStorage
 ```
 
-### Deprecated Files (Old Architecture)
-```
-deprecated/
-├── VirtualBufferStorage.java           # Old: Unlimited storage
-├── VirtualItemHandler.java             # Old: Smart extraction
-├── VirtualFluidHandler.java            # Old: Fluid storage
-├── VirtualEnergyStorage.java           # Old: Energy storage
-├── CapabilityRouter.java               # Old: Complex routing
-└── BufferTestCommand.java              # Old: Buffer tests
-```
+### Deleted Files (Old Architecture)
+**Note**: All files deleted from project (preserved in git history - commit `11737a0`)
+
+Previously removed:
+- VirtualBufferStorage.java - Old unlimited storage system
+- VirtualItemHandler.java - Old smart extraction
+- VirtualFluidHandler.java - Old fluid storage
+- VirtualEnergyStorage.java - Old energy storage
+- CapabilityRouter.java - Old complex routing
+- BufferTestCommand.java - Old buffer tests
+- And 18+ other deprecated files
 
 ---
 
