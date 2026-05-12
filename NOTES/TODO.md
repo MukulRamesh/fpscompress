@@ -50,7 +50,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - "Filter" implies blocking unwanted items; "frequency" implies selective transport
 - Visual indicator reinforces the concept (item appears on block faces)
 
-### Post-MVP: Factory Controller Block
+### Factory Controller Block
 - [ ] Factory Controller block:
   - Inventory that accepts PreFab items
   - Each PreFab item in inventory runs its cached production
@@ -62,7 +62,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - Trade PreFabs with other players
   - Store inactive factories compactly
 
-### Post-MVP: External Mod Integrations
+### External Mod Integrations
 **All external mod integration is OUT OF SCOPE for MVP**
 - [ ] AE2 integration (Applied Energistics 2)
 - [ ] Refined Storage integration
@@ -70,7 +70,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - [ ] Create mod integration
 - [ ] Any other mod-specific features
 
-### Post-MVP: HALTED Recovery Optimizations
+### HALTED Recovery Optimizations
 
 **v1.1 - Inventory Change Listeners**:
 - [ ] Implement `INotifyingItemHandler` listener registration
@@ -106,7 +106,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Priority**: MEDIUM (MVP backoff sufficient, these are polish)
 **Performance gain**: Current 99% → Post-MVP 99.9%+
 
-### Post-MVP: Per-Face Resource Filters
+### Per-Face Resource Filters
 **Status**: Not started
 **Goal**: Allow PreFab faces to filter specific items/fluids instead of accepting ALL
 
@@ -133,9 +133,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Estimated effort**: 1 week
 **Priority**: MEDIUM (nice-to-have, not required for basic caching)
 
----
-
-### Post-MVP: Face Priority System
+### Face Priority System
 **Status**: Not started
 **Goal**: Control which PreFab face is checked first when multiple faces can handle a resource
 
@@ -161,9 +159,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Estimated effort**: 3-4 days
 **Priority**: LOW (workaround: configure only one PUSH face per resource)
 
----
-
-### Post-MVP: Anti-Cheat Validation
+### Anti-Cheat Validation
 **Status**: Not started
 **Goal**: Detect hidden batteries/storage during SIMULATING phase
 
@@ -189,9 +185,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Estimated effort**: 2-3 weeks
 **Priority**: LOW (trust players for now, address exploits post-release if needed)
 
----
-
-### Post-MVP: Network Visualization
+### Network Visualization
 **Status**: Not started
 **Goal**: In-game overlay showing resource flow between PreFab faces and Importers/Exporters
 
@@ -219,9 +213,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Estimated effort**: 1-2 weeks
 **Priority**: LOW (debug feature, not gameplay-critical)
 
----
-
-### Post-MVP: Statistics Tracking
+### Statistics Tracking
 **Status**: Not started
 **Goal**: Track cumulative statistics for each PreFab (total resources transported, uptime, etc.)
 
