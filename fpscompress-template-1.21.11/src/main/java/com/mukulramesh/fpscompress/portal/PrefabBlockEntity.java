@@ -1239,14 +1239,34 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             if (config.getMode() == FaceMode.PULL) {
                 // PULL face links to Importer - scan its buffer
                 ImporterBlockEntity importer = findImporterByUUID(cmLevel, targetUUID);
+                if (importer == null) {
+                    // Cache miss - try building cache from registry
+                    ImporterExporterRegistry.Entry entry = ImporterExporterRegistry.getImporter(targetUUID);
+                    if (entry != null) {
+                        cacheImporterPosition(targetUUID, entry.pos());
+                        importer = findImporterByUUID(cmLevel, targetUUID);
+                    }
+                }
                 if (importer != null) {
                     scanImporterBuffer(importer, totals);
+                } else {
+                    FPSCompress.LOGGER.warn("Failed to find Importer {} for buffer scan", targetUUID);
                 }
             } else if (config.getMode() == FaceMode.PUSH) {
                 // PUSH face links to Exporter - scan its buffer
                 ExporterBlockEntity exporter = findExporterByUUID(cmLevel, targetUUID);
+                if (exporter == null) {
+                    // Cache miss - try building cache from registry
+                    ImporterExporterRegistry.Entry entry = ImporterExporterRegistry.getExporter(targetUUID);
+                    if (entry != null) {
+                        cacheExporterPosition(targetUUID, entry.pos());
+                        exporter = findExporterByUUID(cmLevel, targetUUID);
+                    }
+                }
                 if (exporter != null) {
                     scanExporterBuffer(exporter, totals);
+                } else {
+                    FPSCompress.LOGGER.warn("Failed to find Exporter {} for buffer scan", targetUUID);
                 }
             }
         }
