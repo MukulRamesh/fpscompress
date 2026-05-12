@@ -50,6 +50,131 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - "Filter" implies blocking unwanted items; "frequency" implies selective transport
 - Visual indicator reinforces the concept (item appears on block faces)
 
+### PreFab Blueprint System (Scanner & Printer)
+**Status**: Not started
+**Goal**: Scan PreFab factories to create blueprints, then print copies with resource costs
+
+**Block: PreFab Scanner/Printer** (dual-mode operation)
+
+**Mode 1: Scanning (PreFab → Blueprint)**
+- Input: PreFab item (with cached rates and room linkage)
+- Player clicks "Scan" button in GUI
+- Scans CM room for:
+  - All blocks (type, position, blockstate, NBT data)
+  - All items in inventories (using existing InventoryScanner)
+  - Room dimensions (sizeX, sizeY, sizeZ)
+- Stores scan data in new item: **PreFab Blueprint**
+- Blueprint contains:
+  - Cached rates (copied from input PreFab)
+  - Full block list (resource ID → count)
+  - Full item list (resource ID → count)
+  - Room dimensions
+  - Optional: Structure NBT (for exact reconstruction)
+- Output: PreFab Blueprint item (input PreFab consumed)
+
+**Mode 2: Printing (Blueprint + Resources → PreFab)**
+- Input: PreFab Blueprint item
+- GUI displays required resources:
+  - All blocks from scan (e.g., 200x Stone, 50x Glass, 10x Chest)
+  - All items from scan (e.g., 64x Coal, 32x Iron Ore)
+  - Constant costs (configurable): 1x PreFab Upgrade Template, 8x Diamond, etc.
+- Player inserts resources into block's inventory (9x9 grid or larger)
+- When all resources present, "Print" button becomes enabled
+- Player clicks "Print" → Block consumes resources and produces:
+  - **Output PreFab** (item, not placed block):
+    - Has cached rates from blueprint
+    - Has NO room linkage (roomCode = null, roomCenter = null)
+    - State = CACHED (ready to use immediately)
+    - Can be placed anywhere or inserted into Fractal Factory
+- Blueprint is NOT consumed (reusable template)
+
+**Implementation**:
+- [ ] Create `PreFabScannerBlock` and `PreFabScannerBlockEntity`
+- [ ] Add inventory slots:
+  - [ ] 1 input slot (accepts PreFab OR Blueprint)
+  - [ ] 1 output slot (outputs Blueprint OR PreFab)
+  - [ ] 27+ resource slots (for printing materials)
+- [ ] Create new item: `PreFabBlueprintItem`
+  - [ ] Custom item with NBT data storage
+  - [ ] Tooltip shows required resources summary
+  - [ ] Tooltip shows cached rates preview
+  - [ ] Optional: Fancy texture (rolled-up blueprint aesthetic)
+- [ ] Scanning logic:
+  - [ ] Detect PreFab in input slot
+  - [ ] GUI shows "Scan" button (manual trigger to avoid lag)
+  - [ ] On button click:
+    - [ ] Read roomCode from PreFab
+    - [ ] Load CM dimension and locate room
+    - [ ] Perform async scan (blocks + items, reuse InventoryScanner)
+    - [ ] Generate PreFab Blueprint item with scan data
+    - [ ] Place blueprint in output slot
+    - [ ] Consume input PreFab
+    - [ ] Chat feedback: "Blueprint created: X blocks, Y items"
+- [ ] Printing logic:
+  - [ ] Detect Blueprint in input slot
+  - [ ] Read required resources from blueprint NBT
+  - [ ] Add constant costs from config (PreFab Upgrade Template, etc.)
+  - [ ] GUI shows resource checklist:
+    - [ ] Green checkmark if resource present in inventory
+    - [ ] Red X if missing (shows needed vs. available)
+    - [ ] Progress bar: "15/20 resources satisfied"
+  - [ ] Enable "Print" button when all resources present
+  - [ ] On button click:
+    - [ ] Consume all required resources from inventory
+    - [ ] Create new PreFab item with:
+      - [ ] Cached rates from blueprint
+      - [ ] No room linkage (roomCode = null)
+      - [ ] State = CACHED
+      - [ ] Schema version = 1
+    - [ ] Place PreFab in output slot
+    - [ ] Keep blueprint in input slot (reusable)
+    - [ ] Chat feedback: "PreFab printed successfully"
+- [ ] Configuration:
+  - [ ] Add config option for constant costs (default: 1x PreFab Upgrade Template)
+  - [ ] Add config option for resource multiplier (e.g., 0.5x = half resources needed)
+  - [ ] Add config option to enable/disable blueprint reusability
+- [ ] Visual/Audio feedback:
+  - [ ] Scanning: Progress bar with spinning animation
+  - [ ] Printing: Crafting animation with particle effects
+  - [ ] Sound effects for scan/print completion
+- [ ] NBT serialization:
+  - [ ] Blueprint item stores all scan data
+  - [ ] Scanner block stores current mode and progress
+- [ ] Test cases:
+  - [ ] Scan simple PreFab (5x5x5 room) → Creates blueprint
+  - [ ] Print from blueprint with sufficient resources → Creates PreFab copy
+  - [ ] Print with insufficient resources → Button disabled
+  - [ ] Printed PreFab has identical rates to original
+  - [ ] Printed PreFab has no room linkage (can't enter CM room)
+  - [ ] Insert printed PreFab into Fractal Factory → Works normally
+  - [ ] Break scanner block mid-scan → Cancels cleanly
+
+**Use Cases**:
+- **Mass production**: Scan one PreFab, print many copies for Fractal Factories
+- **Trading**: Share blueprints with other players (blueprint is tradeable)
+- **Backups**: Create blueprints of valuable factories before modifying
+- **Resource sink**: Printing requires rebuilding the factory (balances automation)
+- **Fractional Factory fuel**: Printed PreFabs can be "eaten" by Fractal Factories
+
+**Integration with Fractal Factory**:
+1. Build factory in CM room, configure PreFab
+2. Run simulation, get CACHED rates
+3. Scan PreFab → Creates blueprint
+4. Print blueprint multiple times (consumes resources each time)
+5. Insert printed PreFabs into Fractal Factory
+6. Fractal Factory absorbs rates, produces autonomously
+
+**Design Rationale**:
+- **Why separate scan/print**: Scanning is expensive (async), printing is cheap (local inventory check)
+- **Why consume PreFab on scan**: Prevents scanning same PreFab repeatedly (blueprint is the reusable copy)
+- **Why require full resources**: Balances automation power (can't duplicate factories for free)
+- **Why no room linkage on printed PreFabs**: Prevents CM room conflicts (multiple PreFabs can't link to same room)
+- **Why CACHED state on printed PreFabs**: Ready to use immediately (no re-simulation needed)
+- **Why reusable blueprints**: Encourages blueprint trading/sharing
+
+**Estimated effort**: 2-3 weeks
+**Priority**: MEDIUM-HIGH (enables Fractal Factory mass production, good progression system)
+
 ### Fractal Factory Block
 **Status**: Not started
 **Goal**: Simple single-slot block that "eats" PreFabs and produces their outputs autonomously
