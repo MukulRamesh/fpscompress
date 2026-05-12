@@ -531,22 +531,24 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ## 🗑️ Deprecated Code (Keep for Reference)
 
-### Archived Files (Old Virtual Buffer Architecture)
-**Status**: ✅ **COMPLETE** - All deprecated files moved to `fpscompress-template-1.21.11/deprecated/`
+### Deleted Files (Old Virtual Buffer Architecture)
+**Status**: ✅ **COMPLETE** - All deprecated files removed from project (preserved in git history)
 
-**Java Files Archived**:
-- [x] `portal/VirtualBufferStorage.java` → `deprecated/portal/`
-- [x] `capabilities/VirtualItemHandler.java` → `deprecated/capabilities/`
-- [x] `capabilities/VirtualFluidHandler.java` → `deprecated/capabilities/`
-- [x] `capabilities/VirtualEnergyStorage.java` → `deprecated/capabilities/`
-- [x] `spatial/CapabilityRouter.java` → `deprecated/spatial/`
-- [x] `debug/BufferTestCommand.java` → `deprecated/debug/`
+**Java Files Deleted**:
+- [x] `portal/VirtualBufferStorage.java` - Was storing items/fluids/energy
+- [x] `capabilities/VirtualItemHandler.java` - Replaced by direct transport
+- [x] `capabilities/VirtualFluidHandler.java` - Replaced by direct transport
+- [x] `capabilities/VirtualEnergyStorage.java` - Replaced by direct transport
+- [x] `spatial/CapabilityRouter.java` - Complex routing no longer needed
+- [x] `debug/BufferTestCommand.java` - Was testing virtual buffers
 
-**Documentation Files Archived**:
-- [x] `TESTING_CAPABILITY_REGISTRATION.md` → `deprecated/docs/`
-- [x] `TESTING_QUICK_START.md` → `deprecated/docs/`
-- [x] `STORAGE_VIEWER_FEATURE.md` → `deprecated/docs/`
-- [x] `TEST_BUFFER_CAPACITY.md` → `deprecated/docs/`
+**Documentation Files Deleted**:
+- [x] `TESTING_CAPABILITY_REGISTRATION.md` - Outdated testing guide
+- [x] `TESTING_QUICK_START.md` - Outdated quickstart
+- [x] `STORAGE_VIEWER_FEATURE.md` - No storage to view
+- [x] `TEST_BUFFER_CAPACITY.md` - No capacity limits to test
+
+**Note**: All files are preserved in git history if ever needed for reference.
 
 **Files to Keep (Reuse)**:
 - ✅ `portal/PrefabBlock.java` - Reuse for GUI trigger
