@@ -21,10 +21,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ## 🔲 Pending Tasks
 
-### Polish & UX Improvements
-- [ ] Create texture for PreFab block (currently purple/black checkerboard)
-- [ ] Add localization entries
-
 ### Post-MVP: Factory Controller Block
 - [ ] Factory Controller block:
   - Inventory that accepts PreFab items
@@ -516,7 +512,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Performance**: O(1) filtering via HashMap secondary index - scales to thousands of gates with no degradation
 
 ### 3. Completed Polish & UX
-**Status**: ✅ **COMPLETE**
+**Status**: ✅ **COMPLETE** (2026-05-12)
 - [x] Add status display (Right-click PreFab without wrench):
   - Show current state (BUILDING/SIMULATING/CACHED/HALTED)
   - Show configured faces and their modes
@@ -526,6 +522,15 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - Show state
   - Show room code
   - Show number of configured faces
+- [x] Create texture for PreFab block (replaced purple/black checkerboard with custom textures)
+  - Added [prefab_front.png](../fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/textures/block/prefab_front.png)
+  - Added [prefab_side.png](../fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/textures/block/prefab_side.png)
+  - Added [prefab_top.png](../fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/textures/block/prefab_top.png)
+- [x] Add localization entries ([en_us.json](../fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/lang/en_us.json))
+  - Block and item names
+  - Tooltips for items
+  - UI messages (upgrade installed, simulation states, etc.)
+  - State names (Building, Simulating, Cached, Halted)
 
 ---
 
