@@ -1,81 +1,647 @@
-# FPSCompress TODO - DEPRECATED
+# FPSCompress TODO List - Conduit Architecture
 
-**Date**: 2026-04-28  
-**Status**: This file is DEPRECATED
+**Last Updated**: 2026-05-12 (Restructured: Uncompleted items at top)
+**Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)
+**Current Phase**: MVP COMPLETE ✅ + Post-MVP Room Filtering ✅
 
----
-
-## ⚠️ Architecture Changed
-
-The original virtual buffer storage architecture has been replaced with a **conduit-based caching system**.
-
-**See new documentation**:
-- **MVP_SCOPE.md** - What's in/out of MVP scope (START HERE)
-- **TODO_NEW.md** - New implementation roadmap
-- **ARCHITECTURE_CONDUIT.md** - Complete conduit system specification
-- **ARCHITECTURE_PIVOT.md** - Why we changed and migration guide
-- **CLAUDE.md** - Updated project overview
-
----
-
-## Key Changes
-
-### Old Architecture (DEPRECATED)
-- ❌ PreFabs stored items/fluids/energy in unlimited virtual buffers
-- ❌ Complex capability routing with smart extraction
-- ❌ VirtualBufferStorage class with Map<String, Integer> storage
-
-### New Architecture (CURRENT)
-- ✅ PreFabs are cross-dimensional conduits (no internal storage)
-- ✅ Face configuration system (6 faces, PULL/PUSH modes)
-- ✅ Direct transport between Overworld and CM dimension
-- ✅ Rate measurement → Cached production using fractional math
-
-### What This Means
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
-**Everything else** (GUIs, features, integrations) exists only to enable caching. MVP focuses on getting caching to work for ONE PreFab block.
+---
+
+## 📋 Document Organization
+
+This TODO list is organized with **uncompleted items at the top** for quick reference, followed by completed phases and documentation in the same order below. Jump to:
+- [Pending Tasks](#-pending-tasks) - What's left to do
+- [MVP Implementation](#-mvp-implementation-focus-here-first) - Completed phases
+- [Post-MVP Features](#-post-mvp-features-implement-after-mvp-works) - Future enhancements
+- [Testing Plan](#-testing-plan-mvp) - Test scenarios
+- [Reference Documents](#-reference-documents) - Related docs
 
 ---
 
-## Files to Remove
+## 🔲 Pending Tasks
 
-The following files/features from old architecture are deprecated:
+### Files to Remove (Old Virtual Buffer Architecture)
+**Status**: Not yet removed
+- [ ] `portal/VirtualBufferStorage.java` - Was storing items/fluids/energy, now we transport directly
+- [ ] `capabilities/VirtualItemHandler.java` - Replaced by FaceItemHandler
+- [ ] `capabilities/VirtualFluidHandler.java` - Replaced by FaceFluidHandler
+- [ ] `capabilities/VirtualEnergyStorage.java` - Replaced by FaceEnergyStorage
+- [ ] `spatial/CapabilityRouter.java` - Complex routing no longer needed
+- [ ] `debug/BufferTestCommand.java` - Was testing virtual buffers
+- [ ] `TESTING_CAPABILITY_REGISTRATION.md` - Outdated testing guide
+- [ ] `TESTING_QUICK_START.md` - Outdated
+- [ ] `STORAGE_VIEWER_FEATURE.md` - No storage to view
+- [ ] `TEST_BUFFER_CAPACITY.md` - No capacity limits to test
 
-### Code Files (Move to deprecated/)
-- `portal/VirtualBufferStorage.java`
-- `capabilities/VirtualItemHandler.java`
-- `capabilities/VirtualFluidHandler.java`
-- `capabilities/VirtualEnergyStorage.java`
-- `spatial/CapabilityRouter.java`
-- `debug/BufferTestCommand.java`
+### Polish & UX Improvements
+- [ ] Create texture for PreFab block (currently purple/black checkerboard)
+- [ ] Add localization entries
 
-### Documentation Files
-- `TESTING_CAPABILITY_REGISTRATION.md`
-- `TESTING_QUICK_START.md`
-- `STORAGE_VIEWER_FEATURE.md`
-- `TEST_BUFFER_CAPACITY.md`
-- `DEV2_IMPLEMENTATION.md` (chunk loading info moved to CLAUDE.md)
-- `DEV2_INTEGRATION_COMPLETE.md`
-- `DEV2_QA_SUMMARY.md`
-- `QA_TESTING_GUIDE_DEV2.md`
+### Post-MVP: Factory Controller Block
+- [ ] Factory Controller block:
+  - Inventory that accepts PreFab items
+  - Each PreFab item in inventory runs its cached production
+  - Controller manages chunk loading for all PreFabs
+  - Controller exposes unified AE2 interface
+- [ ] Benefits:
+  - Portable factories (carry in inventory, ender chest, etc.)
+  - Multiple factories in one Controller
+  - Trade PreFabs with other players
+  - Store inactive factories compactly
+
+### Post-MVP: External Mod Integrations
+**All external mod integration is OUT OF SCOPE for MVP**
+- [ ] AE2 integration (Applied Energistics 2)
+- [ ] Refined Storage integration
+- [ ] Mekanism pipes/conduits
+- [ ] Create mod integration
+- [ ] Any other mod-specific features
+
+### Post-MVP: HALTED Recovery Optimizations
+
+**v1.1 - Inventory Change Listeners**:
+- [ ] Implement `INotifyingItemHandler` listener registration
+- [ ] Subscribe to inventory change events from adjacent blocks
+- [ ] Zero overhead when inventories static, instant recovery on change
+- [ ] Fallback to backoff for non-notifying inventories
+- [ ] Expected gain: 50-90% reduction over backoff alone
+
+**v1.1 - Smart Selective Checking**:
+- [ ] Track which specific resource caused HALT (`haltedResourceId`)
+- [ ] Only check relevant faces (PULL for inputs, PUSH for outputs)
+- [ ] Reduces checks from N resources × 6 faces to 1 resource × 1-2 faces
+- [ ] Combine with exponential backoff for best results
+
+**v1.1 - Periodic Full Scan (Safety Net)**:
+- [ ] Full scan every 12000 ticks (10 minutes) regardless of backoff
+- [ ] Prevents edge cases where optimizations fail
+- [ ] Negligible overhead, pure safety measure
+
+**v1.2 - Player Proximity Detection**:
+- [ ] Adjust max backoff based on player distance
+- [ ] Fast recovery (20 ticks) when player within 16 blocks
+- [ ] Slow recovery (200 ticks) when no players nearby
+- [ ] 10x better performance for AFK scenarios
+
+**v1.3 - Redstone Signal Trigger**:
+- [ ] Apply redstone signal to PreFab → forces immediate retry
+- [ ] Perfect for automation: item detector → redstone → PreFab
+- [ ] Add debounce (max 1 trigger per second)
+- [ ] Optional advanced feature, documented in tooltip
+
+**Estimated effort**: 2-3 weeks total (1 week per version)
+**Priority**: MEDIUM (MVP backoff sufficient, these are polish)
+**Performance gain**: Current 99% → Post-MVP 99.9%+
+
+### Post-MVP: Advanced Features
+- [ ] Item/fluid whitelist filters (per-face)
+- [ ] Blacklist filters
+- [ ] Priority system (which face to prioritize)
+- [ ] Anti-cheat validation (detect hidden batteries during SIMULATING)
+- [ ] Network view (visualize resource flow)
+- [ ] Statistics tracking (total resources transported)
 
 ---
 
-## Next Steps
+## 🎯 MVP Implementation (Focus Here First)
 
-1. **Read MVP_SCOPE.md** to understand what we're building
-2. **Follow TODO_NEW.md** for implementation phases
-3. **Reference ARCHITECTURE_CONDUIT.md** for technical details
-4. **Don't implement anything marked "Post-MVP"** until core caching works
+**MVP Scope**: Get ONE PreFab block to cache production rates correctly.
+
+**Explicitly OUT of scope for MVP**:
+- ❌ AE2 integration
+- ❌ Factory Controller block
+- ❌ Multiple PreFab management
+- ❌ Refined Storage integration
+- ❌ Any other mod integrations
+- ❌ PreFab-as-item portability system
+- ❌ Advanced filters (item/fluid whitelists)
+- ❌ Anti-cheat validation (trust players for MVP)
+
+**MVP Delivers**:
+- ✅ One PreFab block in the world
+- ✅ Configure its 6 faces (PULL/PUSH/DISABLED)
+- ✅ Transport resources between Overworld and CM dimension
+- ✅ Measure production rates (SIMULATING state)
+- ✅ Run cached production using math (CACHED state, chunks unloaded)
+- ✅ Vanilla compatibility only (hoppers, chests, furnaces)
 
 ---
 
-## Quick Summary
+## 🎯 MVP Implementation (Focus Here First)
 
-**What changed**: From storage-based to transport-based architecture  
-**Why**: Better aligned with goal (caching, not storing)  
-**Impact**: Simpler code, smaller NBT, no extraction ambiguity  
-**Status**: Starting fresh with new implementation plan  
+### Phase 1: Face Configuration + Adjacent Block Detection (De-risk)
+**Status**: ✅ **COMPLETE** (2026-05-02)
+**Goal**: Prove PreFab can detect adjacent blocks and faces work correctly
 
-**Read MVP_SCOPE.md to get started!**
+**Why this first**: De-risk the core concept before building Importers/Exporters
+
+**Tasks - Part A: Data Structures**:
+- [x] Create `portal/FaceMode.java` enum (DISABLED, PULL, PUSH)
+- [x] Create `portal/ResourceFilter.java` enum (ALL, ITEMS, FLUIDS, ENERGY)
+- [x] Create `portal/FaceConfig.java` data class with NBT serialization
+- [x] Modify `portal/PreFabBlockEntity.java`:
+  - Added `Map<Direction, FaceConfig> faceConfigs` field
+  - Initialize all 6 faces to DISABLED in constructor
+  - Implemented NBT `saveAdditional()` and `loadAdditional()`
+  - Added client sync methods (`getUpdatePacket()`, `getUpdateTag()`, `handleUpdateTag()`)
+
+**Tasks - Part B: Adjacent Block Detection (Debug)**:
+- [x] Add `debugAdjacentBlocks(Player player)` method to `PreFabBlockEntity`
+  - Queries IItemHandler, IFluidHandler, IEnergyStorage capabilities
+  - Displays results in chat with color-coded symbols
+- [x] Modify `PrefabBlock.useWithoutItem()`:
+  - Right-click PreFab without wrench → Calls `debugAdjacentBlocks(player)`
+  - Checks for Simulation Wrench and returns PASS if held (allows wrench interaction)
+
+**Tasks - Part C: Simple Face Config GUI**:
+- [x] Create `gui/PreFabConfigScreen.java`:
+  - 6 face selection buttons (NORTH/SOUTH/EAST/WEST/UP/DOWN)
+  - Mode buttons (DISABLED/PULL/PUSH) with green highlighting for active selection
+  - Filter buttons (ALL/ITEMS/FLUIDS/ENERGY) with green highlighting
+  - Save button (also auto-saves on ESC/GUI close)
+  - Defaults to clicked face when opened
+- [x] Create `gui/PreFabConfigMenu.java`:
+  - Server-side container menu
+  - Loads configs from BlockEntity on open
+  - Creates defensive copies to prevent direct BlockEntity modification
+- [x] Create `network/FaceConfigPacket.java`:
+  - Client → Server sync packet
+  - Uses CustomPacketPayload with StreamCodec
+  - Defensive copying to prevent internal representation exposure (spotbugs compliance)
+- [x] Modify `portal/SimulationWrenchItem.java`:
+  - Right-click → Opens face config GUI (sends BlockPos + Direction to client)
+  - Shift+right-click → Breaks PreFab block and drops as item
+  - Custom buffer writer for network sync (`buf.writeBlockPos()`, `buf.writeByte()`)
+- [x] Register client-side screen in `FPSCompressClient.java`
+- [x] Register network packet in `FPSCompress.java`
+- [x] Add `"id": "fpscompress:prefab"` to BlockEntity NBT for item serialization
+- [x] Test: Configure faces, close/reopen GUI → Configs persist ✓
+- [x] Test: Break PreFab → Drops with NBT data ✓
+- [x] Test: Quit to menu → No crashes ✓
+
+**De-risk Validation**:
+- ✅ Can detect adjacent chests/furnaces/hoppers
+- ✅ Can query their capabilities (Items/Fluids/Energy)
+- ✅ Face configs save/load correctly (NBT persistence)
+- ✅ Face configs sync client ↔ server correctly (BlockEntity sync)
+- ✅ GUI opens and works (network packet properly formatted)
+- ✅ Auto-save on ESC implemented
+- ✅ All code quality checks passing (checkstyle, spotbugs)
+
+**Bugs Fixed**:
+- Fixed crash on save: BlockEntity NBT missing "id" field
+- Fixed wrench not opening GUI: Block interaction consuming event before item
+- Fixed network protocol error: Menu constructor expected BlockPos + Direction, only received BlockPos
+- Fixed configs not persisting: Client BlockEntity not syncing from server
+- Added `getUpdatePacket()`, `getUpdateTag()`, `handleUpdateTag()` for proper client sync
+
+**Result**: ✅ Core concept validated - proceeding to Phase 2 (Importers/Exporters)
+
+---
+
+### Phase 2: Importer/Exporter Blocks
+**Status**: ✅ **COMPLETE** (2026-05-02)
+**Goal**: Create input/output gate blocks for CM dimension
+
+**Prerequisites**: Phase 1 complete (face config working, adjacent detection proven)
+
+**Tasks**:
+- [x] Create `portal/ImporterBlock.java` and `ImporterBlockEntity.java`:
+  - Acts as input gate in CM dimension
+  - Right-click with item to set filter → "Apple Importer" display name
+  - Has UUID for identification (unique per block)
+  - Internal buffer (9 slots for passthrough)
+  - Debug display shows UUID, filter, buffer contents
+- [x] Create `portal/ExporterBlock.java` and `ExporterBlockEntity.java`:
+  - Acts as output gate in CM dimension
+  - Actively pulls from adjacent machines every tick
+  - Has UUID for identification
+  - Internal buffer (9 slots for passthrough)
+  - Debug display shows UUID, filter, buffer, adjacent capabilities
+- [x] Create `portal/ImporterExporterRegistry.java`:
+  - Global registry tracking all Importers/Exporters
+  - Caches display names to avoid chunk loading issues
+  - Thread-safe ConcurrentHashMap implementation
+- [x] Register blocks in `FPSCompress.java`:
+  - Add IMPORTER_BLOCK and EXPORTER_BLOCK to DeferredRegister
+  - Add IMPORTER_BE and EXPORTER_BE BlockEntity types
+  - Add IMPORTER_ITEM and EXPORTER_ITEM to creative tab
+- [x] Test: Place Importer/Exporter in CM dimension, verify UUID generation ✓
+- [x] Test: Place chest next to Exporter, verify active pulling works ✓
+- [x] Test: Right-click Importer with apple, verify "Apple Importer" display ✓
+- [x] Add `findImporterByUUID(UUID)` and `findExporterByUUID(UUID)` to PreFabBlockEntity
+  - Implemented with O(1) caching for repeated lookups
+- [x] Update Phase 1 GUI to include Importer/Exporter linking:
+  - Link button cycles through available gates
+  - Shows display names instead of UUIDs/coordinates
+  - Client/server sync via packet buffer
+  - Cross-dimensional visibility working (registry caching)
+
+**Bugs Fixed**:
+- Fixed UUID duplication from creative mode middle-click
+- Fixed empty dropdown (client couldn't see registry)
+- Fixed chunk loading issues (display names now cached)
+- Fixed hardcoded stack size in Exporter pulling logic
+
+**Result**: ✅ Complete three-block system working - PreFab + Importer + Exporter with UUID linking
+
+---
+
+### Phase 3: Basic Transport Logic
+**Status**: ✅ **COMPLETE** (2026-05-02)
+**Goal**: Move resources between Overworld and CM dimension via Importer/Exporter gates
+
+**Prerequisites**: Phase 2 complete (Importers/Exporters working, UUID linking functional)
+
+**Implementation Strategy**:
+- PULL mode: Overworld chest → PreFab → find Importer by UUID → insert to Importer buffer
+- PUSH mode: find Exporter by UUID → extract from Exporter buffer → PreFab → Overworld chest
+- Exporters actively pull from adjacent machines (already implemented in Phase 2)
+- Importers actively push to adjacent machines (implemented in Phase 3)
+
+**Tasks**:
+- [x] Add ticker to `PrefabBlock.java`: Register server-side BlockEntityTicker
+- [x] Implement `tick()` in `PrefabBlockEntity.java`: Process all configured faces
+- [x] Implement PULL logic: Overworld → Importer
+- [x] Implement PUSH logic: Exporter → Overworld
+- [x] Add `getCMLevel()` helper method to PrefabBlockEntity
+- [x] Add `insertItem()` to ExporterBlockEntity (for remainder handling)
+- [x] Add `pushToAdjacentMachines()` to ImporterBlockEntity
+- [x] Add ticker to ImporterBlock for active pushing
+- [x] Test PULL mode: Overworld chest → Importer buffer ✓
+- [x] Test PUSH mode: Exporter buffer → Overworld chest ✓
+- [x] Test roundtrip: Full item flow working ✓
+- [x] Fix registry persistence bugs (moved to Block.onRemove())
+
+**Bugs Fixed**:
+- Registry unregistering on chunk unload (moved to Block.onRemove())
+- Infinite loop from getBlockState() loading chunks
+- Importer not pushing to adjacent machines (added active pushing)
+- ExporterBlockEntity missing public insertItem() method
+
+**Result**: ✅ Complete item flow working:
+1. PreFab PULL: Overworld chest → Importer buffer
+2. Importer PUSH: Buffer → Adjacent machine (furnace, etc.)
+3. Exporter PULL: Adjacent machine → Exporter buffer
+4. PreFab PUSH: Exporter buffer → Overworld chest
+
+**Known Limitations** (will address in Phase 4-5):
+- CM chunks must stay loaded for transport to work
+- No rate measurement yet
+- No cached production yet
+- Limit items moved per tick (64 max for MVP)
+
+---
+
+### Phase 4: Rate Measurement (SIMULATING State)
+**Status**: ✅ **COMPLETE** (2026-05-03)
+**Goal**: Record actual transport rates while CM chunks are loaded
+
+**Implementation Approach**: Use delta accounting (see VALIDATION_DELTA_ACCOUNTING.md)
+- Track four quantities: Imported, Exported, Initial State, Final State
+- Calculate net production: `Net = (Final - Initial) + (Exported - Imported)`
+- Positive = produced, Negative = consumed, Zero = passthrough
+
+**Tasks**:
+- [x] Create `portal/ResourceDeltaTracker.java`:
+  - Track totalImported, totalExported per resource type (MVP simplified - no inventory scanning)
+  - Methods: `recordImport()`, `recordExport()`, `calculateNet()`, `getAllTrackedResources()`
+  - NBT serialization for crash recovery
+- [x] Add delta tracker to PreFabBlockEntity with timing fields:
+  - `ResourceDeltaTracker deltaTracker`
+  - `long simulationStartTick` (when SIMULATING started)
+  - `long simulationEndTick` (when SIMULATING ended)
+  - `long cachedStateStartTick` (when CACHED started)
+  - `Map<String, Long> cachedProduction` (accumulated during CACHED)
+  - `String lastSimulationResult` (GUI display of last result)
+- [x] Restrict transport to SIMULATING state only (keep items visible in Overworld until simulation starts)
+- [x] Hook delta tracking into transport logic:
+  - Call `deltaTracker.recordImport()` after successful PULL transport
+  - Call `deltaTracker.recordExport()` after successful PUSH transport
+- [x] Implement state transition methods in PreFabBlockEntity:
+  - `startSimulation()`: BUILDING → SIMULATING (loads CM chunks, resets tracker)
+  - `finishSimulation()`: SIMULATING → CACHED/HALTED/BUILDING (calculates rates, unloads chunks)
+  - `resetToBuilding()`: CACHED → BUILDING (clears rates, keeps chunks UNLOADED)
+  - `resumeSimulation()`: HALTED → SIMULATING (resume measurement)
+- [x] Calculate rates using MVP formula: `Net = Exported - Imported`
+  - Positive = Factory produced (output)
+  - Negative = Factory consumed (input)
+  - Zero = Passthrough (no production/consumption)
+- [x] Handle edge cases:
+  - No activity (no imports AND no exports) → HALTED state
+  - Passthrough (imports = exports, net = 0) → BUILDING state (reset and reconfigure)
+  - Production detected (net ≠ 0) → CACHED state (success)
+- [x] Create Status GUI system:
+  - `gui/PreFabStatusScreen.java` - Client-side GUI with live updates
+  - `gui/PreFabStatusMenu.java` - Server-side container menu
+  - `network/StatusGuiSyncPacket.java` - Server → Client sync every tick (9 fields)
+  - `network/SimulationControlPacket.java` - Client → Server state transition trigger
+- [x] Implement Status GUI features:
+  - Right-click PreFab without wrench → Opens status/control GUI
+  - Live display during SIMULATING: Elapsed ticks, imported/exported counts (all players)
+  - Live display during CACHED (creative): Simulation Time, Cached Ticks, production counts, rates
+  - Live display during CACHED (survival): Rates only (no timing/count info)
+  - Localized item names using BuiltInRegistries
+  - Comprehensive tooltips explaining each field
+  - Last simulation result display (Success/Passthrough/No activity)
+- [x] Update face config GUI:
+  - Remove Mode and Filter buttons (moved to linking phase)
+  - Keep face selection + link button + save only
+- [x] NBT serialization for all new fields (survives world reload)
+- [x] All linters passing (checkstyle, spotbugs, compileJava)
+
+---
+
+### Phase 5: Cached Production (Fractional Math)
+**Status**: ✅ **COMPLETE** (2026-05-03)
+**Goal**: Simulate production using cached rates without loading CM chunks
+
+**Tasks**:
+- [x] Add fractional accumulator field: `Map<String, Double> itemAccumulators`
+- [x] Modify `tick()` to handle CACHED state separately
+- [x] Implement `tickCachedProduction()` method:
+  - Accumulate fractional rates: `accum += rate`
+  - When `|accum| >= 1.0`: Extract whole units and transfer
+  - Handle positive rates (outputs) and negative rates (inputs)
+- [x] Implement `transferCachedOutput()`:
+  - Find PUSH faces that can accept the resource
+  - Insert into Overworld adjacent blocks via IItemHandler
+  - Track production counts for GUI display
+  - Return false if output blocked (triggers HALTED)
+- [x] Implement `transferCachedInput()`:
+  - Find PULL faces that can provide the resource
+  - Extract from Overworld adjacent blocks via IItemHandler
+  - Return false if input starved (triggers HALTED)
+- [x] Implement cache breaking:
+  - If transfer fails → Put items back in accumulator (don't lose progress)
+  - Enter HALTED state with message: "Cache broke - check inputs/outputs"
+  - **CM chunks stay UNLOADED** (no setRoomChunkState call)
+- [x] NBT serialization for itemAccumulators (survives world reload)
+- [x] Clear accumulators in `resetToBuilding()`
+- [x] All linters passing (checkstyle, spotbugs, compileJava)
+
+**Result**: ✅ Core caching system working - factories run virtually without CM chunks loaded!
+
+**Post-MVP Enhancement** (2026-05-08): ✅ Importer/Exporter Buffer Scanning
+- [x] Added `scanImporterExporterBuffers()` method to scan buffer contents
+- [x] Added `scanImporterBuffer()` to read Importer's 9-slot inventory
+- [x] Added `scanExporterBuffer()` to read Exporter's 9-slot inventory
+- [x] Modified `startSimulation()` to include buffer contents in initial scan
+- [x] Modified `finishSimulation()` to include buffer contents in final scan
+- **Why**: Prevents items sitting in buffers from inflating rate calculations
+- **Example**: 64 iron in Exporter buffer during BUILDING → now counted in initial state, not as production
+
+**Result**: ✅ Core caching system working - factories run virtually without CM chunks loaded!
+
+---
+
+## 📋 Completed MVP Phases
+
+### Phase 6: Simulation Wrench Control
+**Status**: ✅ **COMPLETE** (Implemented in Phase 4)
+**Goal**: Let player control state transitions
+
+**Completed in Phase 4**:
+- [x] Created Status GUI with control button (replaces wrench for state transitions)
+- [x] Implemented `SimulationControlPacket` for Client → Server state control
+- [x] State transition methods in PreFabBlockEntity:
+  - `startSimulation()`: BUILDING → SIMULATING (loads CM chunks, resets tracker)
+  - `finishSimulation()`: SIMULATING → CACHED/HALTED/BUILDING (calculates rates, unloads chunks)
+  - `resetToBuilding()`: CACHED → BUILDING (clears rates, keeps chunks unloaded)
+  - `resumeSimulation()`: HALTED → SIMULATING (resumes measurement)
+- [x] Control button changes based on state:
+  - BUILDING: "Start Simulation" (green)
+  - SIMULATING: "Finish Simulation" (yellow)
+  - CACHED: "Reset to Building" (red)
+  - HALTED: "Resume Simulation" (orange)
+- [x] Chat feedback messages for each transition
+- [x] Wrench kept for face configuration GUI only (Shift+Right-click)
+
+**Note**: This phase merged with Phase 4 (Status GUI implementation)
+
+---
+
+### Phase 7: Enhanced Face Configuration GUI
+**Status**: ✅ **COMPLETE** (Phase 1)
+**Goal**: Let player configure faces visually
+
+**Completed in Phase 1**:
+- [x] Created `gui/PreFabConfigScreen.java` - Client-side GUI
+- [x] Created `gui/PreFabConfigMenu.java` - Server-side container
+- [x] Created `network/FaceConfigPacket.java` - Client → Server sync
+- [x] GUI with 6 face buttons (North/South/East/West/Up/Down)
+- [x] Mode buttons: [DISABLED] [PULL] [PUSH] with green highlighting
+- [x] Filter buttons: [ALL] [ITEMS] [FLUIDS] [ENERGY] with green highlighting
+- [x] Link button: Cycles through available Importers/Exporters
+- [x] Trigger: Shift+Right-click PreFab with Simulation Wrench
+- [x] Auto-save on ESC/close
+
+**Note**: This phase was implemented early (Phase 1) to de-risk the GUI system.
+
+---
+
+### Phase 8: Dynamic Capabilities (Optional for MVP)
+**Status**: Deferred - Not needed for MVP
+**Goal**: Expose IItemHandler capabilities on PreFab faces
+
+**Why deferred**:
+- PreFab already uses active transport (tick-based pushing/pulling)
+- Hoppers and pipes can interact with Importers/Exporters directly (Phase 9)
+- Capability exposure on PreFab faces adds complexity without immediate benefit
+- Can be added post-MVP if players want hopper integration on PreFab itself
+
+**If implemented later**:
+- Register capabilities with context-aware logic (per-face)
+- Create FaceItemHandler that respects PULL/PUSH/DISABLED modes
+- Similar for FaceFluidHandler and FaceEnergyStorage
+
+---
+
+## 📋 Post-MVP Features (Implement After MVP Works)
+
+**All of these are explicitly OUT OF SCOPE for MVP. Only implement after core caching works perfectly.**
+
+### 1. PreFab-as-Item System (Major Feature - Post-MVP)
+**Status**: ✅ **FOUNDATION COMPLETE** (2026-05-08)
+**Vision**: PreFabs as portable items that store complete factory state
+
+**Phase 1: Item-Centric Data Storage** ✅ COMPLETE:
+- [x] Refactor PreFabBlockEntity data to be item-centric:
+  - [x] Added schema versioning (`schemaVersion = 1`) for future migrations
+  - [x] Store face configs in item NBT (always persist)
+  - [x] Store cached rates in item NBT (only if CACHED state)
+  - [x] Store room linkage in item NBT (always persist)
+  - [x] Store accumulators in item NBT (only if CACHED state)
+- [x] When PreFab block breaks → All data goes into item (via existing `getDrops()`)
+- [x] When PreFab item placed → Data loads from item into BlockEntity
+- [x] Added migration rules for state transitions:
+  - SIMULATING → BUILDING (partial measurement invalid after chunk unload)
+  - HALTED → BUILDING (location-specific condition no longer applies)
+  - CACHED → preserved (portable production data!)
+- [x] Added validation for corrupt/inconsistent NBT data
+- [x] Reduced PreFab hardness from 5.0 to 3.75 (25% faster to break)
+
+**Phase 2: Factory Controller Block** (NOT YET IMPLEMENTED):
+- [ ] Factory Controller block:
+  - Inventory that accepts PreFab items
+  - Each PreFab item in inventory runs its cached production
+  - Controller manages chunk loading for all PreFabs
+  - Controller exposes unified AE2 interface
+- [ ] Benefits:
+  - Portable factories (carry in inventory, ender chest, etc.)
+  - Multiple factories in one Controller
+  - Trade PreFabs with other players
+  - Store inactive factories compactly
+
+**Why Post-MVP**:
+- MVP focuses on getting caching to work for ONE PreFab block
+- Item-based system adds complexity (item ticking, Controller inventory logic)
+- Can validate caching math works first, then add portability
+
+### 2. Room-Based Filtering
+**Status**: ✅ **COMPLETE** (2026-05-11)
+**See**: [ROOM_FILTERING.md](ROOM_FILTERING.md) for complete implementation plan
+
+**Problem**: PreFab GUI shows ALL Importers/Exporters across all CM rooms, causing clutter in large factories.
+
+**Solution**: Filter Importers/Exporters by room using player context stack (FILO):
+- Track which CM room each player is in using per-player stack
+- When player enters CM room → push roomCode onto stack
+- When player places Importer/Exporter → peek stack, store roomCode in block
+- PreFab only shows Importers/Exporters in its linked room
+
+**Actual effort**: 9 hours (5 phases)
+**Complexity**: MEDIUM
+**Priority**: HIGH (improves UX significantly for multi-room factories)
+
+**Implementation**:
+- [x] Create `PlayerRoomContext.java` registry (FILO stack per player UUID)
+- [x] Hook teleportation events to push/pop room codes
+- [x] Store `roomCode` field in Importer/ExporterBlockEntity
+- [x] Update `ImporterExporterRegistry.Entry` to include roomCode
+- [x] **Added O(1) secondary index** for room-based filtering (performance optimization)
+- [x] Filter GUI dropdown by PreFab's linked room
+- [x] Handle edge cases (disconnects, nested PreFabs, /tp commands)
+- [x] Add debug commands (`/fpscompress room stack`, `/fpscompress room clear`)
+- [x] Display "(Legacy)" suffix for blocks without roomCode
+
+**Performance**: O(1) filtering via HashMap secondary index - scales to thousands of gates with no degradation
+
+### 3. Completed Polish & UX
+**Status**: ✅ **COMPLETE**
+- [x] Add status display (Right-click PreFab without wrench):
+  - Show current state (BUILDING/SIMULATING/CACHED/HALTED)
+  - Show configured faces and their modes
+  - Show current rates (items/tick, fluids/tick, FE/tick)
+  - Show accumulated fractional values during CACHED mode
+- [x] Add PreFab item tooltip:
+  - Show state
+  - Show room code
+  - Show number of configured faces
+
+---
+
+## 🗑️ Deprecated Code (Keep for Reference)
+
+**Files to Keep (Reuse)**:
+- ✅ `portal/PrefabBlock.java` - Reuse for GUI trigger
+- ✅ `portal/PrefabBlockEntity.java` - Modify for face configs and transport logic
+- ✅ `portal/RoomCoordinateCache.java` - Reuse for coordinate mapping
+- ✅ `spatial/CMInterceptorImpl.java` - Reuse for chunk loading control
+- ✅ `portal/TpsCacheUpgradeItem.java` - Keep for CM → PreFab conversion
+- ✅ `portal/SimulationWrenchItem.java` - Keep for state control
+
+---
+
+## 🧪 Testing Plan (MVP)
+
+### Test 1: Face Config Persistence
+1. Place PreFab block
+2. Break PreFab, verify it drops as item
+3. Place PreFab elsewhere
+4. Verify face configs preserved (when GUI implemented, check configs match)
+
+### Test 2: Basic Transport (Hardcoded Config)
+1. Hardcode NORTH face = PULL ITEMS in PreFabBlockEntity constructor
+2. Place PreFab in Overworld
+3. Place vanilla chest north of PreFab with items
+4. Verify items disappear from chest
+5. Check CM dimension - items should be in chest/furnace at mapped position
+6. **Use only vanilla blocks for MVP testing** (chest, furnace, hopper)
+
+### Test 3: Rate Measurement
+1. Configure PreFab faces (hardcoded or via GUI)
+2. Use wrench to start simulation (BUILDING → SIMULATING)
+3. Wait 600 ticks (~30 seconds)
+4. Use wrench to finish simulation (SIMULATING → CACHED)
+5. Check logs for calculated rates (e.g., "Iron rate: 0.213 items/tick")
+
+### Test 4: Cached Production
+1. Continue from Test 3 (PreFab now in CACHED state)
+2. Verify CM chunks are unloaded (check F3 debug screen)
+3. Add input items to Overworld side
+4. Verify output items appear on Overworld side based on cached rate
+5. Check fractional accumulator logs (e.g., "Accumulator: 0.85 -> 1.05, pushing 1 item")
+
+### Test 5: Cache Breaking and HALTED State
+1. Continue from Test 4 (CACHED mode)
+2. Stop providing input items (remove input chest)
+3. Wait for input starvation (PreFab tries to pull but fails)
+4. Verify PreFab enters HALTED state (logs or status display)
+5. **Verify CM chunks STAY UNLOADED** (F3 debug screen - chunks should still be unloaded!)
+6. Add input items back (place chest with items)
+7. Use wrench to resume (HALTED → SIMULATING)
+8. Verify production resumes
+
+### Test 6: Face Configuration GUI
+1. Shift+Right-click PreFab with wrench
+2. Select NORTH face
+3. Set mode to PULL, filter to ITEMS
+4. Save configuration
+5. Verify configuration persists after breaking/placing PreFab
+
+---
+
+## 📊 Success Criteria
+
+**MVP is complete when**:
+✅ Face configs save/load from NBT correctly
+✅ Basic transport works (PULL/PUSH modes)
+✅ Rate measurement works during SIMULATING
+✅ Cached production works using fractional math
+✅ CM chunks unload during CACHED mode (performance gain!)
+✅ Cache breaking triggers HALTED state
+✅ Player can control states with wrench
+
+**Nice to have** (post-MVP):
+⭐ Face configuration GUI
+⭐ Status display (right-click without wrench)
+⭐ Item/fluid filters
+⭐ Multiple PreFab support
+
+---
+
+## 🚀 Priority Order
+
+**Week 1**: Phase 1 (Face config + adjacent detection + simple GUI) - **DE-RISK FIRST**
+**Week 2**: Phase 2 (Importer/Exporter blocks) + Phase 3 (Basic transport)
+**Week 3**: Phase 4 (Rate measurement) + Phase 5 (Cached production)
+**Week 4**: Phase 6 (Wrench control) + Testing
+**Week 5**: Phase 7 (Enhanced GUI - optional) + Phase 8 (Dynamic capabilities - optional)
+**Week 6**: Polish, optimization, documentation
+
+**Key change**: Start with adjacent block detection and minimal GUI to prove concept works before building Importers/Exporters.
+
+---
+
+## 📚 Reference Documents
+
+- **ARCHITECTURE_CONDUIT.md** - Full architectural spec for conduit system
+- **CLAUDE.md** - Updated with conduit architecture and caching focus
+- **CM_API_INTEGRATION.md** - Reflection-based CM integration (still valid)
+- **DEV2_IMPLEMENTATION.md** - Chunk loading system (reuse CMInterceptorImpl)
+
+---
+
+**Questions?** See ARCHITECTURE_CONDUIT.md for detailed transport logic and face mapping examples.

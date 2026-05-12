@@ -61,7 +61,7 @@ FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compressi
 - Phase 3-6: Transport → Rate measurement → Caching → Wrench control
 - Phase 7-8: Enhanced GUI + Dynamic capabilities (optional)
 
-**See TODO_NEW.md for complete implementation roadmap.**
+**See TODO.md for complete implementation roadmap.**
 
 ---
 
@@ -291,7 +291,7 @@ Overworld:
 **Phase 7-8**: Polish (Optional)
 - Enhanced GUI, dynamic capabilities
 
-**See TODO_NEW.md for complete task breakdown.**
+**See TODO.md for complete task breakdown.**
 
 ---
 
@@ -443,7 +443,7 @@ interceptor.setRoomChunkState(roomCode, false);
 2. **README_ARCHITECTURE.md** - High-level overview
 3. **IMPORTER_EXPORTER_SYSTEM.md** - How the three-block system works
 4. **MVP_SCOPE.md** - What's in/out of MVP scope
-5. **TODO_NEW.md** - Implementation roadmap (7 phases)
+5. **TODO.md** - Implementation roadmap (7 phases)
 
 **Technical Specs**:
 - **ARCHITECTURE_CONDUIT.md** - Complete technical specification
@@ -486,16 +486,16 @@ src/main/java/com/mukulramesh/fpscompress/
 ./gradlew runClient
 
 # Check what to implement next
-cat TODO_NEW.md | grep "Phase 1"
+cat TODO.md | grep "Phase 1"
 ```
 
 ### Getting Help
 - Questions about architecture? → See ARCHITECTURE_CONDUIT.md
 - Questions about Importers/Exporters? → See IMPORTER_EXPORTER_SYSTEM.md
 - Questions about scope? → See MVP_SCOPE.md
-- Questions about implementation? → See TODO_NEW.md
+- Questions about implementation? → See TODO.md
 - Lost? → Read START_HERE.md
 
 ---
 
-**Ready to start? Read START_HERE.md, then follow TODO_NEW.md Phase 1!**
+**Ready to start? Read START_HERE.md, then follow TODO.md Phase 1!**

@@ -100,7 +100,7 @@ Run in development:
 - [START_HERE.md](NOTES/START_HERE.md) - Entry point for contributors
 - [CLAUDE.md](NOTES/CLAUDE.md) - Complete project guide
 - [ARCHITECTURE_CONDUIT.md](NOTES/ARCHITECTURE_CONDUIT.md) - Technical specification
-- [TODO_NEW.md](NOTES/TODO_NEW.md) - Implementation roadmap
+- [TODO.md](NOTES/TODO.md) - Implementation roadmap
 
 ## License
 

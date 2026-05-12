@@ -181,7 +181,7 @@
 ### Active Documentation (Project Root)
 - ✅ `README_ARCHITECTURE.md` - **NEW** - High-level overview
 - ✅ `MVP_SCOPE.md` - **NEW** - Scope definition
-- ✅ `TODO_NEW.md` - **NEW** - Implementation roadmap
+- ✅ `TODO.md` - **NEW** - Implementation roadmap
 - ✅ `ARCHITECTURE_CONDUIT.md` - **NEW** - Technical spec
 - ✅ `ARCHITECTURE_PIVOT.md` - **NEW** - Migration guide
 - ✅ `CLAUDE.md` - **UPDATED** - Project guidelines

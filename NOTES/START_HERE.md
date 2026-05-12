@@ -21,7 +21,7 @@
    - Success criteria
    - Common scope creep to avoid
 
-3. **TODO_NEW.md** (15 min read)
+3. **TODO.md** (15 min read)
    - 7-phase implementation roadmap
    - Tasks for each phase
    - Testing plan
@@ -47,7 +47,7 @@
 - ✅ **README_ARCHITECTURE.md** - What is FPSCompress?
 - ✅ **IMPORTER_EXPORTER_SYSTEM.md** - How resources enter/exit factories (READ THIS!)
 - ✅ **MVP_SCOPE.md** - What's in MVP scope?
-- ✅ **TODO_NEW.md** - Implementation roadmap
+- ✅ **TODO.md** - Implementation roadmap
 - ✅ **ARCHITECTURE_CONDUIT.md** - Technical specification
 
 ### Reference Documentation
@@ -57,7 +57,7 @@
 - 📘 **CLEANUP_SUMMARY.md** - What was archived (history)
 
 ### Deprecated Documentation
-- 📦 **TODO.md** - OLD roadmap (points to TODO_NEW.md)
+- 📦 **TODO.md** - OLD roadmap (points to TODO.md)
 - 📦 **fpscompress-template-1.21.11/deprecated/** - Archived code and docs
 
 ### Meta Documentation
@@ -177,7 +177,7 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 ## ❓ Common Questions
 
 ### Q: Where do I start coding?
-**A**: Read MVP_SCOPE.md, then follow TODO_NEW.md Phase 1 (Face Config Data Structures).
+**A**: Read MVP_SCOPE.md, then follow TODO.md Phase 1 (Face Config Data Structures).
 
 ### Q: Why is there deprecated code?
 **A**: Architecture changed from virtual buffer storage to conduit transport. Old code archived, not deleted.
@@ -198,7 +198,7 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 **A**: ⚠️ Code compiles but has deprecated dependencies. Phase 1-2 will fix compilation by implementing new system.
 
 ### Q: How long will MVP take?
-**A**: Estimated 4-6 weeks (see TODO_NEW.md "Priority Order" section).
+**A**: Estimated 4-6 weeks (see TODO.md "Priority Order" section).
 
 ---
 
@@ -207,7 +207,7 @@ Located in `fpscompress-template-1.21.11/deprecated/`
 ### Documentation
 - [README_ARCHITECTURE.md](README_ARCHITECTURE.md) - High-level overview
 - [MVP_SCOPE.md](MVP_SCOPE.md) - Scope definition
-- [TODO_NEW.md](TODO_NEW.md) - Implementation roadmap
+- [TODO.md](TODO.md) - Implementation roadmap
 - [ARCHITECTURE_CONDUIT.md](ARCHITECTURE_CONDUIT.md) - Technical spec
 - [CLAUDE.md](CLAUDE.md) - Project guidelines
 
@@ -261,7 +261,7 @@ cd "fpscompress-template-1.21.11"
 - Understand how face configs, transport, and caching work
 
 ### Day 4: Understand Next Steps
-- Read TODO_NEW.md to see what's left
+- Read TODO.md to see what's left
 - Read MVP_SCOPE.md "Post-MVP Features" section
 - Identify areas where you can contribute
 

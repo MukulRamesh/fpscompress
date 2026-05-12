@@ -255,7 +255,7 @@ public class ResourceTransporter {
 ### Step 1: Document Review (Done)
 - ✅ Created ARCHITECTURE_CONDUIT.md
 - ✅ Updated CLAUDE.md
-- ✅ Created TODO_NEW.md
+- ✅ Created TODO.md
 - ✅ Created ARCHITECTURE_PIVOT.md (this file)
 
 ### Step 2: Clean Up Old Code
@@ -273,7 +273,7 @@ mv TEST_BUFFER_CAPACITY.md deprecated/
 ```
 
 ### Step 3: Implement New Architecture
-Follow TODO_NEW.md phases:
+Follow TODO.md phases:
 1. Phase 1: Face config data structures
 2. Phase 2: Basic transport (hardcoded config)
 3. Phase 3: Rate measurement
@@ -283,7 +283,7 @@ Follow TODO_NEW.md phases:
 7. Phase 7: Dynamic capabilities
 
 ### Step 4: Testing
-Follow testing plan in TODO_NEW.md:
+Follow testing plan in TODO.md:
 - Test 1: Face config persistence
 - Test 2: Basic transport
 - Test 3: Rate measurement
@@ -374,4 +374,4 @@ During CACHED, fractional accumulators run in parallel for each resource.
 
 ---
 
-**Next Steps**: See TODO_NEW.md for implementation roadmap.
+**Next Steps**: See TODO.md for implementation roadmap.

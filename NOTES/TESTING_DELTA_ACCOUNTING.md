@@ -644,7 +644,7 @@ grep "Passthrough" logs/latest.log
 ## Next Steps After Testing
 
 ### If Tests Pass:
-1. Update `TODO_NEW.md` to mark Phase 5 complete
+1. Update `TODO.md` to mark Phase 5 complete
 2. Proceed to Phase 6 (Wrench control & state transitions)
 3. Consider adding unit tests for `InventoryScanner` class
 

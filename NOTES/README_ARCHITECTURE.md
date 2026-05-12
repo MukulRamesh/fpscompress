@@ -29,7 +29,7 @@ During CACHED mode:
 
 ### Start Here
 1. **MVP_SCOPE.md** - What is/isn't in MVP scope (READ THIS FIRST)
-2. **TODO_NEW.md** - Implementation roadmap (7 phases)
+2. **TODO.md** - Implementation roadmap (7 phases)
 3. **CLAUDE.md** - Project overview and technical guidelines
 
 ### Technical Details
@@ -241,7 +241,7 @@ deprecated/
 1. **Read the docs in order**:
    ```
    MVP_SCOPE.md          → Understand scope
-   TODO_NEW.md           → See implementation phases
+   TODO.md           → See implementation phases
    ARCHITECTURE_CONDUIT  → Get technical details
    CLAUDE.md             → Learn project guidelines
    ```
@@ -252,7 +252,7 @@ deprecated/
    - Create `FaceConfig.java`
    - Modify `PreFabBlockEntity.java` to store face configs
 
-3. **Follow TODO_NEW.md phases sequentially**:
+3. **Follow TODO.md phases sequentially**:
    - Phase 1: Data structures
    - Phase 2: Transport (hardcoded config)
    - Phase 3: Rate measurement
@@ -262,7 +262,7 @@ deprecated/
    - Phase 7: Dynamic capabilities
 
 4. **Test at each phase**:
-   - See testing plan in TODO_NEW.md
+   - See testing plan in TODO.md
    - Use vanilla blocks only (chests, furnaces, hoppers)
    - Verify chunks unload during CACHED (F3 screen)
 
@@ -346,7 +346,7 @@ Success Criteria:
 6. AE2 integration
 7. Other mod integrations
 
-**See TODO_NEW.md "Post-MVP Features" section for details.**
+**See TODO.md "Post-MVP Features" section for details.**
 
 ---
 
@@ -375,10 +375,10 @@ Success Criteria:
 ## 📞 Questions?
 
 - **Scope questions**: See MVP_SCOPE.md
-- **Implementation questions**: See TODO_NEW.md
+- **Implementation questions**: See TODO.md
 - **Technical questions**: See ARCHITECTURE_CONDUIT.md
 - **CM integration questions**: See CM_API_INTEGRATION.md
 
 ---
 
-**Ready to start? Read MVP_SCOPE.md and TODO_NEW.md!**
+**Ready to start? Read MVP_SCOPE.md and TODO.md!**

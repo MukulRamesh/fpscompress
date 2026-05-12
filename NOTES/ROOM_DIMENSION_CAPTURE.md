@@ -295,7 +295,7 @@ cd "fpscompress-template-1.21.11"
 - **[VALIDATION_DELTA_ACCOUNTING.md](VALIDATION_DELTA_ACCOUNTING.md)**: Why room dimensions are needed for anti-cheat validation
 - **[CM_API_INTEGRATION.md](CM_API_INTEGRATION.md)**: How reflection is used to access CM internals
 - **[ARCHITECTURE_CONDUIT.md](ARCHITECTURE_CONDUIT.md)**: Overall PreFab system architecture
-- **[TODO_NEW.md](TODO_NEW.md)**: Implementation roadmap (this completes a Phase 4 prerequisite)
+- **[TODO.md](TODO.md)**: Implementation roadmap (this completes a Phase 4 prerequisite)
 
 ---
 
