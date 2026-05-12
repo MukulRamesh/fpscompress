@@ -33,11 +33,7 @@
   "fpscompress.state.cached": "Cached",
   "fpscompress.state.halted": "Halted",
 
-  "fpscompress.configuration.title": "FPSCompress Configs",
-  "fpscompress.configuration.section.fpscompress.common.toml": "FPSCompress Configs",
-  "fpscompress.configuration.section.fpscompress.common.toml.title": "FPSCompress Configs",
-  "fpscompress.configuration.items": "Item List",
-  "fpscompress.configuration.logDirtBlock": "Log Dirt Block",
-  "fpscompress.configuration.magicNumberIntroduction": "Magic Number Text",
-  "fpscompress.configuration.magicNumber": "Magic Number"
+  "fpscompress.configuration.title": "FPSCompress Configuration",
+  "fpscompress.configuration.section.fpscompress.common.toml": "FPSCompress Configuration",
+  "fpscompress.configuration.section.fpscompress.common.toml.title": "FPSCompress Configuration"
 }
