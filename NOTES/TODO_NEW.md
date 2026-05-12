@@ -1,10 +1,106 @@
 # FPSCompress TODO List - Conduit Architecture
 
-**Last Updated**: 2026-05-11  
-**Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)  
+**Last Updated**: 2026-05-12 (Restructured: Uncompleted items at top)
+**Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)
 **Current Phase**: MVP COMPLETE ✅ + Post-MVP Room Filtering ✅
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
+
+---
+
+## 📋 Document Organization
+
+This TODO list is organized with **uncompleted items at the top** for quick reference, followed by completed phases and documentation in the same order below. Jump to:
+- [Pending Tasks](#-pending-tasks) - What's left to do
+- [MVP Implementation](#-mvp-implementation-focus-here-first) - Completed phases
+- [Post-MVP Features](#-post-mvp-features-implement-after-mvp-works) - Future enhancements
+- [Testing Plan](#-testing-plan-mvp) - Test scenarios
+- [Reference Documents](#-reference-documents) - Related docs
+
+---
+
+## 🔲 Pending Tasks
+
+### Files to Remove (Old Virtual Buffer Architecture)
+**Status**: Not yet removed
+- [ ] `portal/VirtualBufferStorage.java` - Was storing items/fluids/energy, now we transport directly
+- [ ] `capabilities/VirtualItemHandler.java` - Replaced by FaceItemHandler
+- [ ] `capabilities/VirtualFluidHandler.java` - Replaced by FaceFluidHandler
+- [ ] `capabilities/VirtualEnergyStorage.java` - Replaced by FaceEnergyStorage
+- [ ] `spatial/CapabilityRouter.java` - Complex routing no longer needed
+- [ ] `debug/BufferTestCommand.java` - Was testing virtual buffers
+- [ ] `TESTING_CAPABILITY_REGISTRATION.md` - Outdated testing guide
+- [ ] `TESTING_QUICK_START.md` - Outdated
+- [ ] `STORAGE_VIEWER_FEATURE.md` - No storage to view
+- [ ] `TEST_BUFFER_CAPACITY.md` - No capacity limits to test
+
+### Polish & UX Improvements
+- [ ] Create texture for PreFab block (currently purple/black checkerboard)
+- [ ] Add localization entries
+
+### Post-MVP: Factory Controller Block
+- [ ] Factory Controller block:
+  - Inventory that accepts PreFab items
+  - Each PreFab item in inventory runs its cached production
+  - Controller manages chunk loading for all PreFabs
+  - Controller exposes unified AE2 interface
+- [ ] Benefits:
+  - Portable factories (carry in inventory, ender chest, etc.)
+  - Multiple factories in one Controller
+  - Trade PreFabs with other players
+  - Store inactive factories compactly
+
+### Post-MVP: External Mod Integrations
+**All external mod integration is OUT OF SCOPE for MVP**
+- [ ] AE2 integration (Applied Energistics 2)
+- [ ] Refined Storage integration
+- [ ] Mekanism pipes/conduits
+- [ ] Create mod integration
+- [ ] Any other mod-specific features
+
+### Post-MVP: HALTED Recovery Optimizations
+
+**v1.1 - Inventory Change Listeners**:
+- [ ] Implement `INotifyingItemHandler` listener registration
+- [ ] Subscribe to inventory change events from adjacent blocks
+- [ ] Zero overhead when inventories static, instant recovery on change
+- [ ] Fallback to backoff for non-notifying inventories
+- [ ] Expected gain: 50-90% reduction over backoff alone
+
+**v1.1 - Smart Selective Checking**:
+- [ ] Track which specific resource caused HALT (`haltedResourceId`)
+- [ ] Only check relevant faces (PULL for inputs, PUSH for outputs)
+- [ ] Reduces checks from N resources × 6 faces to 1 resource × 1-2 faces
+- [ ] Combine with exponential backoff for best results
+
+**v1.1 - Periodic Full Scan (Safety Net)**:
+- [ ] Full scan every 12000 ticks (10 minutes) regardless of backoff
+- [ ] Prevents edge cases where optimizations fail
+- [ ] Negligible overhead, pure safety measure
+
+**v1.2 - Player Proximity Detection**:
+- [ ] Adjust max backoff based on player distance
+- [ ] Fast recovery (20 ticks) when player within 16 blocks
+- [ ] Slow recovery (200 ticks) when no players nearby
+- [ ] 10x better performance for AFK scenarios
+
+**v1.3 - Redstone Signal Trigger**:
+- [ ] Apply redstone signal to PreFab → forces immediate retry
+- [ ] Perfect for automation: item detector → redstone → PreFab
+- [ ] Add debounce (max 1 trigger per second)
+- [ ] Optional advanced feature, documented in tooltip
+
+**Estimated effort**: 2-3 weeks total (1 week per version)
+**Priority**: MEDIUM (MVP backoff sufficient, these are polish)
+**Performance gain**: Current 99% → Post-MVP 99.9%+
+
+### Post-MVP: Advanced Features
+- [ ] Item/fluid whitelist filters (per-face)
+- [ ] Blacklist filters
+- [ ] Priority system (which face to prioritize)
+- [ ] Anti-cheat validation (detect hidden batteries during SIMULATING)
+- [ ] Network view (visualize resource flow)
+- [ ] Statistics tracking (total resources transported)
 
 ---
 
@@ -35,7 +131,7 @@
 ## 🎯 MVP Implementation (Focus Here First)
 
 ### Phase 1: Face Configuration + Adjacent Block Detection (De-risk)
-**Status**: ✅ **COMPLETE** (2026-05-02)  
+**Status**: ✅ **COMPLETE** (2026-05-02)
 **Goal**: Prove PreFab can detect adjacent blocks and faces work correctly
 
 **Why this first**: De-risk the core concept before building Importers/Exporters
@@ -105,7 +201,7 @@
 ---
 
 ### Phase 2: Importer/Exporter Blocks
-**Status**: ✅ **COMPLETE** (2026-05-02)  
+**Status**: ✅ **COMPLETE** (2026-05-02)
 **Goal**: Create input/output gate blocks for CM dimension
 
 **Prerequisites**: Phase 1 complete (face config working, adjacent detection proven)
@@ -153,7 +249,7 @@
 ---
 
 ### Phase 3: Basic Transport Logic
-**Status**: ✅ **COMPLETE** (2026-05-02)  
+**Status**: ✅ **COMPLETE** (2026-05-02)
 **Goal**: Move resources between Overworld and CM dimension via Importer/Exporter gates
 
 **Prerequisites**: Phase 2 complete (Importers/Exporters working, UUID linking functional)
@@ -168,11 +264,6 @@
 - [x] Add ticker to `PrefabBlock.java`: Register server-side BlockEntityTicker
 - [x] Implement `tick()` in `PrefabBlockEntity.java`: Process all configured faces
 - [x] Implement PULL logic: Overworld → Importer
-  ```java
-  // 1. Get face config
-  FaceConfig config = getFaceConfig(face);
-  if (config.getMode() != FaceMode.PULL) return;
-  
 - [x] Implement PUSH logic: Exporter → Overworld
 - [x] Add `getCMLevel()` helper method to PrefabBlockEntity
 - [x] Add `insertItem()` to ExporterBlockEntity (for remainder handling)
@@ -185,7 +276,7 @@
 
 **Bugs Fixed**:
 - Registry unregistering on chunk unload (moved to Block.onRemove())
-- Infinite loop from getBlockState() loading chunks  
+- Infinite loop from getBlockState() loading chunks
 - Importer not pushing to adjacent machines (added active pushing)
 - ExporterBlockEntity missing public insertItem() method
 
@@ -204,7 +295,7 @@
 ---
 
 ### Phase 4: Rate Measurement (SIMULATING State)
-**Status**: ✅ **COMPLETE** (2026-05-03)  
+**Status**: ✅ **COMPLETE** (2026-05-03)
 **Goal**: Record actual transport rates while CM chunks are loaded
 
 **Implementation Approach**: Use delta accounting (see VALIDATION_DELTA_ACCOUNTING.md)
@@ -263,7 +354,7 @@
 ---
 
 ### Phase 5: Cached Production (Fractional Math)
-**Status**: ✅ **COMPLETE** (2026-05-03)  
+**Status**: ✅ **COMPLETE** (2026-05-03)
 **Goal**: Simulate production using cached rates without loading CM chunks
 
 **Tasks**:
@@ -301,10 +392,14 @@
 - **Why**: Prevents items sitting in buffers from inflating rate calculations
 - **Example**: 64 iron in Exporter buffer during BUILDING → now counted in initial state, not as production
 
+**Result**: ✅ Core caching system working - factories run virtually without CM chunks loaded!
+
 ---
 
+## 📋 Completed MVP Phases
+
 ### Phase 6: Simulation Wrench Control
-**Status**: ✅ **COMPLETE** (Implemented in Phase 4)  
+**Status**: ✅ **COMPLETE** (Implemented in Phase 4)
 **Goal**: Let player control state transitions
 
 **Completed in Phase 4**:
@@ -328,7 +423,7 @@
 ---
 
 ### Phase 7: Enhanced Face Configuration GUI
-**Status**: ✅ **COMPLETE** (Phase 1)  
+**Status**: ✅ **COMPLETE** (Phase 1)
 **Goal**: Let player configure faces visually
 
 **Completed in Phase 1**:
@@ -347,7 +442,7 @@
 ---
 
 ### Phase 8: Dynamic Capabilities (Optional for MVP)
-**Status**: Deferred - Not needed for MVP  
+**Status**: Deferred - Not needed for MVP
 **Goal**: Expose IItemHandler capabilities on PreFab faces
 
 **Why deferred**:
@@ -368,7 +463,7 @@
 **All of these are explicitly OUT OF SCOPE for MVP. Only implement after core caching works perfectly.**
 
 ### 1. PreFab-as-Item System (Major Feature - Post-MVP)
-**Status**: ✅ **FOUNDATION COMPLETE** (2026-05-08)  
+**Status**: ✅ **FOUNDATION COMPLETE** (2026-05-08)
 **Vision**: PreFabs as portable items that store complete factory state
 
 **Phase 1: Item-Centric Data Storage** ✅ COMPLETE:
@@ -399,40 +494,13 @@
   - Trade PreFabs with other players
   - Store inactive factories compactly
 
-**Why Post-MVP**: 
+**Why Post-MVP**:
 - MVP focuses on getting caching to work for ONE PreFab block
 - Item-based system adds complexity (item ticking, Controller inventory logic)
 - Can validate caching math works first, then add portability
 
-### Polish & UX
-- [x] Add status display (Right-click PreFab without wrench):
-  - Show current state (BUILDING/SIMULATING/CACHED/HALTED)
-  - Show configured faces and their modes
-  - Show current rates (items/tick, fluids/tick, FE/tick)
-  - Show accumulated fractional values during CACHED mode
-- [x] Add PreFab item tooltip:
-  - Show state
-  - Show room code
-  - Show number of configured faces
-- [x] Create texture for PreFab block (currently purple/black checkerboard)
-- [x] Add localization entries
-
-### 2. External Mod Integrations (Post-MVP)
-**All external mod integration is OUT OF SCOPE for MVP**
-- [ ] AE2 integration (Applied Energistics 2)
-- [ ] Refined Storage integration
-- [ ] Mekanism pipes/conduits
-- [ ] Create mod integration
-- [ ] Any other mod-specific features
-
-### 3. Factory Controller Block (Post-MVP)
-- [ ] Multi-PreFab inventory management
-- [ ] Unified capability interface
-- [ ] Centralized chunk loading
-- [ ] GUI for managing multiple factories
-
-### 4. Room-Based Filtering (Post-MVP)
-**Status**: ✅ **COMPLETE** (2026-05-11)  
+### 2. Room-Based Filtering
+**Status**: ✅ **COMPLETE** (2026-05-11)
 **See**: [ROOM_FILTERING.md](ROOM_FILTERING.md) for complete implementation plan
 
 **Problem**: PreFab GUI shows ALL Importers/Exporters across all CM rooms, causing clutter in large factories.
@@ -443,8 +511,8 @@
 - When player places Importer/Exporter → peek stack, store roomCode in block
 - PreFab only shows Importers/Exporters in its linked room
 
-**Actual effort**: 9 hours (5 phases)  
-**Complexity**: MEDIUM  
+**Actual effort**: 9 hours (5 phases)
+**Complexity**: MEDIUM
 **Priority**: HIGH (improves UX significantly for multi-room factories)
 
 **Implementation**:
@@ -460,73 +528,21 @@
 
 **Performance**: O(1) filtering via HashMap secondary index - scales to thousands of gates with no degradation
 
-### 5. HALTED Recovery Optimizations (Post-MVP)
-**See**: [HALTED_RECOVERY_OPTIMIZATIONS.md](HALTED_RECOVERY_OPTIMIZATIONS.md) for complete analysis
-
-**Current MVP Implementation**: Exponential Backoff ✅
-- Retry intervals: 1 → 2 → 4 → 8... → 100 ticks (max 5 seconds)
-- 99% reduction in checks compared to every-tick polling
-- Simple, universal compatibility
-
-**Post-MVP Enhancements** (Performance improvements):
-
-**v1.1 - Inventory Change Listeners**:
-- [ ] Implement `INotifyingItemHandler` listener registration
-- [ ] Subscribe to inventory change events from adjacent blocks
-- [ ] Zero overhead when inventories static, instant recovery on change
-- [ ] Fallback to backoff for non-notifying inventories
-- [ ] Expected gain: 50-90% reduction over backoff alone
-
-**v1.1 - Smart Selective Checking**:
-- [ ] Track which specific resource caused HALT (`haltedResourceId`)
-- [ ] Only check relevant faces (PULL for inputs, PUSH for outputs)
-- [ ] Reduces checks from N resources × 6 faces to 1 resource × 1-2 faces
-- [ ] Combine with exponential backoff for best results
-
-**v1.1 - Periodic Full Scan (Safety Net)**:
-- [ ] Full scan every 12000 ticks (10 minutes) regardless of backoff
-- [ ] Prevents edge cases where optimizations fail
-- [ ] Negligible overhead, pure safety measure
-
-**v1.2 - Player Proximity Detection**:
-- [ ] Adjust max backoff based on player distance
-- [ ] Fast recovery (20 ticks) when player within 16 blocks
-- [ ] Slow recovery (200 ticks) when no players nearby
-- [ ] 10x better performance for AFK scenarios
-
-**v1.3 - Redstone Signal Trigger**:
-- [ ] Apply redstone signal to PreFab → forces immediate retry
-- [ ] Perfect for automation: item detector → redstone → PreFab
-- [ ] Add debounce (max 1 trigger per second)
-- [ ] Optional advanced feature, documented in tooltip
-
-**Estimated effort**: 2-3 weeks total (1 week per version)  
-**Priority**: MEDIUM (MVP backoff sufficient, these are polish)  
-**Performance gain**: Current 99% → Post-MVP 99.9%+
-
-### 6. Advanced Features (Post-MVP)
-- [ ] Item/fluid whitelist filters (per-face)
-- [ ] Blacklist filters
-- [ ] Priority system (which face to prioritize)
-- [ ] Anti-cheat validation (detect hidden batteries during SIMULATING)
-- [ ] Network view (visualize resource flow)
-- [ ] Statistics tracking (total resources transported)
+### 3. Completed Polish & UX
+**Status**: ✅ **COMPLETE**
+- [x] Add status display (Right-click PreFab without wrench):
+  - Show current state (BUILDING/SIMULATING/CACHED/HALTED)
+  - Show configured faces and their modes
+  - Show current rates (items/tick, fluids/tick, FE/tick)
+  - Show accumulated fractional values during CACHED mode
+- [x] Add PreFab item tooltip:
+  - Show state
+  - Show room code
+  - Show number of configured faces
 
 ---
 
-## 🗑️ Files to Remove (Old Virtual Buffer Architecture)
-
-**Deprecated - No Longer Needed**:
-- [ ] `portal/VirtualBufferStorage.java` - Was storing items/fluids/energy, now we transport directly
-- [ ] `capabilities/VirtualItemHandler.java` - Replaced by FaceItemHandler
-- [ ] `capabilities/VirtualFluidHandler.java` - Replaced by FaceFluidHandler
-- [ ] `capabilities/VirtualEnergyStorage.java` - Replaced by FaceEnergyStorage
-- [ ] `spatial/CapabilityRouter.java` - Complex routing no longer needed
-- [ ] `debug/BufferTestCommand.java` - Was testing virtual buffers
-- [ ] `TESTING_CAPABILITY_REGISTRATION.md` - Outdated testing guide
-- [ ] `TESTING_QUICK_START.md` - Outdated
-- [ ] `STORAGE_VIEWER_FEATURE.md` - No storage to view
-- [ ] `TEST_BUFFER_CAPACITY.md` - No capacity limits to test
+## 🗑️ Deprecated Code (Keep for Reference)
 
 **Files to Keep (Reuse)**:
 - ✅ `portal/PrefabBlock.java` - Reuse for GUI trigger
@@ -590,29 +606,29 @@
 ## 📊 Success Criteria
 
 **MVP is complete when**:
-✅ Face configs save/load from NBT correctly  
-✅ Basic transport works (PULL/PUSH modes)  
-✅ Rate measurement works during SIMULATING  
-✅ Cached production works using fractional math  
-✅ CM chunks unload during CACHED mode (performance gain!)  
-✅ Cache breaking triggers HALTED state  
-✅ Player can control states with wrench  
+✅ Face configs save/load from NBT correctly
+✅ Basic transport works (PULL/PUSH modes)
+✅ Rate measurement works during SIMULATING
+✅ Cached production works using fractional math
+✅ CM chunks unload during CACHED mode (performance gain!)
+✅ Cache breaking triggers HALTED state
+✅ Player can control states with wrench
 
 **Nice to have** (post-MVP):
-⭐ Face configuration GUI  
-⭐ Status display (right-click without wrench)  
-⭐ Item/fluid filters  
-⭐ Multiple PreFab support  
+⭐ Face configuration GUI
+⭐ Status display (right-click without wrench)
+⭐ Item/fluid filters
+⭐ Multiple PreFab support
 
 ---
 
 ## 🚀 Priority Order
 
-**Week 1**: Phase 1 (Face config + adjacent detection + simple GUI) - **DE-RISK FIRST**  
-**Week 2**: Phase 2 (Importer/Exporter blocks) + Phase 3 (Basic transport)  
-**Week 3**: Phase 4 (Rate measurement) + Phase 5 (Cached production)  
-**Week 4**: Phase 6 (Wrench control) + Testing  
-**Week 5**: Phase 7 (Enhanced GUI - optional) + Phase 8 (Dynamic capabilities - optional)  
+**Week 1**: Phase 1 (Face config + adjacent detection + simple GUI) - **DE-RISK FIRST**
+**Week 2**: Phase 2 (Importer/Exporter blocks) + Phase 3 (Basic transport)
+**Week 3**: Phase 4 (Rate measurement) + Phase 5 (Cached production)
+**Week 4**: Phase 6 (Wrench control) + Testing
+**Week 5**: Phase 7 (Enhanced GUI - optional) + Phase 8 (Dynamic capabilities - optional)
 **Week 6**: Polish, optimization, documentation
 
 **Key change**: Start with adjacent block detection and minimal GUI to prove concept works before building Importers/Exporters.
