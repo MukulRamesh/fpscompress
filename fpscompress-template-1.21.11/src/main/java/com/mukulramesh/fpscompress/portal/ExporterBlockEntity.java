@@ -13,6 +13,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 /**
@@ -29,6 +30,10 @@ public class ExporterBlockEntity extends BlockEntity {
 
     // Unique identifier for PreFab linking
     private UUID exporterUUID;
+
+    // Room code where this Exporter is placed (null if in Overworld)
+    @Nullable
+    private String roomCode;
 
     // Filter item for GUI display (e.g., "Iron Exporter" instead of UUID)
     // Player right-clicks with an item to set the filter
@@ -57,6 +62,27 @@ public class ExporterBlockEntity extends BlockEntity {
      */
     public UUID getExporterUUID() {
         return exporterUUID;
+    }
+
+    /**
+     * Get the room code where this Exporter is placed.
+     *
+     * @return Room code or null if in Overworld
+     */
+    @Nullable
+    public String getRoomCode() {
+        return roomCode;
+    }
+
+    /**
+     * Set the room code for this Exporter.
+     * Automatically called when block is placed.
+     *
+     * @param roomCode Room code or null
+     */
+    public void setRoomCode(@Nullable String roomCode) {
+        this.roomCode = roomCode;
+        setChanged();
     }
 
     /**
@@ -281,6 +307,11 @@ public class ExporterBlockEntity extends BlockEntity {
         // Save UUID
         tag.putUUID("ExporterUUID", exporterUUID);
 
+        // Save room code
+        if (roomCode != null) {
+            tag.putString("roomCode", roomCode);
+        }
+
         // Save filter item
         if (!filterItem.isEmpty()) {
             tag.put("FilterItem", filterItem.save(registries));
@@ -299,6 +330,11 @@ public class ExporterBlockEntity extends BlockEntity {
             exporterUUID = tag.getUUID("ExporterUUID");
         }
 
+        // Load room code
+        if (tag.contains("roomCode")) {
+            roomCode = tag.getString("roomCode");
+        }
+
         // Load filter item
         if (tag.contains("FilterItem")) {
             filterItem = ItemStack.parseOptional(registries, tag.getCompound("FilterItem"));
@@ -311,7 +347,7 @@ public class ExporterBlockEntity extends BlockEntity {
 
         // Register this Exporter in the global registry (for GUI scanning)
         if (level != null && !level.isClientSide()) {
-            ImporterExporterRegistry.registerExporter(exporterUUID, getBlockPos(), getDisplayName());
+            ImporterExporterRegistry.registerExporter(exporterUUID, getBlockPos(), getDisplayName(), roomCode);
         }
     }
 
@@ -331,12 +367,13 @@ public class ExporterBlockEntity extends BlockEntity {
         super.onLoad();
         // Register when chunk loads
         if (level != null && !level.isClientSide()) {
-            ImporterExporterRegistry.registerExporter(exporterUUID, getBlockPos(), getDisplayName());
+            ImporterExporterRegistry.registerExporter(exporterUUID, getBlockPos(), getDisplayName(), roomCode);
             com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
-                "Registered Exporter {} at {} (Display: {})",
+                "Registered Exporter {} at {} (Display: {}) (Room: {})",
                 exporterUUID.toString().substring(0, 8),
                 getBlockPos(),
-                getDisplayName()
+                getDisplayName(),
+                roomCode != null ? roomCode : "none"
             );
         }
     }

@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 /**
@@ -24,6 +25,10 @@ public class ImporterBlockEntity extends BlockEntity {
 
     // Unique identifier for PreFab linking
     private UUID importerUUID;
+
+    // Room code where this Importer is placed (null if in Overworld)
+    @Nullable
+    private String roomCode;
 
     // Filter item for GUI display (e.g., "Apple Importer" instead of UUID)
     // Player right-clicks with an item to set the filter
@@ -52,6 +57,27 @@ public class ImporterBlockEntity extends BlockEntity {
      */
     public UUID getImporterUUID() {
         return importerUUID;
+    }
+
+    /**
+     * Get the room code where this Importer is placed.
+     *
+     * @return Room code or null if in Overworld
+     */
+    @Nullable
+    public String getRoomCode() {
+        return roomCode;
+    }
+
+    /**
+     * Set the room code for this Importer.
+     * Automatically called when block is placed.
+     *
+     * @param roomCode Room code or null
+     */
+    public void setRoomCode(@Nullable String roomCode) {
+        this.roomCode = roomCode;
+        setChanged();
     }
 
     /**
@@ -223,6 +249,11 @@ public class ImporterBlockEntity extends BlockEntity {
         // Save UUID
         tag.putUUID("ImporterUUID", importerUUID);
 
+        // Save room code
+        if (roomCode != null) {
+            tag.putString("roomCode", roomCode);
+        }
+
         // Save filter item
         if (!filterItem.isEmpty()) {
             tag.put("FilterItem", filterItem.save(registries));
@@ -241,6 +272,11 @@ public class ImporterBlockEntity extends BlockEntity {
             importerUUID = tag.getUUID("ImporterUUID");
         }
 
+        // Load room code
+        if (tag.contains("roomCode")) {
+            roomCode = tag.getString("roomCode");
+        }
+
         // Load filter item
         if (tag.contains("FilterItem")) {
             filterItem = ItemStack.parseOptional(registries, tag.getCompound("FilterItem"));
@@ -253,7 +289,7 @@ public class ImporterBlockEntity extends BlockEntity {
 
         // Register this Importer in the global registry (for GUI scanning)
         if (level != null && !level.isClientSide()) {
-            ImporterExporterRegistry.registerImporter(importerUUID, getBlockPos(), getDisplayName());
+            ImporterExporterRegistry.registerImporter(importerUUID, getBlockPos(), getDisplayName(), roomCode);
         }
     }
 
@@ -277,7 +313,7 @@ public class ImporterBlockEntity extends BlockEntity {
         );
         // Register when chunk loads
         if (level != null && !level.isClientSide()) {
-            ImporterExporterRegistry.registerImporter(importerUUID, getBlockPos(), getDisplayName());
+            ImporterExporterRegistry.registerImporter(importerUUID, getBlockPos(), getDisplayName(), roomCode);
         }
     }
 

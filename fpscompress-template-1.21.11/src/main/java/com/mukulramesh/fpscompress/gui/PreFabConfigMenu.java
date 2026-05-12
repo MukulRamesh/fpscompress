@@ -53,13 +53,20 @@ public class PreFabConfigMenu extends AbstractContainerMenu {
         List<ImporterExporterRegistry.Entry> importers = new ArrayList<>();
         List<ImporterExporterRegistry.Entry> exporters = new ArrayList<>();
 
+        // Read PreFab's roomCode filter
+        boolean hasPrefabRoomFilter = buf.readBoolean();
+        String prefabRoomCode = hasPrefabRoomFilter ? buf.readUtf() : null;
+
         // Read Importers
         int importerCount = buf.readInt();
         for (int i = 0; i < importerCount; i++) {
             java.util.UUID uuid = buf.readUUID();
             BlockPos pos = buf.readBlockPos();
             String displayName = buf.readUtf();
-            importers.add(new ImporterExporterRegistry.Entry(uuid, pos, displayName));
+            // Read roomCode from packet
+            boolean hasRoomCode = buf.readBoolean();
+            String roomCode = hasRoomCode ? buf.readUtf() : null;
+            importers.add(new ImporterExporterRegistry.Entry(uuid, pos, displayName, roomCode));
         }
 
         // Read Exporters
@@ -68,7 +75,15 @@ public class PreFabConfigMenu extends AbstractContainerMenu {
             java.util.UUID uuid = buf.readUUID();
             BlockPos pos = buf.readBlockPos();
             String displayName = buf.readUtf();
-            exporters.add(new ImporterExporterRegistry.Entry(uuid, pos, displayName));
+            // Read roomCode from packet
+            boolean hasRoomCode = buf.readBoolean();
+            String roomCode = hasRoomCode ? buf.readUtf() : null;
+            exporters.add(new ImporterExporterRegistry.Entry(uuid, pos, displayName, roomCode));
+        }
+
+        if (hasPrefabRoomFilter) {
+            com.mukulramesh.fpscompress.FPSCompress.LOGGER.info(
+                "PreFabConfigMenu filtered by room: {}", prefabRoomCode);
         }
 
         return new ImportExportLists(importers, exporters);

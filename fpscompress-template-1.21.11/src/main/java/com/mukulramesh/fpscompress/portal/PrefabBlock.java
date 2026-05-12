@@ -40,10 +40,11 @@ public class PrefabBlock extends Block implements EntityBlock {
 
     public PrefabBlock() {
         super(BlockBehaviour.Properties.of()
-            .strength(2.25f, 6.0f) // 25% faster to break (5.0 → 3.75)
+            .strength(1.5f, 6.0f) // Fast to break with pickaxe (iron block hardness)
             .sound(SoundType.METAL)
             .explosionResistance(1200.0f) // Immune to explosions (same as bedrock)
-            // Breakable with any tool, always drops itself with NBT
+            .requiresCorrectToolForDrops() // Pickaxe is faster tool
+            // Always drops itself with NBT via getDrops() override
         );
     }
 

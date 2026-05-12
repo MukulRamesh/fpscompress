@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
@@ -67,12 +68,25 @@ public class DimensionTeleportListener {
             return;
         }
 
-        // Check if player is entering CM dimension
-        String dimensionKey = event.getDimension().location().toString();
-        LOGGER.debug("Player {} traveling to dimension: {}",
-                    player.getName().getString(), dimensionKey);
+        // Check dimensions for entry/exit
+        String fromDimensionKey = player.level().dimension().location().toString();
+        String toDimensionKey = event.getDimension().location().toString();
 
-        if (!dimensionKey.contains("compactmachines")) {
+        boolean leavingCM = fromDimensionKey.contains("compactmachines");
+        boolean enteringCM = toDimensionKey.contains("compactmachines");
+
+        LOGGER.debug("Player {} traveling from {} to {}",
+                    player.getName().getString(), fromDimensionKey, toDimensionKey);
+
+        // Exit detection: Pop room stack when leaving CM dimension
+        if (leavingCM && !enteringCM) {
+            PlayerRoomContext.exitRoom(player.getUUID());
+            LOGGER.info("Player {} exited CM dimension, popped room stack",
+                       player.getName().getString());
+        }
+
+        // Only process entry if entering CM dimension
+        if (!enteringCM) {
             return;
         }
 
@@ -179,6 +193,9 @@ public class DimensionTeleportListener {
             RoomCoordinateCache cache = RoomCoordinateCache.get(event.getServer());
             cache.setRoomCenter(sourceBlockPos, roomCode, roomCenter);
 
+            // Push room context for player
+            PlayerRoomContext.enterRoom(playerId, roomCode);
+
             LOGGER.info("Cached coordinates for room {}: Overworld block {} → Room center {}",
                         roomCode, sourceBlockPos, roomCenter);
         }
@@ -235,5 +252,15 @@ public class DimensionTeleportListener {
 
         LOGGER.error("Could not determine room code from block at {}", pos);
         return null;
+    }
+
+    /**
+     * Clear room stack when player disconnects.
+     */
+    @SubscribeEvent
+    public void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        PlayerRoomContext.clearPlayer(event.getEntity().getUUID());
+        LOGGER.debug("Cleared room stack for disconnected player {}",
+            event.getEntity().getName().getString());
     }
 }

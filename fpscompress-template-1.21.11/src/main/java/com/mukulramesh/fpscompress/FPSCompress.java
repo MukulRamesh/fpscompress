@@ -272,6 +272,7 @@ public final class FPSCompress {
     @SubscribeEvent
     public void onCommandsRegister(RegisterCommandsEvent event) {
         Dev2TestCommands.register(event.getDispatcher());
-        LOGGER.info("Registered debug commands: /fps_dev2");
+        com.mukulramesh.fpscompress.commands.RoomDebugCommands.register(event.getDispatcher());
+        LOGGER.info("Registered debug commands: /fps_dev2, /fpscompress room");
     }
 }

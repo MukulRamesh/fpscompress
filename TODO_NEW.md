@@ -1,8 +1,8 @@
 # FPSCompress TODO List - Conduit Architecture
 
-**Last Updated**: 2026-05-08  
+**Last Updated**: 2026-05-11  
 **Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)  
-**Current Phase**: MVP COMPLETE ✅ + Post-MVP Features In Progress 🚀
+**Current Phase**: MVP COMPLETE ✅ + Post-MVP Room Filtering ✅
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
@@ -432,6 +432,7 @@
 - [ ] GUI for managing multiple factories
 
 ### 4. Room-Based Filtering (Post-MVP)
+**Status**: ✅ **COMPLETE** (2026-05-11)  
 **See**: [ROOM_FILTERING.md](ROOM_FILTERING.md) for complete implementation plan
 
 **Problem**: PreFab GUI shows ALL Importers/Exporters across all CM rooms, causing clutter in large factories.
@@ -442,17 +443,22 @@
 - When player places Importer/Exporter → peek stack, store roomCode in block
 - PreFab only shows Importers/Exporters in its linked room
 
-**Estimated effort**: 2-4 hours  
+**Actual effort**: 9 hours (5 phases)  
 **Complexity**: MEDIUM  
 **Priority**: HIGH (improves UX significantly for multi-room factories)
 
 **Implementation**:
-- [ ] Create `PlayerRoomContext.java` registry (FILO stack per player UUID)
-- [ ] Hook teleportation events to push/pop room codes
-- [ ] Store `roomCode` field in Importer/ExporterBlockEntity
-- [ ] Update `ImporterExporterRegistry.Entry` to include roomCode
-- [ ] Filter GUI dropdown by PreFab's linked room
-- [ ] Handle edge cases (disconnects, nested PreFabs, /tp commands)
+- [x] Create `PlayerRoomContext.java` registry (FILO stack per player UUID)
+- [x] Hook teleportation events to push/pop room codes
+- [x] Store `roomCode` field in Importer/ExporterBlockEntity
+- [x] Update `ImporterExporterRegistry.Entry` to include roomCode
+- [x] **Added O(1) secondary index** for room-based filtering (performance optimization)
+- [x] Filter GUI dropdown by PreFab's linked room
+- [x] Handle edge cases (disconnects, nested PreFabs, /tp commands)
+- [x] Add debug commands (`/fpscompress room stack`, `/fpscompress room clear`)
+- [x] Display "(Legacy)" suffix for blocks without roomCode
+
+**Performance**: O(1) filtering via HashMap secondary index - scales to thousands of gates with no degradation
 
 ### 5. HALTED Recovery Optimizations (Post-MVP)
 **See**: [HALTED_RECOVERY_OPTIMIZATIONS.md](HALTED_RECOVERY_OPTIMIZATIONS.md) for complete analysis

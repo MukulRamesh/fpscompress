@@ -86,29 +86,51 @@ public class SimulationWrenchItem extends Item {
                     buf.writeBlockPos(context.getClickedPos());
                     buf.writeByte(context.getClickedFace().get3DDataValue());
 
-                    // Send Importer/Exporter lists for GUI dropdown
+                    // Get PreFab's room code for filtering
+                    String prefabRoomCode = prefab.getRoomCode();
+                    buf.writeBoolean(prefabRoomCode != null);
+                    if (prefabRoomCode != null) {
+                        buf.writeUtf(prefabRoomCode);
+                        FPSCompress.LOGGER.debug("Opening GUI filtered by room: {}", prefabRoomCode);
+                    }
+
+                    // Send filtered Importer/Exporter lists for GUI dropdown
                     net.minecraft.server.MinecraftServer server = serverPlayer.getServer();
                     if (server != null) {
-                        java.util.List<com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry> importers =
-                            com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.getAllImporters(server);
-                        java.util.List<com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry> exporters =
-                            com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.getAllExporters(server);
+                        // Use O(1) filtered queries
+                        java.util.List<ImporterExporterRegistry.Entry> importers =
+                            ImporterExporterRegistry.getAllImporters(server, prefabRoomCode);
+                        java.util.List<ImporterExporterRegistry.Entry> exporters =
+                            ImporterExporterRegistry.getAllExporters(server, prefabRoomCode);
 
                         // Write Importers
                         buf.writeInt(importers.size());
-                        for (com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry entry : importers) {
+                        for (ImporterExporterRegistry.Entry entry : importers) {
                             buf.writeUUID(entry.uuid());
                             buf.writeBlockPos(entry.pos());
                             buf.writeUtf(entry.displayName());
+                            // Write roomCode
+                            buf.writeBoolean(entry.roomCode() != null);
+                            if (entry.roomCode() != null) {
+                                buf.writeUtf(entry.roomCode());
+                            }
                         }
 
                         // Write Exporters
                         buf.writeInt(exporters.size());
-                        for (com.mukulramesh.fpscompress.portal.ImporterExporterRegistry.Entry entry : exporters) {
+                        for (ImporterExporterRegistry.Entry entry : exporters) {
                             buf.writeUUID(entry.uuid());
                             buf.writeBlockPos(entry.pos());
                             buf.writeUtf(entry.displayName());
+                            // Write roomCode
+                            buf.writeBoolean(entry.roomCode() != null);
+                            if (entry.roomCode() != null) {
+                                buf.writeUtf(entry.roomCode());
+                            }
                         }
+
+                        FPSCompress.LOGGER.info("Sending {} importers, {} exporters for room {}",
+                            importers.size(), exporters.size(), prefabRoomCode != null ? prefabRoomCode : "ALL");
                     } else {
                         // No server - write empty lists
                         buf.writeInt(0);

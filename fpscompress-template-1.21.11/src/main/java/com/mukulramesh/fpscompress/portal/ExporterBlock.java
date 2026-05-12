@@ -6,7 +6,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -63,6 +65,22 @@ public class ExporterBlock extends Block implements EntityBlock {
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new ExporterBlockEntity(pos, state);
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                           @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+
+        if (!level.isClientSide() && placer instanceof ServerPlayer player) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof ExporterBlockEntity exporter) {
+                String currentRoom = PlayerRoomContext.getCurrentRoom(player.getUUID());
+                exporter.setRoomCode(currentRoom);
+                LOGGER.info("Exporter placed in room: {}",
+                    currentRoom != null ? currentRoom : "none (Overworld)");
+            }
+        }
     }
 
     @Nullable

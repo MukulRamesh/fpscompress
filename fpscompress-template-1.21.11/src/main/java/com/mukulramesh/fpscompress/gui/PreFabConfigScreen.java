@@ -263,7 +263,13 @@ public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu
 
         for (ImporterExporterRegistry.Entry entry : available) {
             if (entry.uuid().equals(uuid)) {
-                return entry;
+                String displayName = entry.displayName();
+                // Add "(Legacy)" suffix for blocks without room code
+                if (entry.roomCode() == null) {
+                    displayName += " §7(Legacy)";
+                }
+                return new ImporterExporterRegistry.Entry(
+                    entry.uuid(), entry.pos(), displayName, entry.roomCode());
             }
         }
         return null;
