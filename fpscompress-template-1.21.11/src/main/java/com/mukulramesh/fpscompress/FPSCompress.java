@@ -21,7 +21,11 @@ import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
 import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import com.mukulramesh.fpscompress.network.FaceConfigPacket;
 import com.mukulramesh.fpscompress.network.SimulationControlPacket;
+import com.mukulramesh.fpscompress.datagen.ModRecipeProvider;
 
+import net.minecraft.core.HolderLookup;
+import net.minecraft.data.DataGenerator;
+import net.minecraft.data.PackOutput;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -44,9 +48,12 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.data.event.GatherDataEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
+
+import java.util.concurrent.CompletableFuture;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(FPSCompress.MODID)
@@ -206,6 +213,8 @@ public final class FPSCompress {
         MENU_TYPES.register(modEventBus);
         // Register network packets
         modEventBus.addListener(this::registerPackets);
+        // Register data generation
+        modEventBus.addListener(this::gatherData);
 
         // FIXED: DimensionTeleportListener now captures exact block on click (no more 3,087 block search!)
         NeoForge.EVENT_BUS.register(new DimensionTeleportListener());
@@ -225,6 +234,18 @@ public final class FPSCompress {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         LOGGER.info("FPSCompress common setup complete");
+    }
+
+    private void gatherData(GatherDataEvent event) {
+        DataGenerator generator = event.getGenerator();
+        PackOutput output = generator.getPackOutput();
+        CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
+
+        // Register recipe provider
+        generator.addProvider(
+                event.includeServer(),
+                new ModRecipeProvider(output, lookupProvider)
+        );
     }
 
     private void registerPackets(RegisterPayloadHandlersEvent event) {

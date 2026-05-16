@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_importer": {
+      "conditions": {
+        "items": [
+          {
+            "items": "fpscompress:importer"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "fpscompress:importer_to_exporter"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_importer"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "fpscompress:importer_to_exporter"
+    ]
+  }
+}

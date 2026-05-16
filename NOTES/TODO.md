@@ -26,12 +26,12 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 ### Core System Improvements
 
 **Crafting Recipes**:
-- [ ] Add crafting recipe for PreFab Upgrade Template
-- [ ] Add crafting recipe for Simulation Wrench
-- [ ] Add crafting recipe for Importer block
-- [ ] Add crafting recipe for Exporter block
-- [ ] Ensure recipes are balanced (not too cheap/expensive)
-- [ ] Test recipes in survival mode
+- [x] Add crafting recipe for PreFab Upgrade Template
+- [x] Add crafting recipe for Simulation Wrench
+- [x] Add crafting recipe for Importer block
+- [x] Add crafting recipe for Exporter block
+- [x] Ensure recipes are balanced (not too cheap/expensive)
+- [x] Test recipes in survival mode
 
 **Importer/Exporter Frequency System** (Terminology & Visual Update):
 - [ ] Rename "filter" to "frequency" across codebase:

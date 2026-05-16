@@ -81,7 +81,7 @@ neoForge {
         }
 
         data {
-            clientData()
+            data()
 
             // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
             // gameDirectory = project.file('run-data')
@@ -163,15 +163,16 @@ dependencies {
     // Download source: https://www.curseforge.com/minecraft/mc-mods/compact-machines/download/7621553
     compileOnly files("libs/compactmachines-neoforge-7.0.81.jar")
 
-    // For runtime testing in dev environment (uncomment if needed):
+    // For runtime testing in dev environment:
     localRuntime files("libs/compactmachines-neoforge-7.0.81.jar")
 
-    // Example optional mod dependency with JEI
-    // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
-    // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
-    // compileOnly "mezz.jei:jei-${mc_version}-neoforge-api:${jei_version}"
-    // We add the full version to localRuntime, not runtimeOnly, so that we do not publish a dependency on it
-    // localRuntime "mezz.jei:jei-${mc_version}-neoforge:${jei_version}"
+    // JEI (Just Enough Items) dependency - recipe viewer for development/testing
+    // Version 19.27.0.336 (jei-1.21.1-neoforge-19.27.0.336.jar) for Minecraft 1.21.1
+    //
+    // SETUP COMPLETE: JEI JAR is in libs/ folder
+    // Download source: https://www.curseforge.com/minecraft/mc-mods/jei/files
+    compileOnly files("libs/jei-1.21.1-neoforge-19.27.0.336.jar")
+    localRuntime files("libs/jei-1.21.1-neoforge-19.27.0.336.jar")
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
