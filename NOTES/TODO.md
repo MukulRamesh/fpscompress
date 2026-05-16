@@ -33,6 +33,21 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - [x] Ensure recipes are balanced (not too cheap/expensive)
 - [x] Test recipes in survival mode
 
+**Documentation**:
+- [ ] Add Patchouli support (in-game wiki/guidebook)
+  - [ ] Add Patchouli dependency to build.gradle
+  - [ ] Create book JSON (book name, landing text, model)
+  - [ ] Create categories (Getting Started, PreFab System, Importer/Exporter, etc.)
+  - [ ] Write entry pages for each major feature
+  - [ ] Add crafting recipes to relevant pages
+  - [ ] Test book in-game (verify all pages load, images render)
+- [ ] Update GitHub wiki with current architecture
+  - [ ] Document conduit-based system
+  - [ ] Add visual diagrams (PreFab faces, Importer/Exporter linking)
+  - [ ] Document state machine (BUILDING/SIMULATING/CACHED/HALTED)
+  - [ ] Add setup tutorials (basic factory, frequency system)
+  - [ ] Keep wiki in sync with Patchouli book content
+
 **Importer/Exporter Frequency System** (Terminology & Visual Update):
 - [ ] Rename "filter" to "frequency" across codebase:
   - [ ] Update `ImporterBlockEntity` and `ExporterBlockEntity` field names
