@@ -84,6 +84,38 @@ Gradle is configured to use Java 21 toolchain (see `build.gradle` line 29), but 
 
 ---
 
+## Version Management
+
+Use `bump-version.sh` to update the mod version in `gradle.properties`. The script automatically creates a git commit and tag.
+
+**Usage**:
+```bash
+cd fpscompress-template-1.21.11
+./bump-version.sh [major|minor|patch|alpha|beta|release]
+```
+
+**Version progression**:
+- `major/minor/patch` — Bumps version number and removes pre-release tag (e.g., `0.1.0-alpha` → `0.2.0`)
+- `alpha` — Sets pre-release to `-alpha` (e.g., `0.1.0` → `0.1.0-alpha`)
+- `beta` — Sets pre-release to `-beta` (e.g., `0.1.0-alpha` → `0.1.0-beta`)
+- `release` — Removes pre-release tag (e.g., `0.1.0-beta` → `0.1.0`)
+
+**Example workflow**:
+```bash
+./bump-version.sh minor   # 0.0.0 → 0.1.0
+./bump-version.sh alpha   # 0.1.0 → 0.1.0-alpha (development)
+./bump-version.sh beta    # 0.1.0-alpha → 0.1.0-beta (testing)
+./bump-version.sh release # 0.1.0-beta → 0.1.0 (stable)
+./bump-version.sh patch   # 0.1.0 → 0.1.1 (hotfix)
+```
+
+The script creates a commit and tag (e.g., `v0.1.0-alpha`). Push with:
+```bash
+git push && git push --tags
+```
+
+---
+
 ## Build Commands
 
 All Gradle commands should be run from `fpscompress-template-1.21.11/` directory:
