@@ -114,6 +114,40 @@ The script creates a commit and tag (e.g., `v0.1.0-alpha`). Push with:
 git push && git push --tags
 ```
 
+### Changelog Management
+
+**IMPORTANT**: Always update `CHANGELOG.md` when making significant changes.
+
+**Location**: `CHANGELOG.md` in the repository root
+
+**Format**: Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) with semantic versioning
+
+**Structure**:
+```markdown
+## [Unreleased]
+### Added / Changed / Fixed / Breaking Changes
+- Document work in progress for next release
+
+## [X.Y.Z] - YYYY-MM-DD
+### Added / Changed / Fixed
+- Document completed features for this version
+```
+
+**When to update**:
+- Before committing significant features (add to `[Unreleased]`)
+- When bumping version (move `[Unreleased]` to versioned section)
+- After fixing bugs (document in `### Fixed`)
+
+**Example workflow**:
+1. Implement feature → Update `[Unreleased]` section
+2. Run `./bump-version.sh minor` → Move changes to `[X.Y.Z]` section
+3. Commit: "Update CHANGELOG for vX.Y.Z release"
+
+**Current versions**:
+- `[Unreleased]` → v0.3.0 (Frequency system)
+- `[0.2.0]` → Crafting recipes & JEI support
+- `[0.1.0-alpha]` → Initial alpha release
+
 ---
 
 ## Build Commands
