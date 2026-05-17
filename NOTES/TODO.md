@@ -48,25 +48,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - [ ] Add setup tutorials (basic factory, frequency system)
   - [ ] Keep wiki in sync with Patchouli book content
 
-**Importer/Exporter Frequency System** (Terminology & Visual Update):
-- [x] Rename "filter" to "frequency" across codebase:
-  - [x] Update `ImporterBlockEntity` and `ExporterBlockEntity` field names
-  - [x] Update GUI labels and tooltips
-  - [x] Update localization entries in `en_us.json`
-  - [x] Update documentation (CLAUDE.md, IMPORTER_EXPORTER_SYSTEM.md, etc.)
-- [x] Visual frequency indicator:
-  - [x] Render frequency item on all 6 sides of Importer/Exporter blocks
-  - [x] Style: Unbreakable, uninteractable, invisible item frame aesthetic
-  - [x] Use block entity renderer (similar to chest/sign rendering)
-  - [x] Update when frequency item changes (right-click with new item)
-  - [x] Test: Verify visibility from all angles in-game (requires runtime testing)
-
-**Why "frequency" instead of "filter"**:
-- More intuitive metaphor: Importers/Exporters "tune" to specific item frequencies
-- Aligns with radio/signal terminology (fits conduit architecture)
-- "Filter" implies blocking unwanted items; "frequency" implies selective transport
-- Visual indicator reinforces the concept (item appears on block faces)
-
 ### PreFab Blueprint System (Scanner & Printer)
 **Status**: Not started
 **Goal**: Scan PreFab factories to create blueprints, then print copies with resource costs
@@ -960,6 +941,41 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - Tooltips for items
   - UI messages (upgrade installed, simulation states, etc.)
   - State names (Building, Simulating, Cached, Halted)
+
+### 4. Importer/Exporter Frequency System
+**Status**: ✅ **COMPLETE** (2026-05-16)
+**Goal**: Improved terminology and visual identification system for Importer/Exporter blocks
+
+**Terminology Refactoring**:
+- [x] Rename "filter" to "frequency" across codebase:
+  - [x] Update `ImporterBlockEntity` and `ExporterBlockEntity` field names
+  - [x] Update GUI labels and tooltips
+  - [x] Update localization entries in `en_us.json`
+  - [x] Update documentation (CLAUDE.md, IMPORTER_EXPORTER_SYSTEM.md, etc.)
+  - [x] Update NBT tags: `FilterItem` → `FrequencyItem`
+
+**Visual Frequency Indicator**:
+- [x] Render frequency item on all 6 sides of Importer/Exporter blocks
+- [x] Style: 3D item rendering similar to item frames with full brightness
+- [x] Use block entity renderer (FrequencyIndicatorRenderer)
+- [x] Update when frequency item changes (right-click with new item)
+- [x] Client-server synchronization for instant updates
+- [x] Test: Verify visibility from all angles in-game
+
+**Additional Improvements**:
+- [x] Fixed registry sync bug: Frequency changes now immediately update registry
+- [x] Added CM dimension placement restriction (survival mode only)
+- [x] Renderer uses `LightTexture.FULL_BRIGHT` for consistent visibility
+
+**Why "frequency" instead of "filter"**:
+- More intuitive metaphor: Importers/Exporters "tune" to specific item frequencies
+- Aligns with radio/signal terminology (fits conduit architecture)
+- "Filter" implies blocking unwanted items; "frequency" implies selective transport
+- Visual indicator reinforces the concept (item appears on block faces)
+
+**Breaking Changes**:
+- NBT tag renamed: `FilterItem` → `FrequencyItem` (old saves lose frequency settings)
+- Acceptable for pre-release (0.2.0-alpha) stage
 
 ---
 
