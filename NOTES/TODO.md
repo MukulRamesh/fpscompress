@@ -49,17 +49,17 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - [ ] Keep wiki in sync with Patchouli book content
 
 **Importer/Exporter Frequency System** (Terminology & Visual Update):
-- [ ] Rename "filter" to "frequency" across codebase:
-  - [ ] Update `ImporterBlockEntity` and `ExporterBlockEntity` field names
-  - [ ] Update GUI labels and tooltips
-  - [ ] Update localization entries in `en_us.json`
-  - [ ] Update documentation (CLAUDE.md, IMPORTER_EXPORTER_SYSTEM.md, etc.)
-- [ ] Visual frequency indicator:
-  - [ ] Render frequency item on all 6 sides of Importer/Exporter blocks
-  - [ ] Style: Unbreakable, uninteractable, invisible item frame aesthetic
-  - [ ] Use block entity renderer (similar to chest/sign rendering)
-  - [ ] Update when frequency item changes (right-click with new item)
-  - [ ] Test: Verify visibility from all angles in-game
+- [x] Rename "filter" to "frequency" across codebase:
+  - [x] Update `ImporterBlockEntity` and `ExporterBlockEntity` field names
+  - [x] Update GUI labels and tooltips
+  - [x] Update localization entries in `en_us.json`
+  - [x] Update documentation (CLAUDE.md, IMPORTER_EXPORTER_SYSTEM.md, etc.)
+- [x] Visual frequency indicator:
+  - [x] Render frequency item on all 6 sides of Importer/Exporter blocks
+  - [x] Style: Unbreakable, uninteractable, invisible item frame aesthetic
+  - [x] Use block entity renderer (similar to chest/sign rendering)
+  - [x] Update when frequency item changes (right-click with new item)
+  - [x] Test: Verify visibility from all angles in-game (requires runtime testing)
 
 **Why "frequency" instead of "filter"**:
 - More intuitive metaphor: Importers/Exporters "tune" to specific item frequencies

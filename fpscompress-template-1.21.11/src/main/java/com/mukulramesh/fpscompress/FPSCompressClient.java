@@ -1,5 +1,6 @@
 package com.mukulramesh.fpscompress;
 
+import com.mukulramesh.fpscompress.client.renderer.FrequencyIndicatorRenderer;
 import com.mukulramesh.fpscompress.gui.PreFabConfigScreen;
 import com.mukulramesh.fpscompress.gui.PreFabStatusScreen;
 import net.minecraft.client.Minecraft;
@@ -9,6 +10,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -43,5 +45,22 @@ public class FPSCompressClient {
         // Register PreFab status/control screen
         event.register(FPSCompress.PREFAB_STATUS_MENU.get(), PreFabStatusScreen::new);
         FPSCompress.LOGGER.info("Registered PreFab status screen");
+    }
+
+    @SubscribeEvent
+    static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        // Register frequency indicator renderer for Importer blocks
+        event.registerBlockEntityRenderer(
+            FPSCompress.IMPORTER_BE.get(),
+            FrequencyIndicatorRenderer::new
+        );
+
+        // Register frequency indicator renderer for Exporter blocks
+        event.registerBlockEntityRenderer(
+            FPSCompress.EXPORTER_BE.get(),
+            FrequencyIndicatorRenderer::new
+        );
+
+        FPSCompress.LOGGER.info("Registered Frequency Indicator renderers for Importer/Exporter blocks");
     }
 }

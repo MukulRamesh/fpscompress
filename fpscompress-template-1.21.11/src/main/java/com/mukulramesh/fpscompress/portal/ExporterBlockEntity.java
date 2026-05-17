@@ -35,9 +35,9 @@ public class ExporterBlockEntity extends BlockEntity {
     @Nullable
     private String roomCode;
 
-    // Filter item for GUI display (e.g., "Iron Exporter" instead of UUID)
-    // Player right-clicks with an item to set the filter
-    private ItemStack filterItem = ItemStack.EMPTY;
+    // Frequency item for GUI display (e.g., "Iron Exporter" instead of UUID)
+    // Player right-clicks with an item to set the frequency
+    private ItemStack frequencyItem = ItemStack.EMPTY;
 
     // Internal buffer (9 slots, items only for MVP)
     private final ItemStackHandler inventory = new ItemStackHandler(9) {
@@ -86,34 +86,43 @@ public class ExporterBlockEntity extends BlockEntity {
     }
 
     /**
-     * Get the filter item for GUI display.
+     * Get the frequency item for GUI display.
      *
-     * @return The filter item (e.g., Iron Ingot for "Iron Ingot Exporter")
+     * @return The frequency item (e.g., Iron Ingot for "Iron Ingot Exporter")
      */
-    public ItemStack getFilterItem() {
-        return filterItem.copy();
+    public ItemStack getFrequencyItem() {
+        return frequencyItem.copy();
     }
 
     /**
-     * Set the filter item for GUI display.
-     * Player right-clicks Exporter with an item to set the filter.
+     * Set the frequency item for GUI display.
+     * Player right-clicks Exporter with an item to set the frequency.
      *
-     * @param item The filter item
+     * @param item The frequency item
      */
-    public void setFilterItem(ItemStack item) {
-        this.filterItem = item.copyWithCount(1); // Store only 1 item for display
+    public void setFrequencyItem(ItemStack item) {
+        this.frequencyItem = item.copyWithCount(1); // Store only 1 item for display
         setChanged();
+
+        // Notify clients to update renderer
+        if (level != null && !level.isClientSide()) {
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(),
+                                  net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+
+            // Update registry with new display name
+            ImporterExporterRegistry.registerExporter(exporterUUID, getBlockPos(), getDisplayName(), roomCode);
+        }
     }
 
     /**
      * Get display name for this Exporter.
-     * Shows filter item name if set, otherwise "Unnamed Exporter".
+     * Shows frequency item name if set, otherwise "Unnamed Exporter".
      *
      * @return Display name
      */
     public String getDisplayName() {
-        if (!filterItem.isEmpty()) {
-            return filterItem.getHoverName().getString() + " Exporter";
+        if (!frequencyItem.isEmpty()) {
+            return frequencyItem.getHoverName().getString() + " Exporter";
         }
         return "Unnamed Exporter";
     }
@@ -312,9 +321,9 @@ public class ExporterBlockEntity extends BlockEntity {
             tag.putString("roomCode", roomCode);
         }
 
-        // Save filter item
-        if (!filterItem.isEmpty()) {
-            tag.put("FilterItem", filterItem.save(registries));
+        // Save frequency item
+        if (!frequencyItem.isEmpty()) {
+            tag.put("FrequencyItem", frequencyItem.save(registries));
         }
 
         // Save inventory
@@ -335,9 +344,9 @@ public class ExporterBlockEntity extends BlockEntity {
             roomCode = tag.getString("roomCode");
         }
 
-        // Load filter item
-        if (tag.contains("FilterItem")) {
-            filterItem = ItemStack.parseOptional(registries, tag.getCompound("FilterItem"));
+        // Load frequency item
+        if (tag.contains("FrequencyItem")) {
+            frequencyItem = ItemStack.parseOptional(registries, tag.getCompound("FrequencyItem"));
         }
 
         // Load inventory

@@ -35,5 +35,10 @@
 
   "fpscompress.configuration.title": "FPSCompress Configuration",
   "fpscompress.configuration.section.fpscompress.common.toml": "FPSCompress Configuration",
-  "fpscompress.configuration.section.fpscompress.common.toml.title": "FPSCompress Configuration"
+  "fpscompress.configuration.section.fpscompress.common.toml.title": "FPSCompress Configuration",
+
+  "fpscompress.importer.frequency.none": "None (right-click with item to set frequency)",
+  "fpscompress.exporter.frequency.none": "None (right-click with item to set frequency)",
+  "fpscompress.importer.frequency": "Frequency",
+  "fpscompress.exporter.frequency": "Frequency"
 }

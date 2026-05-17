@@ -58,6 +58,18 @@ public class ExporterBlock extends Block implements EntityBlock {
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
+        // Only allow placement in CM dimension
+        Level level = context.getLevel();
+        String dimensionKey = level.dimension().location().toString();
+
+        if (!"compactmachines:compact_world".equals(dimensionKey)) {
+            // Prevent placement outside CM dimension in survival mode
+            Player player = context.getPlayer();
+            if (player != null && !player.isCreative()) {
+                return null; // Block placement prevented
+            }
+        }
+
         return this.defaultBlockState().setValue(FACING, context.getNearestLookingDirection().getOpposite());
     }
 
@@ -117,19 +129,19 @@ public class ExporterBlock extends Block implements EntityBlock {
                     false
                 );
 
-                // Show filter
-                ItemStack filter = exporter.getFilterItem();
-                if (!filter.isEmpty()) {
+                // Show frequency
+                ItemStack frequency = exporter.getFrequencyItem();
+                if (!frequency.isEmpty()) {
                     player.displayClientMessage(
                         net.minecraft.network.chat.Component.literal(
-                            String.format("§7Filter: §e%s", filter.getHoverName().getString())
+                            String.format("§7Frequency: §e%s", frequency.getHoverName().getString())
                         ),
                         false
                     );
                 } else {
                     player.displayClientMessage(
                         net.minecraft.network.chat.Component.literal(
-                            "§7Filter: §cNone (right-click with item to set)"
+                            "§7Frequency: §cNone (right-click with item to set frequency)"
                         ),
                         false
                     );
@@ -192,14 +204,14 @@ public class ExporterBlock extends Block implements EntityBlock {
             ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, net.minecraft.world.InteractionHand hand,
             BlockHitResult hitResult) {
-        // Right-click with item to set filter
+        // Right-click with item to set frequency
         if (!level.isClientSide() && !stack.isEmpty()) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ExporterBlockEntity exporter) {
-                exporter.setFilterItem(stack);
+                exporter.setFrequencyItem(stack);
                 player.displayClientMessage(
                     net.minecraft.network.chat.Component.literal(
-                        String.format("§aExporter filter set to: %s", stack.getHoverName().getString())
+                        String.format("§aExporter frequency set to: %s", stack.getHoverName().getString())
                     ),
                     true
                 );
