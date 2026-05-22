@@ -30,7 +30,7 @@ FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compressi
 **Player Experience**:
 1. Build factory inside a Compact Machine room
 2. **Place Importer/Exporter blocks** inside CM room (input/output gates)
-3. Right-click CM block with "TPS Upgrade" item → becomes PreFab
+3. Right-click CM block with "PreFab Upgrade Template" item → becomes PreFab
 4. Shift+Right-click PreFab with Simulation Wrench → Open face config GUI
 5. Configure each face:
    - Set mode (PULL/PUSH/DISABLED)

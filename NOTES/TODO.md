@@ -25,7 +25,200 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-**Crafting Recipes**:
+#### Config Change Validation (Post-CACHED)
+- [ ] Handle face reconfiguration after CACHED rates are saved
+- [ ] Do not apply configuration changes while simulating (add warning on attempt)
+  - **Problem**: Cached rates are stored in aggregate (not per-face)
+  - **Example scenario**:
+    - Initial config: NORTH=Pull (input), SOUTH=Push (output), WEST=Push, EAST=Pull
+    - Cached rates stored: `iron_ingot: +5.0/tick` (aggregate production)
+    - Player reconfigures: NORTH=Push, SOUTH=Pull (swap input/output faces)
+    - WEST and EAST remain Push/Pull respectively
+  - **Issue**: No way to know which cached rate belongs to which face
+    - Old WEST output rate might be reused as new NORTH input rate
+    - Old EAST input rate might be reused as new SOUTH output rate
+    - Cached rates become meaningless after face role changes
+  - **Current behavior**: UNSPECIFIED (likely causes incorrect production or HALTED state)
+  - **Potential solutions**:
+    - Option A: Store per-face rates (increases NBT size, breaks existing saves)
+- [ ] Add unit tests for config change scenarios
+
+#### CACHED State Entry Prevention (Survival Mode)
+- [ ] Prevent survival players from entering PreFab during CACHED state
+  - **Problem**: CM chunks unload during CACHED mode (performance optimization)
+  - **Risk**: Player enters PreFab while CACHED → breaks Importer/Exporter → UUID links broken → transport fails → HALTED state
+  - **Current behavior**: Nothing prevents entry (player can break factory setup while chunks unloaded)
+- [ ] Implementation tasks:
+  - [ ] Hook `PrefabBlock.useWithoutItem()` to check state before teleport
+  - [ ] If state == CACHED and player is not creative → Cancel teleport, show chat message
+  - [ ] Localize message: "fpscompress.prefab.cached_entry_blocked" → "Factory is running in CACHED mode. Reset to Building to enter."
+  - [ ] Add tooltip to PreFab item explaining CACHED entry restriction
+  - [ ] Test: Survival player right-clicks CACHED PreFab → Entry blocked
+  - [ ] Test: Creative player right-clicks CACHED PreFab → Entry allowed (for debugging)
+
+#### Minimum Simulation Time Requirement (Survival Mode)
+- [ ] Enforce minimum simulation duration before allowing transition to CACHED state
+  - **Goal**: Prevent inaccurate rate measurements from too-short simulations
+  - **Problem**: Player starts simulation, waits 5 seconds, finishes → Rates calculated from tiny sample size → Unreliable
+  - **Current behavior**: Player can finish simulation immediately (no time limit)
+  - **Default**: 2 minutes (2400 ticks) minimum simulation time for survival players
+  - **Creative bypass**: Creative players have no minimum (instant finish for testing)
+- [ ] Implementation tasks:
+  - [ ] Add config option in `FPSCompressConfig.java`:
+    - [ ] `minimumSimulationTicks` (default: 2400 = 2 minutes)
+    - [ ] Config type: SERVER (server owner controls, syncs to clients)
+    - [ ] Range: 600 to 72000 (30 seconds to 1 hour)
+    - [ ] Description: "Minimum ticks required in SIMULATING state before survival players can cache rates"
+  - [ ] Track elapsed simulation time in `PreFabBlockEntity`:
+    - [ ] Add `long simulationElapsedTicks` field (increments each tick in SIMULATING state)
+    - [ ] Add `long simulationRequiredTicks` field (captured once at simulation start)
+    - [ ] Reset `simulationElapsedTicks` to 0 when entering SIMULATING state
+    - [ ] Capture `simulationRequiredTicks = config.minimumSimulationTicks` when entering SIMULATING state
+    - [ ] Persist both fields in NBT (survives world reload mid-simulation)
+  - [ ] Modify `startSimulation()` method:
+    - [ ] Read current config value: `config.minimumSimulationTicks`
+    - [ ] Store in `simulationRequiredTicks` field (snapshot at start)
+    - [ ] This prevents mid-simulation config changes from affecting in-progress simulations
+  - [ ] Modify `finishSimulation()` method:
+    - [ ] Check if player is creative mode → Allow immediate finish
+    - [ ] Check if `simulationElapsedTicks >= simulationRequiredTicks` → Allow finish (uses cached value, no config lookup)
+    - [ ] Otherwise → Cancel transition, show chat message: "Simulation incomplete. Minimum time: X minutes (Y minutes remaining)"
+  - [ ] Update Status GUI to show progress:
+    - [ ] Display elapsed time: "Simulating: 1m 30s / 2m 00s"
+    - [ ] Progress bar: ████████░░░░░░ 75%
+    - [ ] Disable "Finish Simulation" button until minimum time reached (survival only)
+    - [ ] Button tooltip: "Minimum simulation time not reached (30s remaining)"
+  - [ ] Add localization strings:
+    - [ ] "fpscompress.simulation.minimum_time_not_reached" → "Simulation incomplete. Minimum time: %d minutes (%d minutes remaining)"
+    - [ ] "fpscompress.gui.simulation.elapsed_time" → "Simulating: %s / %s"
+    - [ ] "fpscompress.gui.simulation.progress" → "Progress: %d%%"
+    - [ ] "fpscompress.config.minimum_simulation_ticks" → "Minimum Simulation Time (ticks)"
+  - [ ] Test cases:
+    - [ ] Survival player tries to finish after 1 minute → Blocked, message shown
+    - [ ] Survival player finishes after 2 minutes → Success
+    - [ ] Creative player tries to finish immediately → Success (no minimum)
+    - [ ] Player reloads world mid-simulation → Elapsed time AND required time persist
+    - [ ] PreFab starts simulation with 2min requirement → Config changes to 5min mid-simulation → PreFab STILL only needs 2min (captured at start)
+    - [ ] PreFab starts simulation with 5min requirement → Config changes to 2min mid-simulation → PreFab STILL needs 5min (captured at start)
+    - [ ] New PreFab starts simulation after config change → Uses NEW config value (5min)
+
+  **Why 2 minutes default**:
+  - Enough time for factory to stabilize (hoppers fill, machines warm up)
+  - Long enough to observe multiple production cycles
+  - Not so long that it's tedious for testing
+  - Prevents "spam simulation → instant cache" exploits
+
+  **Config justification**:
+  - Modpack authors may want longer times (5-10 min) for complex factories
+  - Server owners may want shorter times (1 min) for casual gameplay
+  - Creative players need no restriction for rapid prototyping
+  
+  **Config snapshot behavior**:
+  - Config value captured ONCE when simulation starts (stored in `simulationRequiredTicks`)
+  - In-progress simulations unaffected by config changes (prevents mid-simulation rule changes)
+  - New simulations always use current config value
+  - Performance: No config lookups during `finishSimulation()` (uses cached `simulationRequiredTicks`)
+  - Fairness: Player knows exact time requirement when they start (doesn't change mid-simulation)
+  - Example: Start simulation with 2min requirement → Config changes to 5min → Finish after 2min (original requirement honored)
+
+  **Priority**: MEDIUM-HIGH (improves rate measurement accuracy, prevents exploit)
+  **Estimated effort**: 3-5 days (config system, GUI updates, timer tracking)
+
+#### Customizable Rate Units (Status GUI Enhancement)
+- [ ] Add configurable rate display modes to PreFab status GUI
+  - **Goal**: Allow players to view rates in different time scales and normalize to specific items
+  - **Current behavior**: Rates always shown per tick (e.g., "0.5 iron/tick", "4 coal/tick")
+
+  **Feature 1: Time Scale Toggle Button**
+  - [ ] Add cycle button: "Per Tick" → "Per Second" → "Per Minute" → "Per Hour"
+  - [ ] Convert rates based on 20 ticks/second, truncate to 2 decimal places:
+    - Per Second: rate × 20 (e.g., 0.5/tick → 10.00/sec, 0.333.../tick → 6.67/sec)
+    - Per Minute: rate × 1200 (e.g., 0.5/tick → 600.00/min, 0.0083/tick → 10.00/min)
+    - Per Hour: rate × 72000 (e.g., 0.5/tick → 36000.00/hr, 0.333.../tick → 23998.40/hr)
+  - [ ] Always display 2 decimal places for consistency (e.g., "10.00" not "10")
+  - [ ] Persist selected time scale in BlockEntity NBT (survives GUI close/reopen)
+  - [ ] Display time scale in GUI header: "Production Rates (Per Second)"
+
+  **Feature 2: Normalize to Specific Item (Click to Focus)**
+  - [ ] Make resource rate lines clickable in status GUI
+  - [ ] On click: Normalize all rates to show "per 1 unit of clicked item"
+  - [ ] Example: Original rates: 0.5 iron/tick, 4 coal/tick
+    - Click iron → Show: "1 iron per 2 ticks, 8 coal per 2 ticks"
+    - Click coal → Show: "0.125 iron per 0.25 ticks, 1 coal per 0.25 ticks"
+  - [ ] Calculation: `normalizedTime = 1.0 / clickedItemRate`, then `normalizedRate = originalRate × normalizedTime`
+  - [ ] Display focused item with highlight (green background or bold text)
+  - [ ] Add "Reset" button to return to default display (per tick, no normalization)
+
+  **Feature 3: Auto-Normalize to Whole Numbers (Cascading LCM)**
+  - [ ] Find smallest time window where all rates are whole numbers
+  - [ ] Algorithm: Calculate LCM of rate denominators with cascading time scales
+    - Example: 0.5 iron (1/2), 4 coal (4/1) → LCM(2, 1) = 2 ticks → "1 iron, 8 coal per 2 ticks"
+    - Example: 0.25 iron (1/4), 0.1 coal (1/10) → LCM(4, 10) = 20 ticks → "5 iron, 2 coal per 20 ticks"
+  - [ ] Apply auto-normalization by default when GUI opens
+  - [ ] **Cascading time scale strategy** (prevents showing awkwardly large tick counts):
+    1. Try LCM within 100 ticks (5 seconds) → Display as ticks if found
+    2. If LCM > 100 ticks: Convert rates to per-second, try LCM within 100 seconds
+    3. If LCM > 100 seconds: Convert to per-minute, try LCM within 10 minutes (600 seconds)
+    4. If LCM > 10 minutes: Convert to per-hour, try LCM within 1 hour
+    5. If LCM > 1 hour: Default to per-hour rates, truncate to 2 decimal places
+       - Example: 0.333... iron/tick → 23,998.4 iron/hr → Display "23,998.40 iron per hour"
+       - Example: π/100 coal/tick → 2,261.95 coal/hr → Display "2,261.95 coal per hour"
+  - [ ] **Why cascading**: Avoids showing "50,000 iron per 10,000 ticks" when "2,500 iron per 8.33 minutes" is clearer
+  - [ ] **Why truncate at 2 decimals**: Balances precision vs. readability (72,000 ticks = 1 hour provides ~0.0014% precision)
+  - [ ] Display normalized time in GUI: "Production Rates (Per 20 Ticks - Auto)" or "Production Rates (Per Hour - Rounded)"
+
+  **Implementation Tasks**:
+  - [ ] Add `RateDisplayMode` enum: `PER_TICK`, `PER_SECOND`, `PER_MINUTE`, `PER_HOUR`
+  - [ ] Add `RateNormalization` class:
+    - [ ] `calculateLCM(List<Double> rates)` - Find smallest whole-number time window
+    - [ ] `normalizeToItem(Map<String, Double> rates, String focusedItem)` - Scale all rates to 1 unit of focused item
+    - [ ] `convertTimeScale(double rate, RateDisplayMode mode)` - Convert tick rates to seconds/minutes/hours
+  - [ ] Extend `PreFabStatusScreen.java`:
+    - [ ] Add time scale cycle button (top-right corner)
+    - [ ] Make resource rate lines clickable (add mouse click detection)
+    - [ ] Add focused item highlight rendering
+    - [ ] Add "Reset" button to clear normalization
+    - [ ] Display normalized time window in header (e.g., "Per 20 Ticks")
+  - [ ] Extend `PreFabBlockEntity.java`:
+    - [ ] Add `RateDisplayMode currentDisplayMode` field (default: `PER_TICK`)
+    - [ ] Add `String focusedItemId` field (null if no focus)
+    - [ ] Add `int autoNormalizedTicks` field (calculated LCM, default: 1)
+    - [ ] Persist display preferences in NBT
+  - [ ] Update `StatusGuiSyncPacket.java`:
+    - [ ] Add display mode, focused item, and normalized ticks to sync packet
+  - [ ] Add localization strings:
+    - [ ] "fpscompress.gui.rates.per_tick" → "Per Tick"
+    - [ ] "fpscompress.gui.rates.per_second" → "Per Second"
+    - [ ] "fpscompress.gui.rates.per_minute" → "Per Minute"
+    - [ ] "fpscompress.gui.rates.per_hour" → "Per Hour"
+    - [ ] "fpscompress.gui.rates.reset" → "Reset View"
+    - [ ] "fpscompress.gui.rates.auto_normalized" → "Auto-Normalized"
+  - [ ] Test cases:
+    - [ ] Simple rates (0.5 iron, 4 coal) → Auto-normalize to 2 ticks
+    - [ ] Complex rates (0.25 iron, 0.1 coal) → Auto-normalize to 20 ticks
+    - [ ] Large LCM (0.333... iron, 0.1 coal) → Show fractional (LCM > 100)
+    - [ ] Click item → All rates scale correctly
+    - [ ] Cycle time scale → Rates convert accurately (20 ticks = 1 second)
+    - [ ] Reset button → Returns to default view
+    - [ ] Preferences persist across GUI close/reopen
+
+  **UI Mockup**:
+  ```
+  ┌─────────────────────────────────────────────┐
+  │ Production Rates (Per 2 Ticks - Auto)  [⏱] │ ← Time scale button
+  ├─────────────────────────────────────────────┤
+  │ ▶ 1.0 Iron Ingot                           │ ← Clickable (focused = bold/green)
+  │   8.0 Coal                                  │ ← Clickable
+  │   0.5 Diamond                               │ ← Clickable
+  │                                             │
+  │ [Reset View]                                │ ← Reset button
+  └─────────────────────────────────────────────┘
+  ```
+
+  **Priority**: MEDIUM (significant UX improvement, helps players understand complex rates)
+  **Estimated effort**: 1-2 weeks (GUI changes, math algorithms, NBT persistence)
+
+#### Crafting Recipes
 - [x] Add crafting recipe for PreFab Upgrade Template
 - [x] Add crafting recipe for Simulation Wrench
 - [x] Add crafting recipe for Importer block
@@ -33,7 +226,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - [x] Ensure recipes are balanced (not too cheap/expensive)
 - [x] Test recipes in survival mode
 
-**Documentation**:
+#### Documentation
 - [ ] Add Patchouli support (in-game wiki/guidebook)
   - [ ] Add Patchouli dependency to build.gradle
   - [ ] Create book JSON (book name, landing text, model)

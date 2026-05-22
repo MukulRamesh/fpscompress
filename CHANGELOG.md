@@ -22,11 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `FilterItem` → `FrequencyItem` (NBT tags)
 - **Debug Messages**: Updated left-click debug output to show "Frequency:" instead of "Filter:"
 - **Renderer**: FrequencyIndicatorRenderer uses `LightTexture.FULL_BRIGHT` for consistent visibility
+- **Logging**: Removed 34 excessive log statements to eliminate log spam
+  - Removed per-tick transport logs in PrefabBlockEntity (PULL/PUSH operations)
+  - Removed per-chunk/per-slot logs in InventoryScanner (room scans)
+  - Removed verbose reflection debugging in DimensionTeleportListener
+  - Kept only critical state transitions and error logs
 
 ### Fixed
 - **Registry Sync Bug**: Frequency changes now immediately update the ImporterExporterRegistry
   - Previously, the PreFab config GUI would show "Unnamed Importer/Exporter" until chunks reloaded
   - Now updates instantly when frequency is set via right-click
+- **Performance**: Significantly reduced console output and logging overhead during normal operations
 
 ### Breaking Changes
 - **NBT Format Change**: Existing Importer/Exporter blocks will lose their frequency settings when loading old saves
