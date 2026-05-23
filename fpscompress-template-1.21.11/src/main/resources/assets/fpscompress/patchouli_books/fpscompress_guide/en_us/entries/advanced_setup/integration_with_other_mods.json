@@ -1,0 +1,23 @@
+{
+  "name": "Integration with Other Mods",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Vanilla+ Mods",
+      "text": "$(bold)Hoppers$(): $(li)[DONE] Work great with PreFabs $(li)Place hopper between chest and PreFab face $(li)Faster item transfer than direct chest$(br2)$(bold)Storage Drawers$(): $(li)[DONE] Compatible (exposes IItemHandler) $(li)Use for large storage capacity $(li)Good for high-throughput factories$(br2)$(bold)Ender Chests$(): $(li)[DONE] Can pull/push to Ender Chests $(li)Use for wireless item transport $(li)Connect multiple PreFabs via shared Ender Chest"
+    },
+    {
+      "type": "text",
+      "title": "Modded Pipes (Item Transport)",
+      "text": "$(bold)Examples$(): Thermal Dynamics, Mekanism Pipes, Create Funnels$(br2)$(bold)Setup$(): [Chest] → [Pipe] → [PreFab Face]$(br2)$(bold)Compatibility$(): Should work if pipe acts as inventory$(br2)$(bold)Note$(): PreFab extracts from adjacent block (pipe must be adjacent to PreFab)"
+    },
+    {
+      "type": "text",
+      "title": "AE2 / Refined Storage (Future)",
+      "text": "$(bold)Status$(): [WIP] Not yet implemented$(br2)$(bold)Planned$(): $(li)Factory Controller block $(li)Direct ME interface connection $(li)Autocrafting integration$(br2)$(bold)Current workaround$(): Use chests + ME import/export buses$(br2)---"
+    }
+  ]
+}

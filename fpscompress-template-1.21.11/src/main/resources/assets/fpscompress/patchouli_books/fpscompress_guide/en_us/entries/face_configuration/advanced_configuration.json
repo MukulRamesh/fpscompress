@@ -1,0 +1,23 @@
+{
+  "name": "Advanced Configuration",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Using All 6 Faces",
+      "text": "You can configure all 6 faces for maximum throughput:$(br2)$(bold)Example: 6-Input Factory$() NORTH: PULL → Importer #1 (Coal) SOUTH: PULL → Importer #2 (Iron Ore) EAST:  PULL → Importer #3 (Gold Ore) WEST:  PULL → Importer #4 (Copper Ore) UP:    PULL → Importer #5 (Tin Ore) DOWN:  PULL → Importer #6 (Catalyst)$(br2)All faces operate independently."
+    },
+    {
+      "type": "text",
+      "title": "Multiple Outputs",
+      "text": "$(bold)Example: Ore Processing$() NORTH: PULL → Ore Importer SOUTH: PUSH ← Ingot Exporter EAST:  PUSH ← Dust Exporter WEST:  PUSH ← Nugget Exporter$(br2)Separate chests for each product type."
+    },
+    {
+      "type": "text",
+      "title": "Bidirectional Faces (NOT POSSIBLE)",
+      "text": "$(bold)Can a face be both PULL and PUSH?$() [X] No$(br2)Each face can only be: $(li)DISABLED (inactive) $(li)PULL (Overworld → CM) $(li)PUSH (CM → Overworld)"
+    }
+  ]
+}

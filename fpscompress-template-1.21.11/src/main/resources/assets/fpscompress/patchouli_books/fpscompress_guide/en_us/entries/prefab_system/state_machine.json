@@ -1,0 +1,32 @@
+{
+  "name": "State Machine",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "text": "PreFabs operate in one of four states:"
+    },
+    {
+      "type": "text",
+      "title": "BUILDING State",
+      "text": "$(bold)Purpose$(): Initial setup and configuration$(br2)$(bold)Characteristics$(): $(li)PreFab is idle $(li)Player configures faces via GUI $(li)Player builds factory inside PreFab $(li)Places Importers/Exporters inside CM $(li)Connects chests to PreFab faces in Overworld $(li)CM chunks may be loaded or unloaded$(br2)$(bold)Transitions$(): $(li)Right-click with Simulation Wrench → $(bold)SIMULATING$()"
+    },
+    {
+      "type": "text",
+      "title": "SIMULATING State",
+      "text": "$(bold)Purpose$(): Measure actual production rates$(br2)$(bold)Characteristics$(): $(li)CM chunks are $(bold)FORCE LOADED$() (factory actually runs) $(li)PreFab counts resources transported per tick $(li)Tracks each resource type separately $(li)Calculates: Rate = Total_Transported / Time_Elapsed $(li)Example: 128 iron ingots in 600 ticks = 0.213 iron/tick$(br2)$(bold)Transitions$(): $(li)Right-click with Simulation Wrench → $(bold)CACHED$() (calculates rates, unloads chunks)"
+    },
+    {
+      "type": "text",
+      "title": "CACHED State",
+      "text": "$(bold)Purpose$(): Run factory virtually without chunk loading$(br2)$(bold)Characteristics$(): $(li)CM chunks are $(bold)UNLOADED$() ← $(bold)This is the performance gain.$() $(li)PreFab simulates production using fractional math $(li)Accumulates fractional rates: `accumulator += rate` $(li)When `accumulator >= 1.0`: Transport whole units $(li)Example: Rate 0.213 iron/tick → Every ~4.7 ticks, push 1 iron ingot$(br2)$(bold)This is the primary goal of the mod.$()$(br2)$(bold)Transitions$(): $(li)Input starved (can't pull from Overworld) → $(bold)HALTED$() $(li)Output blocked (can't push to Overworld) → $(bold)HALTED$() $(li)Right-click with Simulation Wrench → $(bold)SIMULATING$() (recalibrate)"
+    },
+    {
+      "type": "text",
+      "title": "HALTED State",
+      "text": "$(bold)Purpose$(): Cache broke, needs player intervention$(br2)$(bold)Characteristics$(): $(li)CM chunks STAY $(bold)UNLOADED$() (do not reload) $(li)Production pauses $(li)Preserves cached rates (does not forget measurements) $(li)Waiting for player to fix Overworld side$(br2)$(bold)Common Causes$(): $(li)Input chest is empty (can't pull more items) $(li)Output chest is full (can't push more items) $(li)Importer/Exporter was broken$(br2)$(bold)Transitions$(): $(li)Right-click with Simulation Wrench → $(bold)SIMULATING$() (resumes, remeasures rates)"
+    }
+  ]
+}

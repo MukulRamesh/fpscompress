@@ -1,0 +1,12 @@
+{
+  "name": "See Also",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)$(l:getting_started/prerequisites)Getting Started$() - First-time setup guide $(li)$(l:prefab_system/what_is_a_prefab)PreFab System$() - Understanding PreFabs and faces $(li)$(l:importer_exporter_guide/overview)Importer & Exporter Guide$() - Setting up gates $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - Understanding PreFab states"
+    }
+  ]
+}

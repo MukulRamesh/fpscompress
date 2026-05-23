@@ -1,0 +1,12 @@
+{
+  "name": "Example Setup",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "text": "Overworld:   [Coal Chest] → [PreFab NORTH face: PULL ITEMS → Importer #1]$(br2)CM Dimension (while SIMULATING):   [Importer #1] → [Furnace] → [Exporter #1]   (PreFab measures: 0.213 iron ingots/tick)$(br2)Overworld:   [PreFab SOUTH face: PUSH ITEMS ← Exporter #1] → [Iron Chest]$(br2)During CACHED mode: $(li)CM dimension chunks unload $(li)PreFab accumulates fractional production (0.213/tick) $(li)Every ~5 ticks, PreFab pushes 1 iron ingot to output chest $(li)No chunk loading = Better server TPS."
+    }
+  ]
+}

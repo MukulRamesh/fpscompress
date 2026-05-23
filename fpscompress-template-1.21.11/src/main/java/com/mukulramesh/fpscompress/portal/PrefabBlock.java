@@ -60,6 +60,25 @@ public class PrefabBlock extends Block implements EntityBlock {
         return this.defaultBlockState().setValue(FACING, context.getNearestLookingDirection().getOpposite());
     }
 
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                            @Nullable net.minecraft.world.entity.LivingEntity placer,
+                            ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+
+        // Transfer NBT from item to block entity (including fake registries)
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof PrefabBlockEntity prefab) {
+            CustomData customData = stack.get(DataComponents.BLOCK_ENTITY_DATA);
+            if (customData != null) {
+                CompoundTag nbt = customData.copyTag();
+                // Load all data including fake registries
+                prefab.loadAdditional(nbt, level.registryAccess());
+                prefab.setChanged();
+            }
+        }
+    }
+
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

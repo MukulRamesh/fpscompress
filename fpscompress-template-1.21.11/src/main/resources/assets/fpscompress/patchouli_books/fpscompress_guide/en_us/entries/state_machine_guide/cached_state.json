@@ -1,0 +1,33 @@
+{
+  "name": "CACHED State",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Purpose",
+      "text": "Run factory virtually using fractional math (no chunk loading)."
+    },
+    {
+      "type": "text",
+      "title": "Characteristics",
+      "text": "$(li)CM dimension chunks are $(bold)UNLOADED$() -> $(bold)Performance gain.$() $(li)PreFab simulates production using cached rates $(li)Fractional accumulators per resource type $(li)Resources flow based on math, not actual machines"
+    },
+    {
+      "type": "text",
+      "title": "What's Happening Behind the Scenes",
+      "text": "$(bold)Every tick during CACHED$(): $(li)For each resource with cached rate: $(li)`accumulator += rate` $(li)For inputs (negative rates): $(li)If `accumulator <= -1.0`: Extract from Overworld, insert to Importer buffer $(li)For outputs (positive rates): $(li)If `accumulator >= 1.0`: Extract from Exporter buffer, insert to Overworld$(br2)$(bold)Example$() (Iron Ingot at 0.213/tick): Tick 1: accumulator = 0.213 (no action) Tick 2: accumulator = 0.426 (no action) Tick 3: accumulator = 0.639 (no action) Tick 4: accumulator = 0.852 (no action) Tick 5: accumulator = 1.065 → Push 1 iron, remainder 0.065"
+    },
+    {
+      "type": "text",
+      "title": "What You Should Do",
+      "text": "$(li)$(bold)Monitor output$(): Check output chests for products $(li)$(bold)Keep inputs stocked$(): Ensure input chests have materials $(li)$(bold)Let it run$(): CACHED mode is the goal - leave it alone.$(br2)$(bold)Verification$(): $(li)Press F3: Check \"C:\" value (chunks loaded should be lower) $(li)Output chest should fill at steady rate $(li)Input chests should drain at steady rate"
+    },
+    {
+      "type": "text",
+      "title": "Transitions",
+      "text": "$(bold)From CACHED to HALTED$(): $(li)Input starved (can't extract from Overworld chest) $(li)Output blocked (can't insert to Overworld chest) $(li)Automatic transition, no player action$(br2)$(bold)From CACHED to SIMULATING$(): $(li)Right-click PreFab with Simulation Wrench $(li)Used to recalibrate rates (if you need to make factory changes)$(br2)---"
+    }
+  ]
+}

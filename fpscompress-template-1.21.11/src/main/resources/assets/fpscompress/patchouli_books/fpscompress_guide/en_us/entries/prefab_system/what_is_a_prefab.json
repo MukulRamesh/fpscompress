@@ -1,0 +1,17 @@
+{
+  "name": "What is a PreFab?",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "A $(bold)PreFab$() is an upgraded Compact Machine block that acts as a $(bold)cross-dimensional conduit$(). It routes resources between the Overworld and the Compact Machines dimension, measures production rates, and can run factories \"virtually\" using math."
+    },
+    {
+      "type": "text",
+      "title": "Key Features",
+      "text": "$(li)$(bold)6 Independent Faces$(): Each face (North, South, East, West, Up, Down) can be configured separately $(li)$(bold)No Internal Storage$(): PreFabs are routers, not chests - resources transport instantly $(li)$(bold)State Machine$(): Controls when factory is loaded vs. unloaded (BUILDING/SIMULATING/CACHED/HALTED) $(li)$(bold)Rate Caching$(): Measures actual production rates, then simulates them mathematically $(li)$(bold)Chunk Unloading$(): CM dimension chunks stay unloaded during CACHED mode (performance gain)"
+    }
+  ]
+}

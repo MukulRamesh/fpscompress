@@ -1,0 +1,13 @@
+{
+  "name": "Nested PreFabs (PreFab Inside PreFab)",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Concept",
+      "text": "$(bold)Idea$(): Place a PreFab inside a Compact Machine dimension$(br2)$(bold)Status$(): [WIP] Experimental (may have issues)$(br2)$(bold)Setup$(): Overworld:   [PreFab A]$(br2)CM Dimension (inside PreFab A):   [PreFab B] (another PreFab)$(br2)CM Dimension (inside PreFab B):   [Actual factory]$(br2)$(bold)Theoretical use case$(): Ultra-compact setups (one block in Overworld contains 2+ factories)$(br2)$(bold)Known issues$(): $(li)Chunk loading may be complex (nested CMs) $(li)State management unclear (if PreFab A is CACHED, can PreFab B simulate?) $(li)Not officially supported (test at your own risk)$(br2)---"
+    }
+  ]
+}

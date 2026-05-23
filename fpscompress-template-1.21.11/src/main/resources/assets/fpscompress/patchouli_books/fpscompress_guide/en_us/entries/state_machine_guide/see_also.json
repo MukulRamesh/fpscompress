@@ -1,0 +1,12 @@
+{
+  "name": "See Also",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 10,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)$(l:getting_started/prerequisites)Getting Started$() - First-time setup $(li)$(l:prefab_system/what_is_a_prefab)PreFab System$() - Understanding PreFabs $(li)$(l:cached_production/what_is_cached_production)Cached Production$() - How CACHED mode works $(li)$(l:troubleshooting/installation_issues)Troubleshooting$() - Common state issues"
+    }
+  ]
+}

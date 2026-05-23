@@ -1,0 +1,27 @@
+{
+  "name": "Frequency System",
+  "icon": "minecraft:name_tag",
+  "category": "fpscompress:importers_exporters",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "text": "The $(bold)Frequency System$() lets you \"name\" Importers and Exporters for easy identification in the PreFab GUI.$(br2)Without it, gates show as \"Importer (abc-123)\".$(br2)With it, they show as \"Coal Importer\" or \"Iron Ingot Exporter\"."
+    },
+    {
+      "type": "text",
+      "title": "How to Set Frequency",
+      "text": "$(bold)1.$() Hold any item (e.g., Coal)$(br2)$(bold)2.$() Right-click an Importer or Exporter$(br2)$(bold)3.$() The gate is now \"named\" after that item.$(br2)$(italic)The item is not consumed - you keep it.$()"
+    },
+    {
+      "type": "text",
+      "title": "Example Usage",
+      "text": "$(bold)For a furnace setup:$()$(br2)Right-click Importer #1 with Coal$(br)→ \"Coal Importer\"$(br2)Right-click Importer #2 with Iron Ore$(br)→ \"Iron Ore Importer\"$(br2)Right-click Exporter with Iron Ingot$(br)→ \"Iron Ingot Exporter\""
+    },
+    {
+      "type": "text",
+      "title": "Best Practices",
+      "text": "$(bold)Set frequencies BEFORE configuring PreFab faces.$()$(br2)Recommended workflow:$(li)Place all Importers/Exporters$(li)Name each with frequency system$(li)Exit CM dimension$(li)Configure PreFab (dropdown shows clear names)"
+    }
+  ]
+}

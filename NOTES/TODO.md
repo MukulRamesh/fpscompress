@@ -25,23 +25,79 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### Config Change Validation (Post-CACHED)
-- [ ] Handle face reconfiguration after CACHED rates are saved
-- [ ] Do not apply configuration changes while simulating (add warning on attempt)
-  - **Problem**: Cached rates are stored in aggregate (not per-face)
-  - **Example scenario**:
-    - Initial config: NORTH=Pull (input), SOUTH=Push (output), WEST=Push, EAST=Pull
-    - Cached rates stored: `iron_ingot: +5.0/tick` (aggregate production)
-    - Player reconfigures: NORTH=Push, SOUTH=Pull (swap input/output faces)
-    - WEST and EAST remain Push/Pull respectively
-  - **Issue**: No way to know which cached rate belongs to which face
-    - Old WEST output rate might be reused as new NORTH input rate
-    - Old EAST input rate might be reused as new SOUTH output rate
-    - Cached rates become meaningless after face role changes
-  - **Current behavior**: UNSPECIFIED (likely causes incorrect production or HALTED state)
-  - **Potential solutions**:
-    - Option A: Store per-face rates (increases NBT size, breaks existing saves)
-- [ ] Add unit tests for config change scenarios
+#### UUID-Based Rate Storage & Face Reconfiguration
+- [ ] Refactor rate storage from aggregate to per-UUID (BREAKING CHANGE)
+  - **Root Problem**: Multi-output factories require sidedness control
+  - **Example scenario** (why aggregate storage fails):
+    - Factory produces: Iron (+5/tick) AND Copper (+3/tick) [multiple outputs]
+    - Player wants: NORTH → iron chest, SOUTH → copper chest [sorted routing]
+    - Current aggregate storage: `{iron: +5.0, copper: +3.0}` (no face association)
+    - During CACHED: Both resources try ALL PUSH faces → first available chest wins
+    - **Result**: Iron and copper MIX in same chest (no sidedness control!)
+
+  - **Solution: Store rates per Importer/Exporter UUID**
+    - Change: `Map<String, Double> cachedRates` → `Map<UUID, Map<String, Double>> importerExporterRates`
+    - Rationale: Internal factory layout (which Importer/Exporter handles which resources) IS the routing specification
+    - Example: `{ExporterUUID-A: {iron: +5.0}, ExporterUUID-B: {copper: +3.0}}`
+    - Face config links: NORTH → ExporterUUID-A, SOUTH → ExporterUUID-B
+    - **Benefit**: Player designs routing via internal factory layout (Importer/Exporter placement)
+
+- [ ] Enable face reconfiguration without re-simulation
+  - **Current limitation**: Aggregate rates can't distinguish which Exporter produced which resource
+  - **New capability**: UUID-based rates preserve routing through internal factory design
+  - **Example workflow**:
+    1. Build factory: Importer-A (coal input) → Furnace → Exporter-B (iron output)
+    2. Configure faces: NORTH → Importer-A, SOUTH → Exporter-B
+    3. Simulate: System learns "UUID-A handles coal, UUID-B handles iron"
+    4. Player rotates PreFab block (flips faces)
+    5. Reconfigure: NORTH → Exporter-B, SOUTH → Importer-A (NO re-simulation!)
+    6. **Result**: NORTH now outputs iron, SOUTH now inputs coal (routing preserved via UUIDs)
+
+- [ ] Implementation subtasks:
+  - [ ] Update `ResourceDeltaTracker` to track imports/exports per UUID
+    - Add UUID parameter to `recordImport()` and `recordExport()`
+    - Group deltas by UUID during tracking
+  - [ ] Update `calculateRatesAndTransition()` to compute per-UUID rates
+    - Loop through tracked UUIDs, calculate rates for each
+    - Store in `importerExporterRates` map
+  - [ ] Add validation: `validateCachedConfiguration()`
+    - Check 1: All UUIDs with rates MUST have at least one face mapped
+      - Failure → HALTED: "Unmapped outputs: iron_ingot (reconnect Exporter to face)"
+    - Check 2: Warn if faces map to UUIDs with no rates (idle equipment, not fatal)
+    - Check 3: Validate during `setFaceConfig()` to prevent unmapped UUIDs during CACHED
+  - [ ] Update `transferCachedOutput()` to filter by UUID
+    - Find source UUID for resource (which Exporter produced it)
+    - Only try faces mapped to that UUID
+    - Supports multi-face load balancing (multiple faces → same UUID)
+  - [ ] Update `transferCachedInput()` to filter by UUID
+    - Find target UUID for resource (which Importer needs it)
+    - Only try faces mapped to that UUID
+  - [ ] Differentiate error messages: Configuration vs. Runtime failures
+    - "OUTPUT NOT ROUTED" (no face mapped to UUID) vs. "OUTPUT BLOCKED" (downstream full)
+    - "INPUT NOT ROUTED" (no face mapped to UUID) vs. "INPUT STARVED" (upstream empty)
+    - Configuration errors: No exponential backoff (requires player action)
+    - Runtime errors: Exponential backoff (transient conditions)
+  - [ ] Update NBT serialization:
+    - Save: `Map<UUID, Map<String, Double>>` structure
+    - Migration: Convert old `Map<String, Double>` to UUID-based (assign to first Exporter or clear)
+    - Schema version bump to handle migration
+  - [ ] Add GUI warnings for face reconfiguration during CACHED
+    - "⚠ Changing faces may break cached production"
+    - Validate in real-time which UUIDs would become unmapped
+    - Highlight problem faces in red
+
+- [ ] Edge cases to handle:
+  - **Unmapped UUID**: UUID has rates but no face mapped → HALTED (configuration error)
+  - **Idle UUID**: Face maps to UUID with no rates → Allowed (face does nothing)
+  - **Multi-face → UUID**: Multiple faces to same UUID → Load balancing (first available wins)
+  - **UUID mismatch**: Equipment broken/moved → HALTED (runtime error)
+  - **Face reconfigured during CACHED**: Validate config remains valid → HALTED if unmapped UUIDs created
+
+- [ ] Add unit tests:
+  - Multi-output factory with sorted routing (iron to NORTH, copper to SOUTH)
+  - Face reconfiguration without re-simulation (swap faces, verify routing preserved)
+  - Unmapped UUID detection (configuration validation)
+  - Error message differentiation (configuration vs. runtime failures)
 
 #### CACHED State Entry Prevention (Survival Mode)
 - [ ] Prevent survival players from entering PreFab during CACHED state
@@ -112,7 +168,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - Modpack authors may want longer times (5-10 min) for complex factories
   - Server owners may want shorter times (1 min) for casual gameplay
   - Creative players need no restriction for rapid prototyping
-  
+
   **Config snapshot behavior**:
   - Config value captured ONCE when simulation starts (stored in `simulationRequiredTicks`)
   - In-progress simulations unaffected by config changes (prevents mid-simulation rule changes)

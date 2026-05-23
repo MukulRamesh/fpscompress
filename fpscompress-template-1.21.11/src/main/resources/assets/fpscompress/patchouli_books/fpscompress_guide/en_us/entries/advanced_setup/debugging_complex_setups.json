@@ -1,0 +1,18 @@
+{
+  "name": "Debugging Complex Setups",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Troubleshooting Multi-PreFab Systems",
+      "text": "$(bold)Problem$(): \"One PreFab works, others don't\"$(br2)$(bold)Debug steps$(): $(li)Test each PreFab individually $(li)Disconnect chained PreFabs (test in isolation) $(li)Check for resource conflicts (multiple PreFabs pulling same chest)$(br2)$(bold)Problem$(): \"Chained PreFabs get out of sync\"$(br2)$(bold)Cause$(): PreFab A produces faster than PreFab B consumes$(br2)$(bold)Solution$(): $(li)Use larger intermediate chests $(li)Balance rates (adjust machine counts) $(li)Add buffer storage"
+    },
+    {
+      "type": "text",
+      "title": "Monitoring Tools",
+      "text": "$(bold)F3 Debug Screen$(): $(li)Check chunk loading (C: value) $(li)Verify PreFabs are in CACHED$(br2)$(bold)Chat Messages$() (current): $(li)Watch for state transition messages $(li)\"Entering HALTED\" → Investigate that PreFab$(br2)$(bold)GUI Inspection$(): $(li)Open each PreFab GUI $(li)Check current state (BUILDING/SIMULATING/CACHED/HALTED)$(br2)---"
+    }
+  ]
+}

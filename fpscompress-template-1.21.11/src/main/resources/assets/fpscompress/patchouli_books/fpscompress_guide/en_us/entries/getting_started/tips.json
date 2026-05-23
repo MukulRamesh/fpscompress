@@ -1,0 +1,12 @@
+{
+  "name": "Tips",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "text": "Tip: Use frequency system to name gates before configuring PreFab Tip: Start with a simple factory (single furnace) to learn the system Tip: Monitor chunk count in F3 screen to verify chunks unload Tip: If rates seem wrong, run SIMULATING longer (60+ seconds) Tip: Keep input chests stocked to avoid HALTED state"
+    }
+  ]
+}

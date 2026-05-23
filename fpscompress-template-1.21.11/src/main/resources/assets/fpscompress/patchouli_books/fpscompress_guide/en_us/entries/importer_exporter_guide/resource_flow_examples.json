@@ -1,0 +1,23 @@
+{
+  "name": "Resource Flow Examples",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Example 1: Simple Furnace",
+      "text": "$(bold)Inside CM$(): [Coal Importer] → [Furnace fuel] [Ore Importer] → [Furnace input] [Furnace output] → [Ingot Exporter]$(br2)$(bold)PreFab Config$(): NORTH: PULL ITEMS → Coal Importer EAST:  PULL ITEMS → Ore Importer SOUTH: PUSH ITEMS ← Ingot Exporter$(br2)$(bold)Overworld$(): [Coal Chest] → [PreFab NORTH] [Ore Chest] → [PreFab EAST] [PreFab SOUTH] → [Ingot Chest]"
+    },
+    {
+      "type": "text",
+      "title": "Example 2: Multi-Stage Processing",
+      "text": "$(bold)Inside CM$(): [Ore Importer] → [Crusher] → [Dust] → [Furnace] → [Ingot Exporter]$(br2)$(bold)PreFab Config$(): NORTH: PULL ITEMS → Ore Importer SOUTH: PUSH ITEMS ← Ingot Exporter$(br2)$(bold)Overworld$(): [Ore Chest] → [PreFab NORTH] [PreFab SOUTH] → [Ingot Chest]$(br2)Intermediate products (dust) stay inside CM - only inputs/outputs cross dimensions."
+    },
+    {
+      "type": "text",
+      "title": "Example 3: Multiple Outputs",
+      "text": "$(bold)Inside CM$(): [Ore Importer] → [Processing Machine] → [Primary Exporter]                                       → [Byproduct Exporter]$(br2)$(bold)PreFab Config$(): NORTH: PULL ITEMS → Ore Importer SOUTH: PUSH ITEMS ← Primary Exporter WEST:  PUSH ITEMS ← Byproduct Exporter$(br2)$(bold)Overworld$(): [Ore Chest] → [PreFab NORTH] [PreFab SOUTH] → [Primary Chest] [PreFab WEST] → [Byproduct Chest]"
+    }
+  ]
+}

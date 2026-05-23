@@ -1,0 +1,33 @@
+{
+  "name": "Configuration Steps",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Step 1: Select Face",
+      "text": "$(bold)Face directions$() (standing in front of PreFab): $(li)$(bold)NORTH$(): Side facing north (check F3 screen) $(li)$(bold)SOUTH$(): Side facing south $(li)$(bold)EAST$(): Side facing east $(li)$(bold)WEST$(): Side facing west $(li)$(bold)UP$(): Top side $(li)$(bold)DOWN$(): Bottom side$(br2)Tip: $(bold)Tip$(): Use F3 screen to see which direction you're facing, then orient PreFab accordingly"
+    },
+    {
+      "type": "text",
+      "title": "Step 2: Set Mode",
+      "text": "$(bold)Mode options$():$(br2)$(li)$(bold)$(bold)DISABLED$():$() Face inactive, no transport - Unused faces $(li)$(bold)$(bold)PULL$():$() Extract from Overworld → Transport to CM Importer - Input resources (coal, ore, etc.) $(li)$(bold)$(bold)PUSH$():$() Extract from CM Exporter → Transport to Overworld - Output products (ingots, items, etc.)$(br2)$(bold)Choosing PULL vs PUSH$(): $(li)$(bold)PULL$() when you want to send items FROM Overworld TO factory $(li)$(bold)PUSH$() when you want to send items FROM factory TO Overworld"
+    },
+    {
+      "type": "text",
+      "title": "Step 3: Set Resource Filter",
+      "text": "$(bold)Filter options$():$(br2)$(li)$(bold)$(bold)ALL$():$() Transfer all resource types - [WIP] Future $(li)$(bold)$(bold)ITEMS$():$() Transfer items only (ItemStacks) - [DONE] Works now $(li)$(bold)$(bold)FLUIDS$():$() Transfer fluids only (FluidStacks) - [WIP] Future $(li)$(bold)$(bold)ENERGY$():$() Transfer energy only (FE/RF) - [WIP] Future$(br2)$(bold)Current recommendation$(): Use $(bold)ITEMS$() for now (only fully implemented filter)"
+    },
+    {
+      "type": "text",
+      "title": "Step 4: Select Target",
+      "text": "$(bold)Target selection rules$(): $(li)$(bold)PULL faces$() must link to Importers (input gates) $(li)$(bold)PUSH faces$() must link to Exporters (output gates) $(li)Dropdown shows all Importers/Exporters in the CM dimension $(li)Names come from frequency system (or UUID if not named)$(br2)$(bold)If dropdown is empty$(): $(li)No Importers/Exporters placed yet $(li)Enter CM dimension, place gates $(li)Reopen GUI - dropdown should populate"
+    },
+    {
+      "type": "text",
+      "title": "Step 5: Apply Configuration",
+      "text": "Click $(bold)[Apply]$() button to save configuration$(br2)$(bold)What happens$(): $(li)Face config is saved to PreFab's NBT data $(li)Network packet sent to server $(li)Face is now active (if mode is PULL or PUSH)$(br2)Click $(bold)[Cancel]$() to discard changes"
+    }
+  ]
+}

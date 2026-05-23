@@ -1,0 +1,23 @@
+{
+  "name": "PreFab Setup Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Can't craft PreFab Upgrade Template\"",
+      "text": "$(bold)Solution$(): $(li)Check JEI (Just Enough Items) for recipe $(li)Ensure all materials are available $(li)Recipe may require specific mod progression"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Right-clicking CM with PreFab Upgrade Template doesn't work\"",
+      "text": "$(bold)Checklist$(): $(li)[DONE] CM block placed in world (not in inventory) $(li)[DONE] Holding PreFab Upgrade Template item $(li)[DONE] Right-clicking (not shift-right-clicking) $(li)[DONE] Not in spectator / adventure mode"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Face Configuration GUI won't open\"",
+      "text": "$(bold)Cause$(): Not using correct method$(br2)$(bold)Solution$(): $(li)Hold Simulation Wrench (not PreFab Upgrade Template) $(li)$(bold)Right-click$() PreFab $(li)Make sure PreFab is placed (not just CM)$(br2)---"
+    }
+  ]
+}

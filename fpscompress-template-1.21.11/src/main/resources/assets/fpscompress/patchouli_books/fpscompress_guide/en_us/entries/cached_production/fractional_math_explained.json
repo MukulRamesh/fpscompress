@@ -1,0 +1,13 @@
+{
+  "name": "Fractional Math Explained",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Multiple Resource Types",
+      "text": "PreFabs track $(bold)separate accumulators$() for each resource:$(br2)Resource: Iron Ingot   Rate: 0.213/tick   Accumulator: 0.85 (not ready)$(br2)Resource: Gold Ingot   Rate: 0.15/tick   Accumulator: 0.45 (not ready)$(br2)Resource: Copper Ingot   Rate: 0.5/tick   Accumulator: 1.25 (ready. Push 1, remainder 0.25)$(br2)Each resource accumulates independently."
+    }
+  ]
+}

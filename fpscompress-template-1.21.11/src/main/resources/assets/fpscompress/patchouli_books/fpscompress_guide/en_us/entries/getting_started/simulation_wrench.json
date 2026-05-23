@@ -1,0 +1,22 @@
+{
+  "name": "Simulation Wrench",
+  "icon": "fpscompress:simulation_wrench",
+  "category": "fpscompress:getting_started",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "text": "The $(bold)Simulation Wrench$() is your tool for configuring PreFabs.$(br2)$(bold)Shift + Right-click$() on a PreFab to open the face configuration GUI.$(br2)While held, the wrench also visualizes which PreFab faces are inputs and which are outputs."
+    },
+    {
+      "type": "text",
+      "title": "Configuration GUI",
+      "text": "$(bold)Shift + Right-click$() opens the face configuration screen where you can:$(br2)$(li)Select which face to configure$(li)Set mode (PULL/PUSH/DISABLED)$(li)Set resource filter (ITEMS/FLUIDS/ENERGY)$(li)Choose target Importer/Exporter"
+    },
+    {
+      "type": "text",
+      "title": "Visual Indicators",
+      "text": "While holding the Simulation Wrench, PreFab faces show visual overlays:$(br2)$(li)Input faces (PULL mode)$(li)Output faces (PUSH mode)$(li)Disabled faces$(br2)This makes it easy to see your configuration at a glance."
+    }
+  ]
+}

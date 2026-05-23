@@ -1,0 +1,32 @@
+{
+  "name": "Cached Production",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:advanced_features",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)Cached Production$() is the core feature of FPSCompress.$(br2)It allows factories to run \"virtually\" using math instead of loading chunks.$(br2)$(bold)Result:$() Massive TPS improvement (10-20+ per factory)"
+    },
+    {
+      "type": "text",
+      "title": "How It Works",
+      "text": "$(bold)Phase 1: Measurement (SIMULATING)$()$(br)PreFab counts resources transported over 30-60 seconds$(br2)Example: 128 iron in 600 ticks = 0.213 iron/tick$(br2)$(bold)Phase 2: Simulation (CACHED)$()$(br)PreFab uses fractional math to simulate production"
+    },
+    {
+      "type": "text",
+      "title": "Fractional Math",
+      "text": "Most factories produce < 1 item/tick:$(br2)$(bold)Example:$() 0.213 iron/tick$(br)Tick 1-4: Accumulate (0.213 + 0.213...)$(br)Tick 5: accumulator = 1.065 → Push 1 iron$(br2)Remainder (0.065) carries to next tick."
+    },
+    {
+      "type": "text",
+      "title": "Chunk Unloading",
+      "text": "During CACHED mode:$(br2)$(li)CM dimension chunks $(bold)UNLOAD$()$(li)Machines stop ticking$(li)PreFab runs simple math$(li)TPS improves dramatically$(br2)Check with F3 screen - \"C:\" value should be lower."
+    },
+    {
+      "type": "text",
+      "title": "Accuracy Tips",
+      "text": "$(bold)For accurate rates:$()$(br2)$(li)Simulate for 60+ seconds$(li)Keep inputs stocked during measurement$(li)Let factory reach steady state$(li)Avoid player interference$(br2)Longer simulation = more accurate rates."
+    }
+  ]
+}

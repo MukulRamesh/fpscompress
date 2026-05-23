@@ -1,0 +1,18 @@
+{
+  "name": "Limitations",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Current Limitations (MVP)",
+      "text": "$(li)[DONE] Items only (fluids/energy not yet supported) $(li)[DONE] 9-slot buffer (fixed size, no upgrades) $(li)[X] No filtering (Exporters pull ALL items from adjacent machines) $(li)[X] No priority (can't specify \"extract from slot X first\")"
+    },
+    {
+      "type": "text",
+      "title": "Future Features",
+      "text": "$(li)[WIP] Fluid support (tanks, fluid pipes) $(li)[WIP] Energy support (batteries, cables) $(li)[WIP] Filtered Importers/Exporters (whitelist/blacklist items) $(li)[WIP] Larger buffers via upgrades $(li)[WIP] Priority settings (extract specific slots first) $(li)[WIP] Visual indicators (particles showing transfer)"
+    }
+  ]
+}

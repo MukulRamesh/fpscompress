@@ -1,0 +1,12 @@
+{
+  "name": "See Also",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 10,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)$(l:importer_exporter_guide/overview)Importer & Exporter Guide$() - Setting up input/output gates $(li)$(l:face_configuration/opening_the_gui)Face Configuration$() - Detailed GUI walkthrough $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - Understanding state transitions $(li)$(l:cached_production/what_is_cached_production)Cached Production$() - Deep dive into fractional math"
+    }
+  ]
+}

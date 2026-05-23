@@ -1,0 +1,6 @@
+{
+  "name": "Face Configuration",
+  "description": "Configure PreFab faces and modes",
+  "icon": "minecraft:compass",
+  "sortnum": 3
+}

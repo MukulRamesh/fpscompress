@@ -1,0 +1,27 @@
+{
+  "name": "Importer Basics",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importers_exporters",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)Importers$() are input gates placed inside CM dimensions.$(br2)They receive resources from PreFab PULL faces and make them available to adjacent machines.$(br2)Think of them as: $(italic)\"Where resources from the Overworld enter your factory\"$()"
+    },
+    {
+      "type": "text",
+      "title": "How Importers Work",
+      "text": "$(bold)1.$() PreFab inserts items into Importer's buffer$(br2)$(bold)2.$() Importer actively pushes items into adjacent inventories$(br2)$(bold)3.$() Has a 9-slot internal buffer to prevent item loss$(br2)$(italic)Importers push, they don't wait to be pulled from.$()"
+    },
+    {
+      "type": "text",
+      "title": "Placing Importers",
+      "text": "$(bold)Direct connection:$()$(br)[Importer] → [Machine]$(br2)$(bold)Better: Use a chest$(br)[Importer] → [Chest] → [Machine]$(br2)$(italic)Intermediate chests create more reliable, better-behaved systems.$()"
+    },
+    {
+      "type": "text",
+      "title": "UUID Linking",
+      "text": "Each Importer gets a unique UUID when placed.$(br2)This UUID is used to link PreFab faces to specific Importers.$(br2)See $(l:importers_exporters/frequency_system)Frequency System$() for easier identification."
+    }
+  ]
+}

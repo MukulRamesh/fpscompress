@@ -1,0 +1,23 @@
+{
+  "name": "Resource Transport Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Resources not entering factory (PULL face)\"",
+      "text": "$(bold)Diagnostic checklist$():$(br2)$(bold)1. PreFab face configuration$(): $(li)[DONE] Face set to PULL mode (not DISABLED)? $(li)[DONE] Face linked to Importer (check target dropdown)? $(li)[DONE] Resource filter set to ITEMS (or correct type)?$(br2)$(bold)2. Overworld setup$(): $(li)[DONE] Chest adjacent to PreFab face? $(li)[DONE] Chest has items to extract? $(li)[DONE] Chest exposes IItemHandler capability (vanilla chests do)?$(br2)$(bold)3. CM dimension setup$(): $(li)[DONE] Importer placed inside CM? $(li)[DONE] Importer accessible (not broken)? $(li)[DONE] Machines connected to Importer?$(br2)$(bold)4. PreFab state$(): $(li)[DONE] PreFab in SIMULATING or CACHED state (not BUILDING)? $(li)[DONE] PreFab not in HALTED state?"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Resources not exiting factory (PUSH face)\"",
+      "text": "$(bold)Diagnostic checklist$():$(br2)$(bold)1. PreFab face configuration$(): $(li)[DONE] Face set to PUSH mode (not DISABLED)? $(li)[DONE] Face linked to Exporter (check target dropdown)? $(li)[DONE] Resource filter set to ITEMS?$(br2)$(bold)2. CM dimension setup$(): $(li)[DONE] Exporter placed next to machine output? $(li)[DONE] Machine producing items? $(li)[DONE] Exporter can extract from machine?$(br2)$(bold)3. Overworld setup$(): $(li)[DONE] Chest adjacent to PreFab face? $(li)[DONE] Chest has space for items? $(li)[DONE] Chest not full?$(br2)$(bold)4. PreFab state$(): $(li)[DONE] PreFab in SIMULATING or CACHED state? $(li)[DONE] PreFab not in HALTED?"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Items disappearing / Not reaching destination\"",
+      "text": "$(bold)Possible causes$(): $(li)$(bold)Importer buffer full$(): Machines not pulling fast enough $(li)Solution: Add more machines, speed up processing$(br2)$(li)$(bold)Exporter not pulling$(): Adjacent machine has no items $(li)Solution: Verify machine is producing, check machine output$(br2)$(li)$(bold)Wrong face linked$(): PULL face linked to Exporter (wrong) $(li)Solution: PULL → Importer, PUSH → Exporter$(br2)$(li)$(bold)Item voiding$() (bug): $(li)Solution: Report bug with reproduction steps$(br2)---"
+    }
+  ]
+}

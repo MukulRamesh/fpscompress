@@ -1,0 +1,18 @@
+{
+  "name": "Performance Considerations",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "title": "TPS Impact",
+      "text": "$(bold)Before FPSCompress$() (factory in loaded CM): $(li)CM chunks stay loaded (6x6 chunks = 36 chunks) $(li)All machines tick every frame $(li)Entities move, hoppers check neighbors, etc. $(li)TPS impact: Significant (depends on factory complexity)$(br2)$(bold)After FPSCompress$() (factory in CACHED mode): $(li)CM chunks unloaded (0 chunks loaded) $(li)PreFab runs simple math each tick $(li)No machine ticks, no entity updates $(li)TPS impact: Minimal (just the PreFab math)$(br2)$(bold)Typical improvement$(): 10-20 TPS gain per complex factory (your mileage may vary)"
+    },
+    {
+      "type": "text",
+      "title": "When to Use PreFabs",
+      "text": "$(bold)Good use cases$(): $(li)Large automated factories (many machines) $(li)Always-on production (ore processing, item crafting) $(li)Server-friendly automation (reduce chunk loading)$(br2)$(bold)Not ideal for$(): $(li)Single machines (overhead not worth it) $(li)Farms with entity spawning (can't simulate mob drops accurately) $(li)Multi-Purpose Machines (once cached, only 1 \"recipe\" is used)"
+    }
+  ]
+}

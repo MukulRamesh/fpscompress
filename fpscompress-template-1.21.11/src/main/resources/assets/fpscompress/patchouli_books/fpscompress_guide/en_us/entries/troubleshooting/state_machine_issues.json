@@ -1,0 +1,28 @@
+{
+  "name": "State Machine Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"PreFab stuck in BUILDING, can't start simulation\"",
+      "text": "$(bold)Possible causes$(): $(li)No faces configured (all DISABLED) $(li)No Importers/Exporters placed$(br2)$(bold)Solution$(): $(li)Configure at least one PULL or PUSH face $(li)Link faces to Importers/Exporters in CM $(li)Right-click with Simulation Wrench to start"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"PreFab immediately enters HALTED after SIMULATING\"",
+      "text": "$(bold)Cause$(): Input/output problem detected during rate measurement$(br2)$(bold)Common reasons$(): $(li)Input chest empty during simulation $(li)Output chest filled during simulation $(li)Importer/Exporter buffer full$(br2)$(bold)Solution$(): $(li)Stock input chests before CACHED mode $(li)Use larger output chests (barrels, deep storage) $(li)Fix issue, then right-click with wrench to resume"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Can't exit SIMULATING state\"",
+      "text": "$(bold)Cause$(): Not using correct method$(br2)$(bold)Solution$(): $(li)Right-click PreFab with Simulation Wrench (no shift) $(li)Wait for click to register (may have slight delay)"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"PreFab stuck in HALTED\"",
+      "text": "$(bold)Cause$(): Underlying issue not fixed$(br2)$(bold)Steps to recover$(): $(li)$(bold)Diagnose$(): Check input/output chests $(li)$(bold)Fix$(): Restock inputs, clear outputs $(li)$(bold)Resume$(): Right-click with wrench → Goes to SIMULATING $(li)$(bold)Wait$(): Let simulate for 10-30 seconds $(li)$(bold)Finish$(): Right-click again → Back to CACHED$(br2)---"
+    }
+  ]
+}

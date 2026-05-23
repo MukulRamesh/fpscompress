@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previously, the PreFab config GUI would show "Unnamed Importer/Exporter" until chunks reloaded
   - Now updates instantly when frequency is set via right-click
 - **Performance**: Significantly reduced console output and logging overhead during normal operations
+- **PreFab Block Drops**: Fixed PreFab blocks dropping nothing when broken with pickaxe
+  - Block tags referenced `fpscompress:prefab` but block was registered as `fpscompress:prefab_machine`
+  - Updated `mineable/pickaxe.json` and `needs_iron_tool.json` to use correct block ID
+  - PreFab blocks now properly drop with all NBT data preserved when broken
 
 ### Breaking Changes
 - **NBT Format Change**: Existing Importer/Exporter blocks will lose their frequency settings when loading old saves

@@ -1,0 +1,18 @@
+{
+  "name": "Rate Measurement Accuracy",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Factors Affecting Accuracy",
+      "text": "$(bold)Simulation Duration$(): $(li)Short simulation (10 seconds): Less accurate $(li)Long simulation (60 seconds): More accurate $(li)Recommendation: 30-60 seconds minimum$(br2)$(bold)Factory Consistency$(): $(li)Consistent production (furnaces): Accurate [DONE] $(li)Variable production (random drops): Inaccurate [X] $(li)Cyclic production (batch processes): Accurate if full cycle measured [DONE]$(br2)$(bold)Input Availability$(): $(li)Steady input supply: Accurate [DONE] $(li)Input starvation during measurement: Inaccurate [X]"
+    },
+    {
+      "type": "text",
+      "title": "Best Practices for Accurate Rates",
+      "text": "[DONE] $(bold)Run simulation for 60+ seconds$() [DONE] $(bold)Ensure steady input supply during measurement$() [DONE] $(bold)Let factory reach steady state before finishing simulation$() [DONE] $(bold)For batch processes, measure full cycle$() [DONE] $(bold)Avoid player interference during simulation$()$(br2)[X] Don't end simulation too early [X] Don't let inputs run out during measurement [X] Don't modify factory during simulation"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "BUILDING State",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Purpose",
+      "text": "Initial state for setup and configuration."
+    },
+    {
+      "type": "text",
+      "title": "Characteristics",
+      "text": "$(li)PreFab is idle (no resource transport) $(li)Player configures faces via GUI $(li)Player places Importers/Exporters inside CM $(li)Player connects chests to PreFab faces in Overworld $(li)CM chunks may be loaded or unloaded (doesn't matter)"
+    },
+    {
+      "type": "text",
+      "title": "What You Should Do",
+      "text": "$(li)$(bold)Open Face Configuration GUI$(): $(li)Shift + Right-click PreFab with Simulation Wrench$(br2)$(li)$(bold)Configure faces$(): $(li)Set mode (PULL/PUSH/DISABLED) $(li)Set filter (ITEMS/FLUIDS/ENERGY) $(li)Select target Importer/Exporter$(br2)$(li)$(bold)Place Importers/Exporters$() inside CM: $(li)Enter CM dimension $(li)Place Importers next to machine inputs $(li)Place Exporters next to machine outputs $(li)Optionally: Name them with frequency system$(br2)$(li)$(bold)Connect chests$() in Overworld: $(li)Place chests adjacent to PreFab faces $(li)PULL faces: Chest with input materials $(li)PUSH faces: Empty chest for outputs"
+    },
+    {
+      "type": "text",
+      "title": "Transitions",
+      "text": "$(bold)From BUILDING to SIMULATING$(): $(li)Enter PreFab Config (empty hand right click) $(li)Click button to start simulating $(li)PreFab begins measuring production rates$(br2)$(bold)Visual indicator$() (future feature): Block texture changes to show state$(br2)---"
+    }
+  ]
+}

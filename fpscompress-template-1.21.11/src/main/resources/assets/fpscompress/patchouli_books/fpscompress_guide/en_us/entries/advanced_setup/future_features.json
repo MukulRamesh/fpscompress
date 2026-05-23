@@ -1,0 +1,23 @@
+{
+  "name": "Future Features",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Factory Controller Block (Planned)",
+      "text": "$(bold)Concept$(): Centralized management for multiple PreFabs$(br2)$(bold)Features$(): $(li)Hold multiple PreFabs as items $(li)Unified ME interface $(li)Cross-PreFab dependencies $(li)Coordinated state management$(br2)$(bold)Release$(): Post-MVP (v1.1+)"
+    },
+    {
+      "type": "text",
+      "title": "Advanced Filters (Planned)",
+      "text": "$(bold)Concept$(): Whitelist/blacklist items per face$(br2)$(bold)Use case$(): $(li)PULL only coal (ignore other items in chest) $(li)PUSH only iron ingots (keep byproducts inside)$(br2)$(bold)Release$(): Post-MVP (v1.2+)"
+    },
+    {
+      "type": "text",
+      "title": "Wireless Linking (Planned)",
+      "text": "$(bold)Concept$(): Link PreFab faces without physical chests$(br2)$(bold)Use case$(): $(li)PreFab A output → PreFab B input (no intermediate chest) $(li)Directly transfer between dimensions$(br2)$(bold)Release$(): Post-MVP (v1.3+)$(br2)---"
+    }
+  ]
+}

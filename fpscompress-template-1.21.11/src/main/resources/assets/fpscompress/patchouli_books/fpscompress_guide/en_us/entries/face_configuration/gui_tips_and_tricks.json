@@ -1,0 +1,33 @@
+{
+  "name": "GUI Tips and Tricks",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Tip 1: Use Frequency System First",
+      "text": "$(bold)Before configuring PreFab faces$(): $(li)Enter CM dimension $(li)Name all Importers/Exporters with frequency system $(li)Exit CM dimension $(li)Configure PreFab faces$(br2)$(bold)Result$(): Dropdown shows clear names like \"Coal Importer\" instead of \"Importer (abc-123)\""
+    },
+    {
+      "type": "text",
+      "title": "Tip 2: Configure One Face at a Time",
+      "text": "Don't try to configure all 6 faces at once: $(li)Configure NORTH face → Test (place chest, verify items flow) $(li)Configure SOUTH face → Test $(li)Continue for other faces$(br2)Easier to debug if something goes wrong."
+    },
+    {
+      "type": "text",
+      "title": "Tip 3: Check Adjacent Blocks",
+      "text": "$(bold)Before setting PULL/PUSH$(): $(li)PULL faces need adjacent inventories in Overworld (chests, hoppers) $(li)PUSH faces need adjacent inventories in Overworld (chests, hoppers)$(br2)Place chests before configuring faces."
+    },
+    {
+      "type": "text",
+      "title": "Tip 4: Orient PreFab Correctly",
+      "text": "PreFab face directions are absolute (based on world directions, not player facing): $(li)Use F3 screen to see world directions $(li)Place PreFab with desired orientation $(li)Configure faces based on absolute directions"
+    },
+    {
+      "type": "text",
+      "title": "Tip 5: Color-Code Chests",
+      "text": "$(bold)In Overworld$(): $(li)Blue chests for inputs (PULL faces) $(li)Red chests for outputs (PUSH faces)$(br2)Visual indicator helps remember which side is which."
+    }
+  ]
+}

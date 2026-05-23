@@ -1,0 +1,6 @@
+{
+  "name": "Importers & Exporters",
+  "description": "Input and output gate mechanics",
+  "icon": "fpscompress:importer",
+  "sortnum": 4
+}

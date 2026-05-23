@@ -1,0 +1,12 @@
+{
+  "name": "Opening the GUI",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)Hold $(bold)Simulation Wrench$() item $(li)$(bold)Shift + Right-click$() the PreFab block $(li)Face Configuration GUI opens"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Multi-PreFab Factories",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Overview",
+      "text": "You can use multiple PreFabs to create complex, modular production chains.$(br2)$(bold)Current status$(): [DONE] Multiple PreFabs work independently   $(bold)Future feature$(): [WIP] Factory Controller for coordinated management"
+    },
+    {
+      "type": "text",
+      "title": "Independent PreFabs",
+      "text": "$(bold)Setup$(): $(li)Create multiple Compact Machines (different rooms) $(li)Upgrade each CM to PreFab (separate PreFab Upgrade Templates) $(li)Configure each PreFab independently $(li)Connect chests to each PreFab$(br2)$(bold)Example: Modular Iron Production$() PreFab A: Ore Processing $(li)NORTH: PULL → Iron Ore Importer $(li)SOUTH: PUSH ← Iron Dust Exporter$(br2)PreFab B: Smelting $(li)NORTH: PULL → Iron Dust Importer $(li)EAST:  PULL → Coal Importer $(li)SOUTH: PUSH ← Iron Ingot Exporter$(br2)Overworld Connection: [Ore Chest] → [PreFab A] → [Dust Chest] → [PreFab B] → [Ingot Chest]                                                ↑                                          [Coal Chest]$(br2)$(bold)Benefits$(): $(li)Modular design (independent factories) $(li)Easy to debug (isolate issues to specific PreFab) $(li)Scalable (add more PreFabs as needed)"
+    },
+    {
+      "type": "text",
+      "title": "Chained PreFabs",
+      "text": "$(bold)Pattern$(): Output from PreFab A → Input to PreFab B$(br2)$(bold)Setup$(): [PreFab A SOUTH face] → [Intermediate Chest] → [PreFab B NORTH face]$(br2)$(bold)Example$(): PreFab A (Crushing): $(li)Produces crushed ore$(br2)Intermediate Chest: $(li)Holds crushed ore temporarily$(br2)PreFab B (Smelting): $(li)Consumes crushed ore $(li)Produces ingots$(br2)$(bold)Advantages$(): $(li)Clear separation of concerns $(li)Each PreFab can be in CACHED independently $(li)Easy to expand (add PreFab C, D, etc.)"
+    },
+    {
+      "type": "text",
+      "title": "Shared Resources",
+      "text": "$(bold)Pattern$(): Multiple PreFabs pulling from same chest$(br2)$(bold)Setup$():         [Coal Chest]$(br2)   PreFab A  PreFab B  PreFab C (All PULL from same chest)$(br2)$(bold)Use case$(): Shared fuel/power supply for multiple factories$(br2)$(bold)Considerations$(): $(li)Ensure chest has enough supply for all PreFabs $(li)If chest empties, all PreFabs enter HALTED $(li)Use large chests (barrels, storage drawers)$(br2)---"
+    }
+  ]
+}

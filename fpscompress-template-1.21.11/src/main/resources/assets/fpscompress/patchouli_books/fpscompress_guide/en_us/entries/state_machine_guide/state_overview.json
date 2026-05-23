@@ -1,0 +1,12 @@
+{
+  "name": "State Overview",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "┌─────────────┐ │  BUILDING   │ ← Initial state (setup) └──────┬──────┘        │ Right-click with wrench        ▼ ┌─────────────┐ │ SIMULATING  │ ← Measuring rates (chunks LOADED) └──────┬──────┘        │ Right-click with wrench        ▼ ┌─────────────┐ │   CACHED    │ ← Virtual production (chunks UNLOADED) └──────┬──────┘        │ Input starved or output blocked        ▼ ┌─────────────┐ │   HALTED    │ ← Input/Output Problem detected (chunks stay UNLOADED) └──────┬──────┘        │ Fix issue        └─────→ Back to CACHED"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Your First Factory: Iron Smelting",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Inside CM Dimension:",
+      "text": "[Importer \"Coal\"] → [Furnace (fuel slot)] [Importer \"Iron Ore\"] → [Furnace (input slot)] [Furnace (output slot)] → [Exporter \"Iron Ingots\"]"
+    },
+    {
+      "type": "text",
+      "title": "PreFab Configuration:",
+      "text": "NORTH: PULL ITEMS → Importer \"Coal\" EAST:  PULL ITEMS → Importer \"Iron Ore\" SOUTH: PUSH ITEMS ← Exporter \"Iron Ingots\" WEST:  DISABLED UP:    DISABLED DOWN:  DISABLED"
+    },
+    {
+      "type": "text",
+      "title": "Overworld Setup:",
+      "text": "[Coal Chest]                  ↓ [Ore Chest] → [PreFab]                  ↓             [Iron Chest]"
+    }
+  ]
+}

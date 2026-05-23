@@ -209,19 +209,14 @@ public class DimensionTeleportListener {
      */
     private String getRoomCodeFromBlock(ServerLevel level, BlockPos pos) {
         BlockEntity be = level.getBlockEntity(pos);
-        LOGGER.info("=== DEBUG: Getting room code from block at {} ===", pos);
-        LOGGER.info("BlockEntity type: {}", be != null ? be.getClass().getName() : "null");
 
         // PreFab blocks store room code directly
         if (be instanceof PrefabBlockEntity prefab) {
-            String roomCode = prefab.getRoomCode();
-            LOGGER.info("Found PreFab, room code: {}", roomCode);
-            return roomCode;
+            return prefab.getRoomCode();
         }
 
         // CM blocks require reflection
         if (be instanceof BoundCompactMachineBlockEntity cmBE) {
-            LOGGER.info("Found CM BlockEntity, attempting reflection...");
             try {
                 // Cast to Object to avoid compile-time interface check
                 Object cmObj = cmBE;
@@ -229,20 +224,13 @@ public class DimensionTeleportListener {
                     cmObj.getClass().getMethod("connectedRoom");
                 Object roomResult = connectedRoomMethod.invoke(cmObj);
 
-                LOGGER.info("connectedRoom() returned: {}", roomResult);
-
                 // Handle both String and Optional<String> return types
                 if (roomResult instanceof String roomCode) {
                     if (!roomCode.isEmpty()) {
-                        LOGGER.info("Extracted room code: {}", roomCode);
                         return roomCode;
                     }
                 } else if (roomResult instanceof java.util.Optional<?> opt && opt.isPresent()) {
-                    String roomCode = opt.get().toString();
-                    LOGGER.info("Extracted room code: {}", roomCode);
-                    return roomCode;
-                } else {
-                    LOGGER.warn("connectedRoom() returned null or empty");
+                    return opt.get().toString();
                 }
             } catch (Exception e) {
                 LOGGER.error("Failed to get room code from CM block via reflection", e);
@@ -250,7 +238,6 @@ public class DimensionTeleportListener {
             }
         }
 
-        LOGGER.error("Could not determine room code from block at {}", pos);
         return null;
     }
 

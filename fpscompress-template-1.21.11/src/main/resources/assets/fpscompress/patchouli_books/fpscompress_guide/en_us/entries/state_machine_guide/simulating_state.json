@@ -1,0 +1,38 @@
+{
+  "name": "SIMULATING State",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Purpose",
+      "text": "Measure actual factory production rates."
+    },
+    {
+      "type": "text",
+      "title": "Characteristics",
+      "text": "$(li)CM dimension chunks are $(bold)LOADED$() (factory actually runs) $(li)PreFab counts resources transported every tick $(li)Resources flow normally: Overworld → Importer → Machines → Exporter → Overworld $(li)Delta accounting tracks net production per resource type $(li)Time counter tracks simulation duration"
+    },
+    {
+      "type": "text",
+      "title": "What's Happening Behind the Scenes",
+      "text": "$(bold)At simulation start$(): $(li)CM chunks load via `CMInterceptorImpl` $(li)PreFab scans Importer/Exporter inventories (initial state) $(li)Resets import/export counters $(li)Starts tick counter$(br2)$(bold)Every tick during SIMULATING$(): $(li)PreFab transports resources (PULL/PUSH faces) $(li)Counts every item imported/exported $(li)Records in tracking tables$(br2)$(bold)Resources being tracked$(): Coal:        598 imported, 0 exported Iron Ore:    602 imported, 0 exported Iron Ingot:  0 imported, 128 exported"
+    },
+    {
+      "type": "text",
+      "title": "How Long to Simulate?",
+      "text": "$(bold)Minimum Default$(): 120 seconds (2400 ticks) $(bold)For batch processes$(): Measure full cycle (e.g., 5 minutes)$(br2)$(bold)Why longer is better$(): $(li)More samples = more accurate rate calculation $(li)Averages out random variations $(li)Ensures factory reaches steady state"
+    },
+    {
+      "type": "text",
+      "title": "What You Should Do",
+      "text": "$(li)$(bold)Start simulation$(): Right-click PreFab with wrench $(li)$(bold)Wait$(): Let factory run for 30-60 seconds $(li)$(bold)Monitor$() (optional): $(li)Check input chests (should be draining) $(li)Check output chests (should be filling) $(li)Verify factory is running (enter CM, see machines working) $(li)$(bold)Finish simulation$(): Right-click PreFab with wrench again$(br2)$(bold)Don't$(): $(li)[X] End simulation too early (inaccurate rates) $(li)[X] Let inputs run out (skews measurement negatively)"
+    },
+    {
+      "type": "text",
+      "title": "Transitions",
+      "text": "$(bold)From SIMULATING to CACHED$(): $(li)Enter PreFab Config (empty hand right click) $(li)Click button to stop simulating $(li)PreFab unloads CM chunks $(li)PreFab enters CACHED state$(br2)$(bold)From SIMULATING to BUILDING$(): $(li)Enter PreFab Config (empty hand right click) $(li)Click button to stop simulating $(li)Click button to enter building state$(br2)$(bold)IMPORTANT:$() If some items were still unprocessed/in-transit when the simulation ends, $(italic)they get output through the output side$(). This is to make sure that you always get your resources back, even if the simulation ending cuts off production. ---"
+    }
+  ]
+}

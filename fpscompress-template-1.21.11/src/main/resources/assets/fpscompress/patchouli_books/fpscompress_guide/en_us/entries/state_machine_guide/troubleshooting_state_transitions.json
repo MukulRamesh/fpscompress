@@ -1,0 +1,28 @@
+{
+  "name": "Troubleshooting State Transitions",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Can't transition from BUILDING to SIMULATING\"",
+      "text": "$(bold)Possible causes$(): $(li)No faces configured (all faces DISABLED) $(li)No Importers/Exporters linked $(li)CM block not upgraded to PreFab$(br2)$(bold)Solution$(): $(li)Configure at least one PULL or PUSH face $(li)Link faces to Importers/Exporters"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"PreFab immediately enters HALTED after SIMULATING\"",
+      "text": "$(bold)Possible causes$(): $(li)Input chest was emptied during simulation $(li)Output chest filled up during simulation $(li)No chests adjacent to PreFab faces$(br2)$(bold)Solution$(): $(li)Stock input chests before CACHED mode $(li)Use larger output chests (barrels, storage drawers)"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Production very slow in CACHED\"",
+      "text": "$(bold)Not a problem.$() This is expected if: $(li)Factory is slow (low rate measured during SIMULATING) $(li)Example: 0.05 items/tick = 1 item per second$(br2)$(bold)Solution$(): Add more machines or speed upgrades, then re-simulate"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"F3 screen shows chunks still loaded in CACHED\"",
+      "text": "$(bold)Possible causes$(): $(li)CM dimension is loaded for another reason (player inside, other CM active) $(li)Check specific CM room code chunks$(br2)$(bold)Verification$(): $(li)Note chunk count before CACHED $(li)Enter CACHED $(li)Check chunk count after (should be lower)$(br2)---"
+    }
+  ]
+}

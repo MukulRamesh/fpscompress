@@ -1,0 +1,12 @@
+{
+  "name": "Next Steps",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)Read $(l:face_configuration/opening_the_gui)Face Configuration Guide$() for detailed GUI walkthrough $(li)Learn about $(l:state_machine_guide/state_overview)State Machine$() for understanding transitions $(li)Explore $(l:cached_production/what_is_cached_production)Cached Production$() to understand the math $(li)Check $(l:troubleshooting/installation_issues)Troubleshooting$() if something doesn't work"
+    }
+  ]
+}

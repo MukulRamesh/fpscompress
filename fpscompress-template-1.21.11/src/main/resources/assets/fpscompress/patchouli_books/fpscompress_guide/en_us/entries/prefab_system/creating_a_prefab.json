@@ -1,0 +1,18 @@
+{
+  "name": "Creating a PreFab",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Step 1: Craft a PreFab Upgrade Template",
+      "text": "(Check JEI for crafting recipe)"
+    },
+    {
+      "type": "text",
+      "title": "Step 2: Upgrade a Compact Machine",
+      "text": "$(li)Place a Compact Machine block in the world (any size) $(li)Hold the PreFab Upgrade Template item $(li)Right-click the Compact Machine $(li)The CM block becomes a PreFab (texture changes)"
+    }
+  ]
+}

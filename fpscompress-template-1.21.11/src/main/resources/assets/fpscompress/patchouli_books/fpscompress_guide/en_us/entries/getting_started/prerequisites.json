@@ -1,0 +1,12 @@
+{
+  "name": "Prerequisites",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "Before starting, make sure you have: $(li)[DONE] Compact Machines mod installed $(li)[DONE] A Compact Machine block (any size) $(li)[DONE] Personal Shrinking Device (to teleport into CM) $(li)[DONE] Basic understanding of Compact Machines"
+    }
+  ]
+}

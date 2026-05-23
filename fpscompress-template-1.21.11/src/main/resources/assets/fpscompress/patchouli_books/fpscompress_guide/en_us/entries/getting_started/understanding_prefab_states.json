@@ -1,0 +1,28 @@
+{
+  "name": "Understanding PreFab States",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "title": "BUILDING (Initial)",
+      "text": "$(li)PreFab is idle, waiting for configuration $(li)Configure faces and connect chests"
+    },
+    {
+      "type": "text",
+      "title": "SIMULATING (Measuring)",
+      "text": "$(li)CM chunks are LOADED $(li)PreFab measures actual production $(li)Wait 30-60 seconds"
+    },
+    {
+      "type": "text",
+      "title": "CACHED (Running Virtually)",
+      "text": "$(li)CM chunks are UNLOADED ← This is the performance gain. $(li)PreFab simulates production using math $(li)Add inputs → outputs appear based on cached rates"
+    },
+    {
+      "type": "text",
+      "title": "HALTED (Problem Detected)",
+      "text": "$(li)Input ran out or output blocked $(li)CM chunks STAY unloaded $(li)Fix Overworld side (add inputs, clear outputs) $(li)Back to SIMULATING automatically (usually within 5 seconds)"
+    }
+  ]
+}

@@ -241,6 +241,56 @@ Launch configs are in `fpscompress-template-1.21.11/.vscode/launch.json`.
 
 ---
 
+## Debug Commands
+
+Debug commands for testing and development (requires OP level 2):
+
+### `/fps_dev2` Commands
+
+**Give Test PreFab** - Create PreFab items with pre-configured cached rates for testing:
+
+```bash
+# Default: 1 dirt/tick → 1 diamond/tick
+/fps_dev2 give-test-prefab
+
+# Custom single input/output
+/fps_dev2 give-test-prefab <inputItem> <inputRate> <outputItem> <outputRate>
+/fps_dev2 give-test-prefab minecraft:iron_ore 2.5 minecraft:iron_ingot 5.0
+
+# Multiple inputs/outputs (use quotes!)
+/fps_dev2 give-test-prefab list "<inputList>" "<outputList>"
+/fps_dev2 give-test-prefab list "minecraft:dirt:1.0,minecraft:cobblestone:2.0" "minecraft:diamond:0.5"
+/fps_dev2 give-test-prefab list "minecraft:oak_log:1.0,minecraft:birch_log:1.0,minecraft:spruce_log:1.0" "minecraft:charcoal:4.0"
+```
+
+**Format for lists**: `"item:rate,item:rate,..."` (comma-separated, namespaced item IDs required)
+
+**Test PreFab Behavior**:
+- Each test PreFab gets a **unique fake roomCode** (format: `fake_<uuid>`) to isolate equipment
+- Fake Importers/Exporters are registered in `ImporterExporterRegistry` with proper display names
+- Display names derived from frequency items (e.g., "Diamond Exporter" instead of "Unnamed Exporter")
+- Equipment can be iterated per-PreFab using the unique roomCode
+- Test PreFabs function in CACHED mode and will actually transfer items when connected to chests
+- **NBT preservation**: PreFabs preserve all cached data when placed/broken:
+  - `PrefabBlock.setPlacedBy()` restores NBT from item to block entity
+  - `PrefabBlockEntity.validateLoadedData()` allows fake rooms (no roomCenter required for `fake_*` roomCodes)
+  - Schema version 2 used for UUID-based rate storage (`importerExporterRates`)
+- **Status GUI**: Aggregate `cachedRates` derived from `importerExporterRates` in `loadRatesFromNBT()` for GUI display
+
+**Other Dev2 Commands**:
+```bash
+/fps_dev2 chunks <roomCode> <true|false>       # Test chunk loading/unloading
+/fps_dev2 routing <true|false>                 # Test virtual/physical routing
+/fps_dev2 diagnostics                          # Show interceptor state
+/fps_dev2 test-room <roomCode>                 # Run comprehensive room test
+/fps_dev2 debug-reflection <roomCode>          # Debug CM room lookup
+/fps_dev2 cleanup                              # Clean up all chunk tickets
+```
+
+**Implementation**: `src/main/java/com/mukulramesh/fpscompress/debug/Dev2TestCommands.java`
+
+---
+
 ## Architecture: Conduit-Based Caching System
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
@@ -502,6 +552,52 @@ interceptor.setRoomChunkState(roomCode, false);
 
 ---
 
+## Documentation Conversion
+
+### WIKI to Patchouli In-Game Documentation
+
+The repository contains a Python script that converts the markdown files in `WIKI/` to Patchouli JSON format for in-game documentation.
+
+**Script**: `wiki_to_patchouli.py` (in repository root)
+
+**Purpose**: Automatically generate Patchouli in-game guide books from WIKI markdown files
+
+**How it works**:
+- Parses all `.md` files in `WIKI/` directory (except README.md and Developer-API.md)
+- Converts markdown formatting to Patchouli format codes:
+  - Bold (`**text**`) → `$(bold)text$()`
+  - Italic (`*text*`) → `$(italic)text$()`
+  - Lists (bullets and numbered) → `$(li)`
+  - Links (`[text](page)`) → `$(l:category/entry)text$()`
+  - Tables → Formatted bulleted lists
+  - Code blocks → Plain text (preserves spacing)
+- Maps structure:
+  - WIKI .md files → Patchouli categories
+  - H2 headers (##) → Patchouli entries/chapters
+  - H3 headers (###) → Pages within entries
+- Generates 9 categories, 90 entries, 227 pages with 99 cross-references
+
+**Output location**:
+```
+fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/patchouli_books/fpscompress_guide/en_us/
+├── categories/  (9 JSON files)
+└── entries/     (90 JSON files organized by category)
+```
+
+**Usage** (when updating WIKI content):
+```bash
+# 1. Edit WIKI markdown files (e.g., WIKI/Getting-Started.md)
+# 2. Re-run the conversion script
+python wiki_to_patchouli.py
+
+# 3. Test in-game to verify formatting
+./gradlew runClient
+```
+
+**Source of Truth**: The `WIKI/` markdown files are the source of truth. Edit these files, then regenerate Patchouli JSON files using the script. Do not manually edit the generated JSON files directly.
+
+---
+
 ## Documentation Index
 
 **Essential Reading** (start here):
@@ -520,6 +616,10 @@ interceptor.setRoomChunkState(roomCode, false);
 
 **Reference**:
 - **CLEANUP_SUMMARY.md** - What was deleted and why (old code in git history)
+
+**User Documentation**:
+- **WIKI/** - External user-facing documentation (markdown)
+- **wiki_to_patchouli.py** - Script to convert WIKI to in-game Patchouli format
 
 ---
 

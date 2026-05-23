@@ -164,35 +164,24 @@ public final class InventoryScanner {
         int totalBlockEntities = 0;
 
         try {
-            LOGGER.info("=== SCAN DEBUG: Starting room scan ===");
-            LOGGER.info("Room bounds: {}", roomBounds);
-            LOGGER.info("CM Level: {}", cmLevel.dimension().location());
-
             // Get chunk range from room bounds
             ChunkPos minChunk = new ChunkPos(new BlockPos((int) roomBounds.minX, 0, (int) roomBounds.minZ));
             ChunkPos maxChunk = new ChunkPos(new BlockPos((int) roomBounds.maxX, 0, (int) roomBounds.maxZ));
-            LOGGER.info("Chunk range: {} to {}", minChunk, maxChunk);
 
             // Iterate only chunks that intersect room bounds
             for (int cx = minChunk.x; cx <= maxChunk.x; cx++) {
                 for (int cz = minChunk.z; cz <= maxChunk.z; cz++) {
                     LevelChunk chunk = cmLevel.getChunk(cx, cz);
-                    int blockEntitiesInChunk = chunk.getBlockEntities().size();
-                    totalBlockEntities += blockEntitiesInChunk;
-                    LOGGER.info("Chunk [{}, {}] has {} BlockEntities", cx, cz, blockEntitiesInChunk);
+                    totalBlockEntities += chunk.getBlockEntities().size();
 
                     // Iterate only BlockEntities in this chunk (performance optimization)
                     for (BlockEntity be : chunk.getBlockEntities().values()) {
                         BlockPos pos = be.getBlockPos();
-                        LOGGER.info("Found BlockEntity: {} at {}", be.getClass().getSimpleName(), pos);
 
                         // Check if BlockEntity is within room bounds
                         if (roomBounds.contains(pos.getX(), pos.getY(), pos.getZ())) {
-                            LOGGER.info("BlockEntity is within bounds, scanning...");
                             scanBlockEntity(cmLevel, pos, totals);
                             scannedCount++;
-                        } else {
-                            LOGGER.info("BlockEntity is OUTSIDE bounds (skipped)");
                         }
                     }
                 }
@@ -235,31 +224,24 @@ public final class InventoryScanner {
 
             // Query Items capability
             IItemHandler itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, queryDir);
-            LOGGER.info("  Items capability at {}: {}", pos, itemHandler != null ? "FOUND" : "null");
             if (itemHandler != null) {
                 int slots = itemHandler.getSlots();
-                LOGGER.info("  Item handler has {} slots", slots);
                 for (int slot = 0; slot < slots; slot++) {
                     ItemStack stack = itemHandler.getStackInSlot(slot);
                     if (!stack.isEmpty()) {
                         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-                        LOGGER.info("    Slot {}: {} x{}", slot, id, stack.getCount());
                         totals.merge(id, (long) stack.getCount(), Long::sum);
-                    } else {
-                        LOGGER.info("    Slot {}: empty", slot);
                     }
                 }
             }
 
             // Query Fluids capability
             IFluidHandler fluidHandler = level.getCapability(Capabilities.FluidHandler.BLOCK, pos, queryDir);
-            LOGGER.info("  Fluids capability at {}: {}", pos, fluidHandler != null ? "FOUND" : "null");
             if (fluidHandler != null) {
                 for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
                     FluidStack fluid = fluidHandler.getFluidInTank(tank);
                     if (!fluid.isEmpty()) {
                         String id = BuiltInRegistries.FLUID.getKey(fluid.getFluid()).toString();
-                        LOGGER.info("    Tank {}: {} x{}", tank, id, fluid.getAmount());
                         totals.merge(id, (long) fluid.getAmount(), Long::sum);
                     }
                 }
@@ -267,11 +249,9 @@ public final class InventoryScanner {
 
             // Query Energy capability
             IEnergyStorage energy = level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, queryDir);
-            LOGGER.info("  Energy capability at {}: {}", pos, energy != null ? "FOUND" : "null");
             if (energy != null) {
                 int stored = energy.getEnergyStored();
                 if (stored > 0) {
-                    LOGGER.info("    Energy stored: {}", stored);
                     totals.merge("forge:energy", (long) stored, Long::sum);
                 }
             }

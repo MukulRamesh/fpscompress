@@ -1,0 +1,12 @@
+{
+  "name": "License",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "text": "This project is licensed under the MIT License."
+    }
+  ]
+}

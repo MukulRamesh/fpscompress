@@ -1,0 +1,32 @@
+{
+  "name": "Delta Accounting System",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "text": "FPSCompress uses $(bold)delta accounting$() to measure production accurately:"
+    },
+    {
+      "type": "text",
+      "title": "What is Delta Accounting?",
+      "text": "$(bold)Delta$() = Change in inventory over time$(br2)$(bold)Formula$(): Net Production = (Final Inventory - Initial Inventory)                  + (Exported - Imported)"
+    },
+    {
+      "type": "text",
+      "title": "Why Delta Accounting?",
+      "text": "$(bold)Problem with naive counting$(): $(li)Just counting imports/exports misses items stored in buffers $(li)Importer buffer: 5 items initially → Factory consumes 3 → 2 remain $(li)Naive count: 0 imports (wrong) $(li)Delta accounting: -3 consumption (correct)$(br2)$(bold)Solution$(): Track inventory changes AND import/export"
+    },
+    {
+      "type": "text",
+      "title": "How It Works",
+      "text": "$(bold)At simulation start$() (entering SIMULATING): $(li)Scan all Importers/Exporters $(li)Record initial inventory counts $(li)Reset import/export counters$(br2)$(bold)During simulation$() (SIMULATING state): $(li)Count every item imported (Overworld → Importer) $(li)Count every item exported (Exporter → Overworld) $(li)Record in tracking tables$(br2)$(bold)At simulation end$() (entering CACHED): $(li)Scan all Importers/Exporters again $(li)Record final inventory counts $(li)Calculate delta: `(Final - Initial) + (Exported - Imported)` $(li)Calculate rate: `delta / time_elapsed`"
+    },
+    {
+      "type": "text",
+      "title": "Example Delta Calculation",
+      "text": "$(bold)Initial state$() (simulation start): $(li)Importer buffer: 10 coal $(li)Exporter buffer: 2 iron ingots$(br2)$(bold)During simulation$() (600 ticks): $(li)Imported: 600 coal (from Overworld) $(li)Exported: 130 iron ingots (to Overworld)$(br2)$(bold)Final state$() (simulation end): $(li)Importer buffer: 8 coal $(li)Exporter buffer: 0 iron ingots$(br2)$(bold)Delta calculation$(): Coal consumption:   = (Final - Initial) + (Exported - Imported)   = (8 - 10) + (0 - 600)   = -2 + (-600)   = -602 coal consumed   Rate = -602 / 600 = -1.003 coal/tick (input)$(br2)Iron production:   = (0 - 2) + (130 - 0)   = -2 + 130   = 128 iron ingots produced   Rate = 128 / 600 = 0.213 iron/tick (output)$(br2)$(bold)Result$(): PreFab knows factory consumes ~1 coal/tick and produces ~0.213 iron/tick."
+    }
+  ]
+}

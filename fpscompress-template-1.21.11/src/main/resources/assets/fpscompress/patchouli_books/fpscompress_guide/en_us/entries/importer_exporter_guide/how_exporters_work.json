@@ -1,0 +1,23 @@
+{
+  "name": "How Exporters Work",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Internal Buffer",
+      "text": "Exporters have a $(bold)9-slot internal buffer$(): $(li)Exporter pulls items from adjacent machines into buffer $(li)PreFab extracts items from buffer $(li)Buffer allows for timing differences between machine output and PreFab extraction"
+    },
+    {
+      "type": "text",
+      "title": "Active Pulling",
+      "text": "Exporters $(bold)actively pull$() from adjacent machines every tick: // Every tick: $(li)Check all 6 adjacent blocks $(li)If block has IItemHandler capability: $(li)Try to extract items (up to 64 per slot) $(li)Insert extracted items into Exporter's buffer$(br2)This means Exporters work with machines that do not push (like furnaces)."
+    },
+    {
+      "type": "text",
+      "title": "Tick Behavior",
+      "text": "$(bold)Every game tick$() (20 times per second): $(li)Query all adjacent blocks for `IItemHandler` $(li)Extract items from those blocks $(li)Store in internal buffer $(li)PreFab extracts from buffer when ready"
+    }
+  ]
+}

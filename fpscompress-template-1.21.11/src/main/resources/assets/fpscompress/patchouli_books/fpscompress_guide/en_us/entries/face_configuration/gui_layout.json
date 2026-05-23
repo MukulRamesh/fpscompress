@@ -1,0 +1,12 @@
+{
+  "name": "GUI Layout",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "text": "┌──────────────────────────────────────────────────┐ │  PreFab Configuration                            │ ├──────────────────────────────────────────────────┤ │                                                  │ │  Current Face: [NORTH ▼]                         │ │                                                  │ │  Mode:   [PULL ▼]                                │ │  Filter: [ITEMS ▼]                               │ │  Target: [Coal Importer ▼]                       │ │                                                  │ │  [Apply] [Cancel]                                │ │                                                  │ └──────────────────────────────────────────────────┘"
+    }
+  ]
+}

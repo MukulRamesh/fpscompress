@@ -1,0 +1,23 @@
+{
+  "name": "Advanced Topics",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 9,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Recalibrating Rates",
+      "text": "$(bold)When to recalibrate$(): $(li)Factory structure needs to change $(li)Need to upgrade machines $(li)Different input resources (iron ore → gold ore)$(br2)$(bold)How to recalibrate$(): $(li)Right-click PreFab (enter config menu) $(li)Wait 60 seconds $(li)Right-click again (stop simulation from menu) $(li)New rates measured and cached."
+    },
+    {
+      "type": "text",
+      "title": "State Persistence",
+      "text": "$(bold)States persist across$(): $(li)[DONE] Chunk unload/reload $(li)[DONE] Server restart (if saved properly) $(li)[DONE] PreFab picked up as item (PreFab-as-Item feature)$(br2)$(bold)Stored in$(): PreFab's NBT data"
+    },
+    {
+      "type": "text",
+      "title": "Multiple PreFabs",
+      "text": "$(bold)Each PreFab has independent state$(): $(li)PreFab A: CACHED $(li)PreFab B: SIMULATING $(li)PreFab C: HALTED$(br2)No coordination (yet) - future Factory Controller will manage multiple PreFabs$(br2)---"
+    }
+  ]
+}

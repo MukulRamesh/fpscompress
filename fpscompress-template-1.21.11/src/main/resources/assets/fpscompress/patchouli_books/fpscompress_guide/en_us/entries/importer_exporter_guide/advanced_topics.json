@@ -1,0 +1,13 @@
+{
+  "name": "Advanced Topics",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Exporter Not Pulling",
+      "text": "$(bold)Common causes$(): $(li)Adjacent machine doesn't have items to extract $(li)Adjacent machine doesn't expose `IItemHandler` capability $(li)Exporter buffer is full (PreFab isn't extracting fast enough)$(br2)$(bold)Debug$(): $(li)Check machine output (is it producing items?) $(li)Try placing chest next to Exporter (test if Exporter pulls from chest) $(li)Check Exporter buffer (is it full? Items stuck?)"
+    }
+  ]
+}

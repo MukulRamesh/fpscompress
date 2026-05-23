@@ -1,0 +1,23 @@
+{
+  "name": "How PreFabs Work",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "The Three-Block System",
+      "text": "PreFabs don't work alone - they're part of a three-block system:$(br2)$(li)$(bold)PreFab Block$() (Overworld) $(li)Routes resources between dimensions $(li)Controls state machine $(li)No internal storage$(br2)$(li)$(bold)Importer Block$() (CM Dimension) $(li)Input gate where resources enter factory $(li)Has small buffer (9 slots) $(li)Actively pushes items into adjacent inventories$(br2)$(li)$(bold)Exporter Block$() (CM Dimension) $(li)Output gate where resources exit factory $(li)Has small buffer (9 slots) $(li)Actively pulls from adjacent inventories$(br2)Tip: $(bold)Best practice$(): Use intermediate chests between gates and machines for more reliable systems"
+    },
+    {
+      "type": "text",
+      "title": "Resource Flow: PULL Mode",
+      "text": "Overworld Chest       ↓ (PreFab extracts via IItemHandler) PreFab PULL Face       ↓ (Transport across dimension) Importer Block (CM dimension)       ↓ (Importer pushes via IItemHandler) Intermediate Chest (CM dimension)       ↓ (Hopper/Pipe pulls from chest) Furnace Input Slot"
+    },
+    {
+      "type": "text",
+      "title": "Resource Flow: PUSH Mode",
+      "text": "Furnace Output Slot       ↓ (Hopper/Pipe pushes to chest) Intermediate Chest (CM dimension)       ↓ (Exporter pulls via IItemHandler) Exporter Block (CM dimension)       ↓ (Transport across dimension) PreFab PUSH Face       ↓ (PreFab inserts via IItemHandler) Overworld Chest"
+    }
+  ]
+}

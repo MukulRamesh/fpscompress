@@ -1,0 +1,18 @@
+{
+  "name": "Performance Benefits",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Chunk Loading Comparison",
+      "text": "$(bold)Without FPSCompress$() (factory running normally): CM Dimension: 6x6 chunks = 36 chunks loaded TPS Impact: 5-10 TPS loss (depends on factory complexity)$(br2)$(bold)With FPSCompress$() (CACHED mode): CM Dimension: 0 chunks loaded TPS Impact: <0.1 TPS loss (just PreFab math)$(br2)$(bold)Improvement$(): ~5-10 TPS per factory (can scale to 20+ for complex factories)"
+    },
+    {
+      "type": "text",
+      "title": "Scaling Benefits",
+      "text": "$(bold)One factory$(): $(li)Improvement: ~5 TPS$(br2)$(bold)Ten factories$(): $(li)Without FPSCompress: ~50 TPS loss → Server unplayable $(li)With FPSCompress: ~1 TPS loss → Server runs smooth$(br2)$(bold)FPSCompress enables massive factory scaling.$()"
+    }
+  ]
+}

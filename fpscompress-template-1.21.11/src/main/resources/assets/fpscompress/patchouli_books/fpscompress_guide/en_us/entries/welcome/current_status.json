@@ -1,0 +1,12 @@
+{
+  "name": "Current Status",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)⚠️ This mod is in active development.$()$(br2)Core systems implemented: $(li)[DONE] Face configuration system with GUI $(li)[DONE] Importer/Exporter blocks with UUID linking $(li)[DONE] Resource transport (PULL/PUSH modes) $(li)[DONE] Rate measurement with delta accounting $(li)[DONE] Cached production with fractional math $(li)[DONE] PreFab-as-Item portability system $(li)[DONE] Enhanced GUI with live status and resource display $(li)[DONE] HALTED state recovery with preserved rates $(li)[DONE] Vanilla block support (chests, furnaces, hoppers)$(br2)In progress: $(li)[WIP] AE2/Refined Storage integration $(li)[WIP] Factory Controller block $(li)[WIP] Multiple PreFab management $(li)[WIP] Advanced filters $(li)[WIP] Anti-cheat validation $(li)[WIP] Polish and bug fixes"
+    }
+  ]
+}

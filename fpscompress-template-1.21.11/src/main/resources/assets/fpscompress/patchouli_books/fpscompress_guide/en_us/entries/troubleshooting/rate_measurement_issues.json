@@ -1,0 +1,23 @@
+{
+  "name": "Rate Measurement Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Measured rates seem inaccurate\"",
+      "text": "$(bold)Common causes$():$(br2)$(bold)1. Simulation too short$(): $(li)Simulated < 30 seconds → Inaccurate $(li)Solution: Simulate for 60+ seconds$(br2)$(bold)2. Input starvation during measurement$(): $(li)Input chest ran out during SIMULATING $(li)Solution: Stock chests well before simulation$(br2)$(bold)3. Factory not at steady state$(): $(li)Started simulation immediately after setup $(li)Solution: Let factory run for a few seconds before measurement$(br2)$(bold)4. Player interference$(): $(li)Removed items from chests during simulation $(li)Solution: Don't touch factory during SIMULATING"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Negative production rates\"",
+      "text": "$(bold)This is normal.$()$(br2)$(bold)Explanation$(): $(li)Input resources have negative rates (consumed, not produced) $(li)Example: Coal rate = -1.0/tick (factory consumes 1 coal/tick)$(br2)$(bold)Not a bug$(): Negative = input, Positive = output"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Rate of 0.0 for a resource\"",
+      "text": "$(bold)Possible causes$(): $(li)$(bold)Passthrough$(): Item enters and exits without change $(li)Example: [Importer] → [Chest] → [Exporter] $(li)Net production = 0$(br2)$(li)$(bold)No activity$(): Resource not used during simulation $(li)Solution: Verify factory uses that resource$(br2)$(li)$(bold)Exact balance$(): Rare, but possible (e.g., recycling loop)$(br2)---"
+    }
+  ]
+}

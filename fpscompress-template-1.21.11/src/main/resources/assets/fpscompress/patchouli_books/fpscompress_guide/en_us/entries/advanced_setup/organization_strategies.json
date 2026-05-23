@@ -1,0 +1,23 @@
+{
+  "name": "Organization Strategies",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Frequency System for Organization",
+      "text": "$(bold)Best practice$(): Name Importers/Exporters by function, not just resource$(br2)$(bold)Examples$():$(br2)$(bold)By Resource Type$(): $(li)Coal Importer $(li)Iron Ore Importer $(li)Iron Ingot Exporter$(br2)$(bold)By Function$(): $(li)Primary Fuel Input $(li)Raw Material Input $(li)Finished Product Output $(li)Byproduct Output$(br2)$(bold)By Stage$(): $(li)Stage 1 Input (Ore) $(li)Stage 2 Input (Dust) $(li)Final Output (Ingot)$(br2)$(bold)Tip$(): Use item that represents function (e.g., Hopper for \"Input\", Chest for \"Output\")"
+    },
+    {
+      "type": "text",
+      "title": "Color-Coding in Overworld",
+      "text": "$(bold)Pattern$(): Use different blocks for visual organization$(br2)$(bold)Example$(): $(li)Blue Wool/Concrete: Input chests (PULL faces) $(li)Red Wool/Concrete: Output chests (PUSH faces) $(li)Green Wool/Concrete: Shared resource chests $(li)Yellow Wool/Concrete: Intermediate chests (between PreFabs)$(br2)$(bold)Layout$(): [Blue Wool]  [PreFab]  [Red Wool] [Input Chest] ← → [Output Chest]"
+    },
+    {
+      "type": "text",
+      "title": "Labeling with Signs",
+      "text": "$(bold)Recommended$(): $(li)Place signs on chests indicating purpose $(li)\"Coal Input for PreFab A\" $(li)\"Iron Ingot Output from PreFab B\" $(li)\"Shared Fuel Supply\"$(br2)$(bold)Benefits$(): $(li)Easy to remember setup $(li)Helps when returning after long break $(li)Useful for multiplayer (others can understand your setup)$(br2)---"
+    }
+  ]
+}

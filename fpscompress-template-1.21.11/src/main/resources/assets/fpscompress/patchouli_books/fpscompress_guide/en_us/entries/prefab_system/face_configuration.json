@@ -1,0 +1,32 @@
+{
+  "name": "Face Configuration",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "text": "Each PreFab has $(bold)6 independent faces$() that can be configured:$(br2)$(li)North, South, East, West$(li)Up, Down$(br2)Each face has its own mode, filter, and target."
+    },
+    {
+      "type": "text",
+      "title": "Face Modes",
+      "text": "$(bold)DISABLED$()$(br)Face inactive, no transport$(br2)$(bold)PULL$()$(br)Extract from Overworld → Transport to CM Importer$(br2)$(bold)PUSH$()$(br)Extract from CM Exporter → Transport to Overworld"
+    },
+    {
+      "type": "text",
+      "title": "Resource Filters",
+      "text": "$(bold)ITEMS$() (Current)$(br)Transfer items only$(br2)$(bold)FLUIDS$() (Future)$(br)Transfer fluids only$(br2)$(bold)ENERGY$() (Future)$(br)Transfer energy only$(br2)$(bold)ALL$() (Future)$(br)Transfer all types"
+    },
+    {
+      "type": "text",
+      "title": "Target Selection",
+      "text": "Each face must link to a specific gate:$(br2)$(bold)PULL faces$() → Link to Importers$(br2)$(bold)PUSH faces$() → Link to Exporters$(br2)Select from dropdown in GUI. Gates are identified by UUID or frequency name."
+    },
+    {
+      "type": "text",
+      "title": "Example Setup",
+      "text": "$(bold)NORTH:$() PULL ITEMS → Coal Importer$(br)$(bold)EAST:$() PULL ITEMS → Ore Importer$(br)$(bold)SOUTH:$() PUSH ITEMS → Ingot Exporter$(br)$(bold)WEST/UP/DOWN:$() DISABLED$(br2)Connect chests to NORTH, EAST, SOUTH faces."
+    }
+  ]
+}

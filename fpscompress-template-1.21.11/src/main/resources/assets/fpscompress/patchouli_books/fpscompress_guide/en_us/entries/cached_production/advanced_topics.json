@@ -1,0 +1,18 @@
+{
+  "name": "Advanced Topics",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Passthrough Detection",
+      "text": "$(bold)Passthrough$() = Resources enter AND exit without net change$(br2)$(bold)Example$(): Factory: [Importer] → [Chest] → [Exporter] (No processing, just storage)$(br2)Measurement: $(li)Imported: 100 items $(li)Exported: 100 items $(li)Net production: 0 items$(br2)Rate: 0.0 items/tick (passthrough detected)$(br2)PreFab detects passthrough and may warn player (future feature)"
+    },
+    {
+      "type": "text",
+      "title": "Negative Rates (Inputs)",
+      "text": "$(bold)Input resources$() have negative rates: Coal consumption: -1.0 coal/tick$(br2)$(bold)Accumulation$(): accumulator = 0.0 accumulator += (-1.0) = -1.0 (extract 1 coal from chest)$(br2)$(bold)Why negative:$() Indicates resources leaving Overworld (inputs to factory)"
+    }
+  ]
+}

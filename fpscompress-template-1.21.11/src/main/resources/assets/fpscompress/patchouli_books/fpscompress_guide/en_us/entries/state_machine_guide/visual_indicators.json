@@ -1,0 +1,18 @@
+{
+  "name": "Visual Indicators",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Current Indicators",
+      "text": "$(bold)Block texture$() (future feature): $(li)Different texture per state (visual feedback)$(br2)$(bold)GUI indicators$(): $(li)Open PreFab GUI → Shows current state"
+    },
+    {
+      "type": "text",
+      "title": "Debug Information",
+      "text": "$(bold)Press F3$() (debug screen): $(li)Look at PreFab block $(li)Hover text shows state (future feature)$(br2)$(bold)Chat messages$() (current): $(li)Some transitions show chat messages (e.g., \"Entering SIMULATING state\")$(br2)---"
+    }
+  ]
+}

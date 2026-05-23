@@ -40,5 +40,8 @@
   "fpscompress.importer.frequency.none": "None (right-click with item to set frequency)",
   "fpscompress.exporter.frequency.none": "None (right-click with item to set frequency)",
   "fpscompress.importer.frequency": "Frequency",
-  "fpscompress.exporter.frequency": "Frequency"
+  "fpscompress.exporter.frequency": "Frequency",
+
+  "patchouli.book.fpscompress.name": "FPSCompress Guide",
+  "patchouli.book.fpscompress.landing_text": "A comprehensive guide to factory compression and virtual production. Learn how to build efficient factories inside Compact Machines and run them without chunk loading!"
 }

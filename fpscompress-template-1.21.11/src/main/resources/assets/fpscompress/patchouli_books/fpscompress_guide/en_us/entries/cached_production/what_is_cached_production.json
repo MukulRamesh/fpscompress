@@ -1,0 +1,22 @@
+{
+  "name": "What is Cached Production?",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)Cached Production$() = Running factories using math instead of actually loading chunks"
+    },
+    {
+      "type": "text",
+      "title": "The Problem",
+      "text": "In vanilla Minecraft: $(li)Factories require chunk loading (chunks must be active) $(li)Every machine ticks every frame $(li)Entities move, hoppers check neighbors, etc. $(li)$(bold)Result$(): Significant TPS (ticks per second) impact"
+    },
+    {
+      "type": "text",
+      "title": "The FPSCompress Solution",
+      "text": "With cached production: $(li)$(bold)SIMULATING phase$(): Measure actual factory production rates (chunks loaded) $(li)$(bold)CACHED phase$(): Simulate production using fractional math (chunks $(bold)unloaded$()) $(li)$(bold)Result$(): Factory \"runs\" without loading CM dimension chunks$(br2)$(bold)Performance gain$(): 10-20 TPS improvement per complex factory (varies by factory)"
+    }
+  ]
+}

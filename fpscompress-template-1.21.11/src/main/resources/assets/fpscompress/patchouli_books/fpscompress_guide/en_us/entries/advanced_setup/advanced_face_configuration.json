@@ -1,0 +1,18 @@
+{
+  "name": "Advanced Face Configuration",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Using All 6 Faces",
+      "text": "$(bold)Maximum throughput$(): Configure all 6 faces$(br2)$(bold)Example Setup$(): NORTH: PULL → Coal Importer SOUTH: PULL → Iron Ore Importer EAST:  PULL → Gold Ore Importer WEST:  PULL → Copper Ore Importer UP:    PUSH ← Alloy Exporter DOWN:  PUSH ← Slag Exporter$(br2)$(bold)Layout$():       [Alloy Chest]            ↑ (UP face) [Coal] → [PreFab] ← [Gold]            ↓ (DOWN face)       [Slag Chest]$(br2)(Plus SOUTH and WEST faces with more inputs)"
+    },
+    {
+      "type": "text",
+      "title": "Directional Optimization",
+      "text": "$(bold)Pattern$(): Place chests based on access$(br2)$(bold)Vertical factory$() (use UP/DOWN faces): [Chest]    ↓ (hopper) [PreFab UP face]    ↓ (hopper) [PreFab DOWN face]    ↓ (hopper) [Chest]$(br2)$(bold)Horizontal factory$() (use NORTH/SOUTH/EAST/WEST): [Chest] → [PreFab] → [Chest]$(br2)---"
+    }
+  ]
+}

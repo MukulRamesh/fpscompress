@@ -1,0 +1,38 @@
+{
+  "name": "HALTED State",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Purpose",
+      "text": "Production paused due to input starvation or output blockage."
+    },
+    {
+      "type": "text",
+      "title": "Characteristics",
+      "text": "$(li)CM chunks STAY $(bold)UNLOADED$() (do not reload) $(li)Production pauses (accumulators frozen) $(li)Cached rates are preserved (not forgotten) $(li)Waiting for player to fix Overworld side"
+    },
+    {
+      "type": "text",
+      "title": "Common Causes",
+      "text": "$(bold)Input starvation$(): $(li)Input chest is empty $(li)Can't extract items for PULL face $(li)Example: Coal chest empty, furnace can't run$(br2)$(bold)Output blockage$(): $(li)Output chest is full $(li)Can't insert items from PUSH face $(li)Example: Iron chest full, nowhere to put ingots$(br2)$(bold)Importer/Exporter broken$(): $(li)Player entered CM dimension and broke gate $(li)PreFab can't find target by UUID"
+    },
+    {
+      "type": "text",
+      "title": "What's Happening Behind the Scenes",
+      "text": "$(bold)When HALTED triggered$(): $(li)PreFab detects: \"Can't pull from chest\" or \"Can't push to chest\" $(li)PreFab transitions to HALTED $(li)CM chunks STAY unloaded (no reload) $(li)Cached rates preserved in NBT $(li)Accumulators frozen at current values$(br2)$(bold)Why chunks stay unloaded$(): $(li)Problem is on Overworld side (not factory side) $(li)Reloading chunks would waste TPS $(li)Player can fix issue from Overworld"
+    },
+    {
+      "type": "text",
+      "title": "What You Should Do",
+      "text": "$(bold)Step 1: Diagnose the problem$() $(li)Check input chests (are they empty?) $(li)Check output chests (are they full?) $(li)Enter CM (are Importers/Exporters still there?)$(br2)$(bold)Step 2: Fix the issue$() $(li)Add items to input chests $(li)Clear space in output chests $(li)Replace broken Importers/Exporters and reconfigure faces$(br2)$(bold)Step 3: Resume production$() $(li)PreFab transitions to CACHED automatically"
+    },
+    {
+      "type": "text",
+      "title": "Transitions",
+      "text": "$(bold)From HALTED to SIMULATING$(): $(li)Player fixes the issue $(li)Prefab automatically resumes$(br2)$(bold)From HALTED to BUILDING$(): $(li)Enter prefab config (empty hand right click) and reset cache$(br2)---"
+    }
+  ]
+}

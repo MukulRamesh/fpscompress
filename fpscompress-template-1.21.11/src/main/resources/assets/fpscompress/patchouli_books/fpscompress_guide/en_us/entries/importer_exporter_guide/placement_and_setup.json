@@ -1,0 +1,18 @@
+{
+  "name": "Placement and Setup",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Placing Importers",
+      "text": "$(bold)Step 1$(): Enter CM dimension (right-click CM with Personal Shrinking Device)$(br2)$(bold)Step 2$(): Identify where resources need to enter $(li)Next to furnace input slots $(li)Next to machine input sides$(br2)$(bold)Step 3$(): Place Importer block$(br2)$(bold)Step 4$() (Optional): Name the Importer using frequency system $(li)Hold an item (e.g., Coal) $(li)Right-click the Importer $(li)Importer now shows as \"Coal Importer\" in GUIs$(br2)$(bold)Example (With Intermediate Chest - Recommended)$(): [Importer \"Coal\"] → [Chest] → [Hopper / Pipe] → [Furnace fuel slot] [Importer \"Iron Ore\"] → [Chest] → [Hopper / Pipe] → [Furnace input slot] $(italic)Using intermediate chests + hoppers/pipes creates more reliable, better-behaved systems.$()"
+    },
+    {
+      "type": "text",
+      "title": "Placing Exporters",
+      "text": "$(bold)Step 1$(): Enter CM dimension$(br2)$(bold)Step 2$(): Identify where products exit $(li)Next to furnace output slots $(li)Next to machine output sides$(br2)$(bold)Step 3$(): Place Exporter block next to the output$(br2)$(bold)Step 4$() (Optional): Name the Exporter using frequency system $(li)Hold an item (e.g., Iron Ingot) $(li)Right-click the Exporter $(li)Exporter now shows as \"Iron Ingot Exporter\" in GUIs$(br2)$(bold)Example (With Intermediate Chest - Recommended)$(): [Furnace output] → [Hopper / Pipe] → [Chest] → [Exporter \"Iron Ingots\"] [Crusher output] → [Hopper / Pipe] → [Chest] → [Exporter \"Crushed Ore\"] $(italic)Using hoppers/pipes + intermediate chests creates more reliable, better-behaved systems.$()"
+    }
+  ]
+}

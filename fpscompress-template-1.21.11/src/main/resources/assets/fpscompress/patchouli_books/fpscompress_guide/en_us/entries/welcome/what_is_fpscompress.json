@@ -1,0 +1,12 @@
+{
+  "name": "What is FPSCompress?",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "FPSCompress allows you to build factories inside Compact Machines (see wiki) rooms and run them $(bold)virtually$() without keeping those chunks loaded. The mod measures your factory's actual production rates during a calibration period, then uses fractional math to simulate production while the factory dimension stays unloaded.$(br2)$(bold)The Result$(): Massive server performance gains for factory-heavy builds."
+    }
+  ]
+}

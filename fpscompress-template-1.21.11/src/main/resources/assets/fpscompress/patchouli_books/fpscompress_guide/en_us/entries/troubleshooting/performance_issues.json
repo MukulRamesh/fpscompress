@@ -1,0 +1,18 @@
+{
+  "name": "Performance Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Chunks not unloading in CACHED mode\"",
+      "text": "$(bold)Verification$(): $(li)Enter CACHED mode $(li)Press F3 (debug screen) $(li)Check \"C:\" value (total chunks loaded) $(li)Value should be lower than during SIMULATING$(br2)$(bold)If chunks still loaded$(): $(li)CM dimension may be loaded for another reason: $(li)Player inside CM dimension $(li)Another CM machine active in same dimension $(li)Chunk loader nearby$(br2)$(bold)Solution$(): $(li)Ensure no players in CM dimension $(li)Check for other active PreFabs/CMs $(li)Verify specific room chunks using F3 coordinates"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Server TPS still low with PreFabs in CACHED\"",
+      "text": "$(bold)Possible causes$(): $(li)Other lag sources (unrelated to FPSCompress) $(li)PreFabs still in SIMULATING (chunks loaded) $(li)Other mods causing lag$(br2)$(bold)Debugging$(): $(li)Use profiler (`/forge tps` or similar command) $(li)Check which dimensions are loaded $(li)Verify PreFabs are in CACHED (not SIMULATING)$(br2)---"
+    }
+  ]
+}

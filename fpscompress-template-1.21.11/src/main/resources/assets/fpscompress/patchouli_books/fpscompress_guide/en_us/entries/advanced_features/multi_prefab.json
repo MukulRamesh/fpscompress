@@ -1,0 +1,27 @@
+{
+  "name": "Multi-PreFab Setups",
+  "icon": "minecraft:chest",
+  "category": "fpscompress:advanced_features",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "text": "You can use multiple PreFabs to create complex, modular production chains.$(br2)Each PreFab operates independently with its own state machine."
+    },
+    {
+      "type": "text",
+      "title": "Chained PreFabs",
+      "text": "$(bold)Pattern:$() Output from PreFab A → Input to PreFab B$(br2)$(bold)Setup:$()$(br)[PreFab A PUSH] → [Intermediate Chest] → [PreFab B PULL]$(br2)Each PreFab can be in CACHED independently."
+    },
+    {
+      "type": "text",
+      "title": "Example: Modular Iron",
+      "text": "$(bold)PreFab A:$() Ore Processing$(br)- Input: Iron Ore$(br)- Output: Iron Dust$(br2)$(bold)PreFab B:$() Smelting$(br)- Input: Iron Dust + Coal$(br)- Output: Iron Ingot$(br2)Connect with intermediate chest."
+    },
+    {
+      "type": "text",
+      "title": "Organization Tips",
+      "text": "$(li)Use $(l:importers_exporters/frequency_system)Frequency System$() to name gates$(li)Color-code chests (blue=input, red=output)$(li)Place signs on chests$(li)Use larger chests (barrels) for high-throughput$(li)Balance rates between PreFabs"
+    }
+  ]
+}

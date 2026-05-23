@@ -1,0 +1,23 @@
+{
+  "name": "Complex Factory Patterns",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Pattern 1: Fan-In (Multiple Inputs → One Factory)",
+      "text": "$(bold)Setup$(): [Coal Chest] → [PreFab NORTH] [Ore Chest]  → [PreFab EAST] [Flux Chest] → [PreFab WEST]$(br2)                 ↓            [Output Chest] ← [PreFab SOUTH]$(br2)$(bold)Use case$(): Factory requires multiple input types$(br2)$(bold)Inside CM$(): [Coal Importer] → [Machine Input 1] [Ore Importer]  → [Machine Input 2] [Flux Importer] → [Machine Input 3]       ↓ [Machine Output] → [Product Exporter]"
+    },
+    {
+      "type": "text",
+      "title": "Pattern 2: Fan-Out (One Input → Multiple Outputs)",
+      "text": "$(bold)Setup$():          [Input Chest] → [PreFab NORTH]$(br2)         ┌─────────────────┼─────────────┐          ↓                 ↓             ↓ [PreFab SOUTH]    [PreFab EAST]    [PreFab WEST]         ↓                 ↓             ↓ [Primary Output]  [Byproduct 1]  [Byproduct 2]$(br2)$(bold)Use case$(): Machine produces multiple output types$(br2)$(bold)Inside CM$(): [Input Importer] → [Processing Machine] → [Primary Exporter]                                         → [Byproduct Exporter 1]                                         → [Byproduct Exporter 2]"
+    },
+    {
+      "type": "text",
+      "title": "Pattern 3: Recycling Loop",
+      "text": "$(bold)Setup$(): [Raw Input] → [PreFab A NORTH]$(br2)                  ↓ (main output)            [PreFab A SOUTH] → [Product Chest]$(br2)                  ↓ (byproduct)            [PreFab A EAST] → [Recycling Chest] → [PreFab B]$(br2)                                                     ↓                                               [Raw Input]                                               (loops back)$(br2)$(bold)Use case$(): Byproduct recycling (e.g., slag → more ore)$(br2)$(bold)Considerations$(): $(li)Ensure loop doesn't deadlock (always have external input) $(li)Monitor recycling chest (shouldn't overflow)$(br2)---"
+    }
+  ]
+}

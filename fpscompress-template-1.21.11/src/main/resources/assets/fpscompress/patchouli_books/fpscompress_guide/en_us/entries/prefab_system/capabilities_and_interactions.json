@@ -1,0 +1,18 @@
+{
+  "name": "Capabilities and Interactions",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "What PreFabs Expose",
+      "text": "PreFabs don't expose capabilities to adjacent blocks - they actively extract/insert each tick.$(br2)$(bold)Why no capabilities:$() $(li)PreFabs are routers, not inventories $(li)Active transport (PreFab initiates) vs. passive (adjacent blocks query) $(li)Simpler implementation"
+    },
+    {
+      "type": "text",
+      "title": "What PreFabs Query",
+      "text": "$(bold)PULL faces (extract from Overworld)$(): $(li)`IItemHandler` - Extract items from chests, hoppers, machines $(li)`IFluidHandler` - Extract fluids from tanks (future) $(li)`IEnergyStorage` - Extract energy from batteries (future)$(br2)$(bold)PUSH faces (insert to Overworld)$(): $(li)`IItemHandler` - Insert items to chests, hoppers, machines $(li)`IFluidHandler` - Insert fluids to tanks (future) $(li)`IEnergyStorage` - Insert energy to batteries (future)"
+    }
+  ]
+}

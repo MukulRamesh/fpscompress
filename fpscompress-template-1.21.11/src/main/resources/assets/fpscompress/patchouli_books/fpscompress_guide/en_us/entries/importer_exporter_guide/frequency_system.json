@@ -1,0 +1,32 @@
+{
+  "name": "Frequency System",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "text": "The $(bold)frequency system$() lets you \"name\" Importers/Exporters for easy identification."
+    },
+    {
+      "type": "text",
+      "title": "How to Set Frequency",
+      "text": "$(li)Hold any item (e.g., Coal) $(li)Right-click Importer or Exporter $(li)The gate is now \"named\" after that item$(br2)$(bold)Example$(): $(li)Right-click Importer with Coal → \"Coal Importer\" $(li)Right-click Importer with Iron Ore → \"Iron Ore Importer\" $(li)Right-click Exporter with Iron Ingot → \"Iron Ingot Exporter\""
+    },
+    {
+      "type": "text",
+      "title": "Display in GUI",
+      "text": "When you open PreFab configuration, the dropdown shows: Without frequency: $(li)Unnamed Importer $(li)Unnamed Importer$(br2)With frequency: $(li)Coal Importer $(li)Iron Ore Importer$(br2)Much easier to identify which gate is which."
+    },
+    {
+      "type": "text",
+      "title": "Frequency Item Storage",
+      "text": "The frequency item is stored in the Importer/Exporter's NBT data: $(li)Doesn't consume the item (you keep it) $(li)Persists when gate is broken and replaced $(li)Can be changed by right-clicking with different item"
+    },
+    {
+      "type": "text",
+      "title": "When to Use Frequency",
+      "text": "Tip: $(bold)Best practice$(): Set frequency BEFORE configuring PreFab faces$(br2)$(bold)Recommended workflow$(): $(li)Place all Importers/Exporters $(li)Name each one with frequency system (Coal Importer, Iron Ore Importer, etc.) $(li)Exit CM dimension $(li)Configure PreFab faces (dropdown shows clear names)"
+    }
+  ]
+}

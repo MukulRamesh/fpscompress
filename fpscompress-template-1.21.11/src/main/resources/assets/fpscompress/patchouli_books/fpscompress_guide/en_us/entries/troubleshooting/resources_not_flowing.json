@@ -1,0 +1,28 @@
+{
+  "name": "Resources Not Flowing",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Input Issues (PULL)",
+      "text": "$(bold)Checklist:$()$(br2)$(li)Face set to PULL mode?$(li)Face linked to Importer?$(li)Resource filter set to ITEMS?$(li)Chest adjacent to PreFab?$(li)Chest has items?$(li)PreFab in SIMULATING or CACHED?"
+    },
+    {
+      "type": "text",
+      "title": "Output Issues (PUSH)",
+      "text": "$(bold)Checklist:$()$(br2)$(li)Face set to PUSH mode?$(li)Face linked to Exporter?$(li)Exporter next to machine output?$(li)Machine producing items?$(li)Chest has space?$(li)PreFab not in BUILDING or HALTED?"
+    },
+    {
+      "type": "text",
+      "title": "Common Mistakes",
+      "text": "$(bold)Wrong face mode:$()$(br)PULL faces link to Importers$(br)PUSH faces link to Exporters$(br2)$(bold)No gates:$()$(br)Must place Importers/Exporters in CM dimension$(br2)$(bold)Wrong state:$()$(br)PreFab must be in SIMULATING or CACHED"
+    },
+    {
+      "type": "text",
+      "title": "Testing Tips",
+      "text": "$(li)Test one face at a time$(li)Use simple setup first (single chest)$(li)Verify gates exist in CM dimension$(li)Check F3 for PreFab state$(li)Try with vanilla chests first$(br2)If still broken, check logs."
+    }
+  ]
+}

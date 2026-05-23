@@ -1,0 +1,23 @@
+{
+  "name": "Limitations and Edge Cases",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "title": "What CACHED Mode Can't Simulate",
+      "text": "[X] $(bold)Entity-based production$(): $(li)Mob farms (mob spawning) $(li)Animal breeding (entity AI) $(li)Item entity collection (entity physics)$(br2)[X] $(bold)Random/variable production$(): $(li)Ore processing with random bonus outputs $(li)Machines with chance-based mechanics$(br2)[X] $(bold)Player-dependent systems$(): $(li)Machines requiring player interaction $(li)Contraptions using player detection$(br2)[X] $(bold)Redstone logic$(): $(li)State machines (redstone clocks frozen) $(li)Conditional production (redstone gates frozen)"
+    },
+    {
+      "type": "text",
+      "title": "When Rates Become Invalid",
+      "text": "Cached rates are invalid if: $(li)Factory structure changes (added machines) $(li)Machine upgrades (speed upgrades) $(li)Input changed (different ore type) $(li)Importer/Exporter moved or broken$(br2)$(bold)Solution$(): Re-simulate to measure new rates."
+    },
+    {
+      "type": "text",
+      "title": "Handling HALTED State",
+      "text": "$(bold)What causes HALTED$(): $(li)Input starved (can't extract from Overworld chest) $(li)Output blocked (can't insert to Overworld chest)$(br2)$(bold)HALTED behavior$(): $(li)CM chunks STAY unloaded (do not reload) $(li)Cached rates preserved $(li)Production pauses$(br2)$(bold)Recovery$(): $(li)Fix Overworld side (add inputs, clear outputs) $(li)Right-click with wrench → Resume (enters SIMULATING again)"
+    }
+  ]
+}

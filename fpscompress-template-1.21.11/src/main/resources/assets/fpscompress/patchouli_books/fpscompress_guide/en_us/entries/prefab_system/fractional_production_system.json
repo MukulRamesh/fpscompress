@@ -1,0 +1,27 @@
+{
+  "name": "Fractional Production System",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "text": "PreFabs use $(bold)fractional accumulators$() to handle production rates less than 1 item/tick."
+    },
+    {
+      "type": "text",
+      "title": "Why Fractional Math?",
+      "text": "Most factories produce slower than 1 item/tick: $(li)Furnace: ~0.213 iron/tick (1 iron every ~4.7 ticks) $(li)Crusher: ~0.1 dust/tick (1 dust every 10 ticks)$(br2)Fractional math allows PreFabs to accurately simulate these rates."
+    },
+    {
+      "type": "text",
+      "title": "How It Works",
+      "text": "$(bold)Step 1: Measure Rate (SIMULATING)$() Factory produced 128 iron ingots over 600 ticks Rate = 128 / 600 = 0.2133 iron/tick$(br2)$(bold)Step 2: Accumulate (CACHED)$() Tick 1: accumulator = 0.0 + 0.2133 = 0.2133 (no output) Tick 2: accumulator = 0.2133 + 0.2133 = 0.4266 (no output) Tick 3: accumulator = 0.4266 + 0.2133 = 0.6399 (no output) Tick 4: accumulator = 0.6399 + 0.2133 = 0.8532 (no output) Tick 5: accumulator = 0.8532 + 0.2133 = 1.0665 (output 1 iron)         accumulator = 1.0665 - 1.0 = 0.0665 (carry remainder)$(br2)$(bold)Result$(): PreFab pushes 1 iron ingot every ~5 ticks, matching real factory rate."
+    },
+    {
+      "type": "text",
+      "title": "Multiple Resource Types",
+      "text": "PreFabs track separate accumulators for each resource: Iron Ingot: 0.213/tick → accumulator = 0.85 Gold Ingot: 0.15/tick → accumulator = 0.45 Copper Ingot: 0.5/tick → accumulator = 1.25 (ready to push 1)"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Common Mistakes",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "text": "[X] $(bold)Forgetting to place Importers/Exporters$() - PreFab needs gates to link to [X] $(bold)Not connecting chests$() - PULL/PUSH faces need adjacent inventories [X] $(bold)Ending simulation too early$() - Wait for accurate rates"
+    }
+  ]
+}

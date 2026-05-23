@@ -1,0 +1,12 @@
+{
+  "name": "See Also",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 10,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)$(l:prefab_system/what_is_a_prefab)PreFab System$() - Understanding PreFabs $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - SIMULATING → CACHED transitions $(li)$(l:troubleshooting/installation_issues)Troubleshooting$() - Common caching issues"
+    }
+  ]
+}

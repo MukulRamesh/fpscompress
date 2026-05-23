@@ -1,0 +1,23 @@
+{
+  "name": "Performance Optimization",
+  "icon": "minecraft:nether_star",
+  "category": "fpscompress:advanced_setup",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Minimizing HALTED States",
+      "text": "$(bold)Problem$(): PreFab enters HALTED frequently$(br2)$(bold)Solutions$():$(br2)$(bold)1. Larger buffers$(): $(li)Use Barrels instead of chests (64 stacks vs. 27 stacks) $(li)Use Storage Drawers (massive capacity)$(br2)$(bold)2. Balanced rates$(): $(li)Match input supply rate to factory consumption $(li)Example: Factory uses 1 coal/tick → Supply chest needs 1200 coal/minute$(br2)$(bold)3. Monitoring systems$(): $(li)Use comparators to detect low chest levels $(li)Automate restocking (hoppers, pipes)"
+    },
+    {
+      "type": "text",
+      "title": "Reducing Tick Lag",
+      "text": "$(bold)PreFab tick cost$(): $(li)CACHED mode: ~0.01ms per PreFab (negligible) $(li)SIMULATING mode: Same as running real factory (high)$(br2)$(bold)Optimization$(): $(li)Keep PreFabs in CACHED as much as possible $(li)Don't re-simulate unless necessary (rates don't change often) $(li)Avoid having many PreFabs in SIMULATING simultaneously"
+    },
+    {
+      "type": "text",
+      "title": "Chunk Loading Management",
+      "text": "$(bold)Strategy$(): $(li)Group PreFabs in same chunks (reduces total chunks loaded) $(li)Use chunk loaders sparingly (PreFabs in CACHED do not need loaded chunks)$(br2)---"
+    }
+  ]
+}

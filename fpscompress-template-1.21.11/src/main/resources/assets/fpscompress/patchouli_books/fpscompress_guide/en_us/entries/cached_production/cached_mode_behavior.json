@@ -1,0 +1,23 @@
+{
+  "name": "CACHED Mode Behavior",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Resource Flow in CACHED",
+      "text": "$(bold)Input resources$() (negative rates): $(li)PreFab accumulates: `accumulator += (-1.003)` $(li)When `accumulator <= -1.0`: Extract from Overworld chest $(li)Insert to Importer buffer (even though chunks unloaded)$(br2)$(bold)Output resources$() (positive rates): $(li)PreFab accumulates: `accumulator += 0.213` $(li)When `accumulator >= 1.0`: Extract from Exporter buffer $(li)Insert to Overworld chest$(br2)$(bold)Magic$(): Importer/Exporter buffers update even with chunks unloaded."
+    },
+    {
+      "type": "text",
+      "title": "Chunk Loading State",
+      "text": "$(bold)In CACHED mode$(): $(li)CM dimension chunks: $(bold)UNLOADED$() [DONE] $(li)Machines: Not ticking (not loaded) $(li)Importers/Exporters: Accessible via block entity lookup $(li)PreFab: Ticking normally (in Overworld)$(br2)$(bold)How PreFab accesses unloaded Importers/Exporters$(): $(li)Block entities persist even when chunks unload $(li)PreFab looks up by UUID (cached position) $(li)Direct NBT access (no chunk loading required)"
+    },
+    {
+      "type": "text",
+      "title": "What Happens to the Factory?",
+      "text": "$(bold)During CACHED mode$(), inside the CM dimension: $(li)Machines frozen (not ticking) $(li)Items in machine slots don't move $(li)Hoppers don't transfer $(li)Entities don't move$(br2)$(bold)But from Overworld perspective$(): $(li)Inputs consumed at measured rate $(li)Outputs produced at measured rate $(li)Factory \"appears\" to be running$(br2)$(bold)Simulation is perfect$() (as long as rates were measured accurately)"
+    }
+  ]
+}

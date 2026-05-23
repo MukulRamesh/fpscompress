@@ -1,0 +1,12 @@
+{
+  "name": "Credits",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "text": "Built with NeoForge (see wiki) for Minecraft 1.21.1.$(br2)Integrates with Compact Machines (see wiki) by TheRealp455w0rd."
+    }
+  ]
+}

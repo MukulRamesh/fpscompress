@@ -1,0 +1,18 @@
+{
+  "name": "Overview",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "title": "What Are Importers?",
+      "text": "$(bold)Importers$() are blocks placed $(bold)inside the CM dimension$() that act as input gates: $(li)Receive resources from PreFab PULL faces (from Overworld) $(li)Have small internal buffer (9 item slots) $(li)$(bold)Actively push items$() into adjacent inventories $(li)Each Importer has a unique UUID for linking$(br2)$(bold)Think of Importers as$(): \"Where resources from the Overworld enter your factory\""
+    },
+    {
+      "type": "text",
+      "title": "What Are Exporters?",
+      "text": "$(bold)Exporters$() are blocks placed $(bold)inside the CM dimension$() that act as output gates: $(li)Send resources to PreFab PUSH faces (to Overworld) $(li)Have small internal buffer (9 item slots) $(li)Actively pull from adjacent machines every tick $(li)PreFab extracts from Exporters to send to Overworld $(li)Each Exporter has a unique UUID for linking$(br2)$(bold)Think of Exporters as$(): \"Where resources from your factory exit to the Overworld\""
+    }
+  ]
+}

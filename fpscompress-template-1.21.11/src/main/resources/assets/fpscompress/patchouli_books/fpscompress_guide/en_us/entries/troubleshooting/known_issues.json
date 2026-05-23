@@ -1,0 +1,23 @@
+{
+  "name": "Known Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Issue: \"Fluids/Energy not supported\"",
+      "text": "$(bold)Status$(): Not yet implemented (MVP limitation)$(br2)$(bold)Workaround$(): Use item-based transport only$(br2)$(bold)Future$(): Fluid/energy support planned for post-MVP"
+    },
+    {
+      "type": "text",
+      "title": "Issue: \"AE2 integration not working\"",
+      "text": "$(bold)Status$(): Not yet implemented$(br2)$(bold)Workaround$(): Use vanilla chests/hoppers$(br2)$(bold)Future$(): AE2 integration planned for post-MVP"
+    },
+    {
+      "type": "text",
+      "title": "Issue: \"PreFab-as-Item loses data\"",
+      "text": "$(bold)Status$(): Should be fixed in v0.1.0-alpha$(br2)$(bold)If still occurs$(): $(li)Report bug with reproduction steps $(li)Include NBT data dump$(br2)---"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Core Concept: PreFabs",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)PreFabs$() (Prefabricated Factories) are upgraded Compact Machine blocks that act as cross-dimensional conduits between the Overworld and your factory dimension."
+    },
+    {
+      "type": "text",
+      "title": "The Three-Block System",
+      "text": "$(li)$(bold)PreFab Block$() (Overworld) - Routes resources, controls state machine, no internal storage $(li)$(bold)Importer Block$() (CM dimension) - Input gate, actively pushes items into adjacent inventories $(li)$(bold)Exporter Block$() (CM dimension) - Output gate, actively pulls items from adjacent inventories$(br2)Tip: $(bold)Best Practice$(): Use intermediate chests between Importers/Exporters and machines for more reliable systems"
+    },
+    {
+      "type": "text",
+      "title": "State Machine",
+      "text": "BUILDING    → Player configures faces, places Importers/Exporters SIMULATING  → PreFab measures actual production rates (CM chunks LOADED) CACHED      → PreFab simulates production mathematically (CM chunks UNLOADED ← Performance) HALTED      → Input starved or output blocked (CM stays unloaded, player fixes Overworld side)"
+    }
+  ]
+}

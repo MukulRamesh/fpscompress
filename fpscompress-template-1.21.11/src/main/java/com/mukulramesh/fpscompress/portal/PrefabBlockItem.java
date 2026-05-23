@@ -139,32 +139,47 @@ public class PrefabBlockItem extends BlockItem {
 
     /**
      * Add cached production rates to tooltip (CACHED state only).
+     * Supports both old aggregate format ("rates") and new UUID-based format ("importerExporterRates").
      *
      * @param blockEntityTag The PreFab NBT data
      * @param tooltipComponents The tooltip components list to add to
      */
     private void addCachedRates(CompoundTag blockEntityTag, List<Component> tooltipComponents) {
-        if (!blockEntityTag.contains("rates")) {
-            return; // No rates cached yet
+        List<RateEntry> rates = new ArrayList<>();
+
+        // Try new UUID-based format first (schema v2+)
+        if (blockEntityTag.contains("importerExporterRates")) {
+            ListTag uuidRatesList = blockEntityTag.getList("importerExporterRates", Tag.TAG_COMPOUND);
+            for (int i = 0; i < uuidRatesList.size(); i++) {
+                CompoundTag uuidTag = uuidRatesList.getCompound(i);
+                ListTag resourceRatesList = uuidTag.getList("rates", Tag.TAG_COMPOUND);
+                for (int j = 0; j < resourceRatesList.size(); j++) {
+                    CompoundTag rateTag = resourceRatesList.getCompound(j);
+                    String resourceId = rateTag.getString("id");
+                    double rate = rateTag.getDouble("rate");
+                    rates.add(new RateEntry(resourceId, rate));
+                }
+            }
         }
 
-        ListTag ratesList = blockEntityTag.getList("rates", Tag.TAG_COMPOUND);
-        if (ratesList.isEmpty()) {
-            return;
+        // Fall back to old aggregate format (schema v1) if no UUID-based rates
+        if (rates.isEmpty() && blockEntityTag.contains("rates")) {
+            ListTag ratesList = blockEntityTag.getList("rates", Tag.TAG_COMPOUND);
+            for (int i = 0; i < ratesList.size(); i++) {
+                CompoundTag rateEntry = ratesList.getCompound(i);
+                String resourceId = rateEntry.getString("id");
+                double rate = rateEntry.getDouble("rate");
+                rates.add(new RateEntry(resourceId, rate));
+            }
+        }
+
+        if (rates.isEmpty()) {
+            return; // No rates cached yet
         }
 
         // Header line
         tooltipComponents.add(Component.translatable("item.fpscompress.prefab_machine.rates_header")
             .withStyle(ChatFormatting.DARK_GRAY));
-
-        // Collect all rates into a list for sorting
-        List<RateEntry> rates = new ArrayList<>();
-        for (int i = 0; i < ratesList.size(); i++) {
-            CompoundTag rateEntry = ratesList.getCompound(i);
-            String resourceId = rateEntry.getString("id");
-            double rate = rateEntry.getDouble("rate");
-            rates.add(new RateEntry(resourceId, rate));
-        }
 
         // Sort by rate (outputs first [positive], then inputs [negative])
         Collections.sort(rates, (a, b) -> Double.compare(b.getRate(), a.getRate()));

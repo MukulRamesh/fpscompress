@@ -1,0 +1,18 @@
+{
+  "name": "Best Practices",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "title": "✅ Do This",
+      "text": "$(li)$(bold)Configure in BUILDING$(): Set up all faces before starting simulation $(li)$(bold)Simulate long enough$(): 60+ seconds for accurate rates $(li)$(bold)Stock inputs before SIMULATING$(): Ensure steady supply during measurement $(li)$(bold)Let CACHED run$(): Don't interfere, just monitor $(li)$(bold)Fix HALTED quickly$(): Add inputs, clear outputs"
+    },
+    {
+      "type": "text",
+      "title": "❌ Don't Do This",
+      "text": "$(li)$(bold)Don't end simulation early$(): Inaccurate rates $(li)$(bold)Don't modify factory during SIMULATING$(): Invalidates measurement $(li)$(bold)Don't expect instant CACHED results$(): Production is rate-based (may be slow) $(li)$(bold)Don't reload/forceload CM chunks in HALTED$(): Defeats the purpose (stay unloaded)$(br2)---"
+    }
+  ]
+}

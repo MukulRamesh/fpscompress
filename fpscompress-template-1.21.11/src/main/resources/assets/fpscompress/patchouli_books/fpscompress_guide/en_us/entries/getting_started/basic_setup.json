@@ -1,0 +1,48 @@
+{
+  "name": "Basic Setup Guide",
+  "icon": "minecraft:furnace",
+  "category": "fpscompress:getting_started",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Setup Overview",
+      "text": "Setting up your first factory compression system involves seven steps:$(br2)$(li)Initialize CM space$(li)Upgrade CM to PreFab$(li)Build factory inside$(li)Place Importers/Exporters$(li)Configure PreFab faces$(li)Connect chests$(li)Run simulation"
+    },
+    {
+      "type": "text",
+      "title": "Step 1: Initialize CM",
+      "text": "$(bold)1.$() Right-click your CM with Personal Shrinking Device$(br2)$(bold)2.$() Enter the dimension$(br2)$(bold)3.$() Exit back out$(br2)$(italic)This initializes the CM space. Without this step, the PreFab upgrade will not work.$()"
+    },
+    {
+      "type": "text",
+      "title": "Step 2: Upgrade to PreFab",
+      "text": "$(bold)1.$() Craft a PreFab upgrade item$(br2)$(bold)2.$() Right-click your CM with it$(br2)This converts the CM into a PreFab block that can run simulations."
+    },
+    {
+      "type": "text",
+      "title": "Step 3: Build Factory",
+      "text": "$(bold)1.$() Enter PreFab dimension (right-click with Personal Shrinking Device)$(br2)$(bold)2.$() Build your factory (e.g., furnace setup)$(br2)$(bold)Example:$()$(br)[Chest] → [Furnace] → [Chest]"
+    },
+    {
+      "type": "text",
+      "title": "Step 4: Place Gates",
+      "text": "$(bold)Importers$() = Input gates$(br)Actively push items into adjacent inventories$(br2)$(bold)Exporters$() = Output gates$(br)Actively pull items from adjacent inventories$(br2)$(italic)Best practice: Use intermediate chests between gates and machines for more reliable behavior.$()"
+    },
+    {
+      "type": "text",
+      "title": "Step 5: Configure Faces",
+      "text": "$(bold)1.$() Hold $(l:getting_started/simulation_wrench)Simulation Wrench$()$(br2)$(bold)2.$() Shift + Right-click PreFab$(br2)$(bold)3.$() For each face:$(br)- Set mode (PULL/PUSH/DISABLED)$(br)- Set filter (ITEMS)$(br)- Select target Importer/Exporter"
+    },
+    {
+      "type": "text",
+      "title": "Step 6: Connect Chests",
+      "text": "Place chests adjacent to PreFab faces:$(br2)$(bold)PULL faces$() = Input chests (must have materials)$(br2)$(bold)PUSH faces$() = Output chests (receives products)$(br2)Example:$(br)[Coal Chest] → [PreFab NORTH]$(br)[PreFab SOUTH] → [Iron Chest]"
+    },
+    {
+      "type": "text",
+      "title": "Step 7: Run Simulation",
+      "text": "$(bold)Start:$() Right-click PreFab with wrench (no shift)$(br2)$(bold)Wait:$() 30-60 seconds for accurate measurement$(br2)$(bold)Finish:$() Right-click again$(br2)$(bold)Result:$() PreFab enters $(bold)CACHED$() mode - CM chunks unload, factory runs virtually."
+    }
+  ]
+}

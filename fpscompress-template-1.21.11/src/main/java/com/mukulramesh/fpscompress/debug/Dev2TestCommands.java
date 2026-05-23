@@ -2,6 +2,7 @@ package com.mukulramesh.fpscompress.debug;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mukulramesh.fpscompress.FPSCompress;
@@ -19,6 +20,8 @@ import net.minecraft.world.item.component.CustomData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
+
 /**
  * Debug commands for testing Dev 2's Chunk Manager and Interceptor implementation.
  *
@@ -30,7 +33,10 @@ import org.slf4j.LoggerFactory;
  * - /fps_dev2 diagnostics - Show current interceptor state
  * - /fps_dev2 test-room <roomCode> - Run comprehensive room test
  * - /fps_dev2 cleanup - Clean up all chunk tickets
- * - /fps_dev2 give-test-prefab - Give PreFab with dirt→diamond conversion rates
+ * - /fps_dev2 give-test-prefab [inputItem] [inputRate] [outputItem] [outputRate] - Give PreFab with custom
+ *     conversion rates
+ * - /fps_dev2 give-test-prefab list <inputList> <outputList> - Give PreFab with multiple inputs/outputs
+ *     (format: "item:rate,item:rate,...")
  *
  * @author Dev 2 - Testing Team
  */
@@ -87,6 +93,25 @@ public final class Dev2TestCommands {
                         )
                         .then(Commands.literal("give-test-prefab")
                                 .executes(Dev2TestCommands::giveTestPrefab)
+                                .then(Commands.literal("list")
+                                        .then(Commands.argument("inputList", StringArgumentType.string())
+                                                .then(Commands.argument("outputList", StringArgumentType.string())
+                                                        .executes(Dev2TestCommands::giveTestPrefabList)
+                                                )
+                                        )
+                                )
+                                .then(Commands.argument("inputItem", StringArgumentType.string())
+                                        .then(Commands.argument("inputRate",
+                                                DoubleArgumentType.doubleArg(0.0))
+                                                .then(Commands.argument("outputItem",
+                                                        StringArgumentType.string())
+                                                        .then(Commands.argument("outputRate",
+                                                                DoubleArgumentType.doubleArg(0.0))
+                                                                .executes(Dev2TestCommands::giveTestPrefabCustom)
+                                                        )
+                                                )
+                                        )
+                                )
                         )
         );
     }
@@ -519,6 +544,169 @@ public final class Dev2TestCommands {
      * Command: /fps_dev2 give-test-prefab
      */
     private static int giveTestPrefab(CommandContext<CommandSourceStack> context) {
+        // Default: 1 Importer (dirt input), 1 Exporter (diamond output)
+        ListTag importers = new ListTag();
+        CompoundTag importer1 = new CompoundTag();
+        importer1.putUUID("uuid", UUID.randomUUID());
+        importer1.putString("resource", "minecraft:dirt");
+        importer1.putDouble("rate", 1.0);
+        importers.add(importer1);
+
+        ListTag exporters = new ListTag();
+        CompoundTag exporter1 = new CompoundTag();
+        exporter1.putUUID("uuid", UUID.randomUUID());
+        exporter1.putString("resource", "minecraft:diamond");
+        exporter1.putDouble("rate", 1.0);
+        exporters.add(exporter1);
+
+        return giveTestPrefabInternal(context, importers, exporters);
+    }
+
+    /**
+     * Give player a test PreFab with custom cached rates.
+     *
+     * Command: /fps_dev2 give-test-prefab <inputItem> <inputRate> <outputItem> <outputRate>
+     */
+    private static int giveTestPrefabCustom(CommandContext<CommandSourceStack> context) {
+        String inputItem = StringArgumentType.getString(context, "inputItem");
+        double inputRate = DoubleArgumentType.getDouble(context, "inputRate");
+        String outputItem = StringArgumentType.getString(context, "outputItem");
+        double outputRate = DoubleArgumentType.getDouble(context, "outputRate");
+
+        // Create 1 Importer and 1 Exporter with custom rates
+        ListTag importers = new ListTag();
+        CompoundTag importer1 = new CompoundTag();
+        importer1.putUUID("uuid", UUID.randomUUID());
+        importer1.putString("resource", inputItem);
+        importer1.putDouble("rate", inputRate);
+        importers.add(importer1);
+
+        ListTag exporters = new ListTag();
+        CompoundTag exporter1 = new CompoundTag();
+        exporter1.putUUID("uuid", UUID.randomUUID());
+        exporter1.putString("resource", outputItem);
+        exporter1.putDouble("rate", outputRate);
+        exporters.add(exporter1);
+
+        return giveTestPrefabInternal(context, importers, exporters);
+    }
+
+    /**
+     * Give player a test PreFab with multiple inputs/outputs from comma-separated lists.
+     *
+     * Command: /fps_dev2 give-test-prefab list <inputList> <outputList>
+     * Format: "item:rate,item:rate,..."
+     * Example: /fps_dev2 give-test-prefab list "minecraft:dirt:1.0,minecraft:cobblestone:2.0" "minecraft:diamond:0.5"
+     *
+     * Note: Each item in the list creates a separate Importer/Exporter with a unique UUID
+     */
+    private static int giveTestPrefabList(CommandContext<CommandSourceStack> context) {
+        String inputListStr = StringArgumentType.getString(context, "inputList");
+        String outputListStr = StringArgumentType.getString(context, "outputList");
+        CommandSourceStack source = context.getSource();
+
+        try {
+            ListTag importers = parseEquipmentList(inputListStr, true);
+            ListTag exporters = parseEquipmentList(outputListStr, false);
+
+            if (importers.isEmpty() && exporters.isEmpty()) {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] ERROR: Must specify at least one input or output"));
+                return 0;
+            }
+
+            return giveTestPrefabInternal(context, importers, exporters);
+
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal(
+                String.format("§c[Dev2 Test] ERROR: %s", e.getMessage())
+            ));
+            source.sendFailure(Component.literal(
+                "§c  Format: \"item:rate,item:rate,...\""
+            ));
+            source.sendFailure(Component.literal(
+                "§c  Example: \"minecraft:dirt:1.0,minecraft:cobblestone:2.0\""
+            ));
+            return 0;
+        }
+    }
+
+    /**
+     * Parse a comma-separated list of "item:rate" pairs into Importer/Exporter equipment NBT.
+     * Each entry creates a separate equipment piece with a unique UUID.
+     *
+     * @param listStr The input string (e.g., "minecraft:dirt:1.0,minecraft:cobblestone:2.0")
+     * @param isImporter True for Importers (inputs), false for Exporters (outputs)
+     * @return ListTag containing equipment NBT (uuid, resource, rate)
+     * @throws IllegalArgumentException if the format is invalid
+     */
+    private static ListTag parseEquipmentList(String listStr, boolean isImporter) throws IllegalArgumentException {
+        ListTag equipmentList = new ListTag();
+
+        if (listStr == null || listStr.trim().isEmpty()) {
+            return equipmentList;
+        }
+
+        String[] entries = listStr.split(",");
+        for (String entry : entries) {
+            entry = entry.trim();
+            if (entry.isEmpty()) {
+                continue;
+            }
+
+            // Split by last colon to handle namespaced IDs like "minecraft:dirt:1.0"
+            int lastColon = entry.lastIndexOf(':');
+            if (lastColon == -1 || lastColon == entry.length() - 1) {
+                throw new IllegalArgumentException(
+                    String.format("Invalid format for entry '%s' - expected 'item:rate'", entry)
+                );
+            }
+
+            String itemId = entry.substring(0, lastColon);
+            String rateStr = entry.substring(lastColon + 1);
+
+            // Validate item ID has namespace
+            if (!itemId.contains(":")) {
+                throw new IllegalArgumentException(
+                    String.format("Item ID '%s' must include namespace (e.g., 'minecraft:dirt')", itemId)
+                );
+            }
+
+            double rate;
+            try {
+                rate = Double.parseDouble(rateStr);
+                if (rate <= 0.0) {
+                    throw new IllegalArgumentException(
+                        String.format("Rate '%s' must be positive", rateStr)
+                    );
+                }
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                    String.format("Invalid rate '%s' for item '%s' - must be a number", rateStr, itemId)
+                );
+            }
+
+            // Create equipment entry: UUID + resource + rate
+            CompoundTag equipment = new CompoundTag();
+            equipment.putUUID("uuid", UUID.randomUUID());
+            equipment.putString("resource", itemId);
+            equipment.putDouble("rate", rate);
+            equipmentList.add(equipment);
+        }
+
+        return equipmentList;
+    }
+
+    /**
+     * Internal method to create and give a test PreFab with UUID-based rate storage.
+     *
+     * @param context The command context
+     * @param importers ListTag of Importer equipment (each has uuid, resource, rate)
+     * @param exporters ListTag of Exporter equipment (each has uuid, resource, rate)
+     * @return 1 on success, 0 on failure
+     */
+    private static int giveTestPrefabInternal(CommandContext<CommandSourceStack> context,
+                                               ListTag importers, ListTag exporters) {
         CommandSourceStack source = context.getSource();
 
         try {
@@ -530,74 +718,20 @@ public final class Dev2TestCommands {
 
             source.sendSuccess(() -> Component.literal("§e[Dev2 Test] Creating test PreFab..."), false);
 
-            // Create PreFab item
+            // Create PreFab item with test data
             ItemStack prefabItem = new ItemStack(FPSCompress.PREFAB_ITEM.get());
+            CompoundTag nbt = buildTestPrefabNBT(importers, exporters);
 
-            // Build NBT data for CACHED PreFab
-            CompoundTag nbt = new CompoundTag();
+            LOGGER.info("Created test PreFab NBT - schemaVersion: {}, has importerExporterRates: {}, entries: {}",
+                nbt.getInt("schemaVersion"),
+                nbt.contains("importerExporterRates"),
+                nbt.contains("importerExporterRates") ? nbt.getList("importerExporterRates", 10).size() : 0);
 
-            // Schema version
-            nbt.putInt("schemaVersion", 1);
-
-            // Machine state: CACHED
-            nbt.putString("state", "CACHED");
-
-            // Room code (fake)
-            nbt.putString("roomCode", "test_5x5x5");
-
-            // Face configs (3 faces configured: 1 PULL, 2 PUSH)
-            CompoundTag facesTag = new CompoundTag();
-
-            // NORTH face: PULL (input)
-            CompoundTag northFace = new CompoundTag();
-            northFace.putString("mode", "PULL");
-            northFace.putString("resourceType", "ITEMS");
-            facesTag.put("north", northFace);
-
-            // SOUTH face: PUSH (output)
-            CompoundTag southFace = new CompoundTag();
-            southFace.putString("mode", "PUSH");
-            southFace.putString("resourceType", "ITEMS");
-            facesTag.put("south", southFace);
-
-            // EAST face: PUSH (secondary output)
-            CompoundTag eastFace = new CompoundTag();
-            eastFace.putString("mode", "PUSH");
-            eastFace.putString("resourceType", "ITEMS");
-            facesTag.put("east", eastFace);
-
-            nbt.put("faceConfigs", facesTag);
-
-            // Cached rates: INPUT 1 dirt/tick, OUTPUT 1 diamond/tick
-            ListTag ratesList = new ListTag();
-
-            // Input: minecraft:dirt at -1.0/tick (negative = consumption)
-            CompoundTag dirtRate = new CompoundTag();
-            dirtRate.putString("id", "minecraft:dirt");
-            dirtRate.putDouble("rate", -1.0);
-            ratesList.add(dirtRate);
-
-            // Output: minecraft:diamond at 1.0/tick (positive = production)
-            CompoundTag diamondRate = new CompoundTag();
-            diamondRate.putString("id", "minecraft:diamond");
-            diamondRate.putDouble("rate", 1.0);
-            ratesList.add(diamondRate);
-
-            nbt.put("rates", ratesList);
-
-            // Add block entity ID (required for proper loading)
-            nbt.putString("id", "fpscompress:prefab_machine");
-
-            // Set NBT on item using DataComponents system
             prefabItem.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
 
             // Give item to player
             if (player.addItem(prefabItem)) {
-                source.sendSuccess(() -> Component.literal(
-                    "§a[Dev2 Test] ✓ Test PreFab given! Hover over it to see the tooltip"), true);
-                source.sendSuccess(() -> Component.literal(
-                    "§7  Input: 1 Dirt/tick → Output: 1 Diamond/tick"), false);
-                LOGGER.info("Test PreFab given to player {}", player.getName().getString());
+                sendSuccessMessages(source, importers, exporters, player);
                 return 1;
             } else {
                 source.sendFailure(Component.literal(
@@ -612,5 +746,233 @@ public final class Dev2TestCommands {
             LOGGER.error("give-test-prefab failed", e);
             return 0;
         }
+    }
+
+    /**
+     * Build NBT data for a test PreFab with UUID-based rate storage.
+     */
+    private static CompoundTag buildTestPrefabNBT(ListTag importers, ListTag exporters) {
+        CompoundTag nbt = new CompoundTag();
+        nbt.putInt("schemaVersion", 2);  // Schema v2 = per-UUID rates (importerExporterRates)
+        nbt.putString("state", "CACHED");
+
+        // Generate unique fake roomCode for this test PreFab
+        // Format: "fake_<uuid>" so we know it's a test room and can isolate equipment per PreFab
+        String fakeRoomCode = "fake_" + UUID.randomUUID().toString().substring(0, 8);
+        nbt.putString("roomCode", fakeRoomCode);
+
+        // Face configs: Link faces to equipment UUIDs
+        nbt.put("faceConfigs", buildFaceConfigs(importers, exporters));
+
+        // UUID-based rate storage
+        nbt.put("importerExporterRates", buildUUIDRates(importers, exporters));
+
+        // Fake Importer/Exporter registries with frequency items
+        nbt.put("importerRegistry", buildImporterRegistry(importers, fakeRoomCode));
+        nbt.put("exporterRegistry", buildExporterRegistry(exporters, fakeRoomCode));
+
+        // Block entity ID
+        nbt.putString("id", "fpscompress:prefab_machine");
+
+        return nbt;
+    }
+
+    /**
+     * Build face configurations linking faces to Importer/Exporter UUIDs.
+     */
+    private static CompoundTag buildFaceConfigs(ListTag importers, ListTag exporters) {
+        CompoundTag facesTag = new CompoundTag();
+
+        // Link NORTH faces to Importers (PULL mode)
+        String[] inputFaces = {"north", "west", "down"};
+        for (int i = 0; i < Math.min(importers.size(), 3); i++) {
+            CompoundTag importer = importers.getCompound(i);
+            UUID uuid = importer.getUUID("uuid");
+
+            CompoundTag faceConfig = new CompoundTag();
+            faceConfig.putString("mode", "PULL");
+            faceConfig.putString("resourceType", "ITEMS");
+            faceConfig.putUUID("targetUUID", uuid);
+            facesTag.put(inputFaces[i], faceConfig);
+        }
+
+        // Link SOUTH faces to Exporters (PUSH mode)
+        String[] outputFaces = {"south", "east", "up"};
+        for (int i = 0; i < Math.min(exporters.size(), 3); i++) {
+            CompoundTag exporter = exporters.getCompound(i);
+            UUID uuid = exporter.getUUID("uuid");
+
+            CompoundTag faceConfig = new CompoundTag();
+            faceConfig.putString("mode", "PUSH");
+            faceConfig.putString("resourceType", "ITEMS");
+            faceConfig.putUUID("targetUUID", uuid);
+            facesTag.put(outputFaces[i], faceConfig);
+        }
+
+        return facesTag;
+    }
+
+    /**
+     * Build UUID-based rate storage: Map<UUID, Map<String, Double>>.
+     */
+    private static ListTag buildUUIDRates(ListTag importers, ListTag exporters) {
+        ListTag uuidRatesList = new ListTag();
+
+        // Add Importer rates (negative = consumption)
+        for (int i = 0; i < importers.size(); i++) {
+            CompoundTag importer = importers.getCompound(i);
+            UUID uuid = importer.getUUID("uuid");
+            String resource = importer.getString("resource");
+            double rate = importer.getDouble("rate");
+
+            CompoundTag uuidTag = new CompoundTag();
+            uuidTag.putUUID("uuid", uuid);
+
+            ListTag resourceRatesList = new ListTag();
+            CompoundTag rateTag = new CompoundTag();
+            rateTag.putString("id", resource);
+            rateTag.putDouble("rate", -Math.abs(rate)); // Negative for inputs
+            resourceRatesList.add(rateTag);
+
+            uuidTag.put("rates", resourceRatesList);
+            uuidRatesList.add(uuidTag);
+        }
+
+        // Add Exporter rates (positive = production)
+        for (int i = 0; i < exporters.size(); i++) {
+            CompoundTag exporter = exporters.getCompound(i);
+            UUID uuid = exporter.getUUID("uuid");
+            String resource = exporter.getString("resource");
+            double rate = exporter.getDouble("rate");
+
+            CompoundTag uuidTag = new CompoundTag();
+            uuidTag.putUUID("uuid", uuid);
+
+            ListTag resourceRatesList = new ListTag();
+            CompoundTag rateTag = new CompoundTag();
+            rateTag.putString("id", resource);
+            rateTag.putDouble("rate", Math.abs(rate)); // Positive for outputs
+            resourceRatesList.add(rateTag);
+
+            uuidTag.put("rates", resourceRatesList);
+            uuidRatesList.add(uuidTag);
+        }
+
+        return uuidRatesList;
+    }
+
+    /**
+     * Build fake Importer registry with frequency items matching resources.
+     *
+     * @param importers ListTag of Importer equipment
+     * @param roomCode Unique fake roomCode for this test PreFab (e.g., "fake_a1b2c3d4")
+     * @return CompoundTag registry mapping UUID → Importer data
+     */
+    private static CompoundTag buildImporterRegistry(ListTag importers, String roomCode) {
+        CompoundTag registry = new CompoundTag();
+
+        for (int i = 0; i < importers.size(); i++) {
+            CompoundTag importer = importers.getCompound(i);
+            UUID uuid = importer.getUUID("uuid");
+            String resource = importer.getString("resource");
+
+            // Create fake Importer data with frequency item
+            CompoundTag importerData = new CompoundTag();
+            importerData.putUUID("uuid", uuid);
+            importerData.putString("roomCode", roomCode);  // Use unique roomCode per PreFab
+
+            // Set frequency item ID to match the resource (simple string storage)
+            CompoundTag frequencyItemTag = new CompoundTag();
+            frequencyItemTag.putString("id", resource);
+            frequencyItemTag.putInt("count", 1);
+            importerData.put("frequencyItem", frequencyItemTag);
+
+            registry.put(uuid.toString(), importerData);
+        }
+
+        return registry;
+    }
+
+    /**
+     * Build fake Exporter registry with frequency items matching resources.
+     *
+     * @param exporters ListTag of Exporter equipment
+     * @param roomCode Unique fake roomCode for this test PreFab (e.g., "fake_a1b2c3d4")
+     * @return CompoundTag registry mapping UUID → Exporter data
+     */
+    private static CompoundTag buildExporterRegistry(ListTag exporters, String roomCode) {
+        CompoundTag registry = new CompoundTag();
+
+        for (int i = 0; i < exporters.size(); i++) {
+            CompoundTag exporter = exporters.getCompound(i);
+            UUID uuid = exporter.getUUID("uuid");
+            String resource = exporter.getString("resource");
+
+            // Create fake Exporter data with frequency item
+            CompoundTag exporterData = new CompoundTag();
+            exporterData.putUUID("uuid", uuid);
+            exporterData.putString("roomCode", roomCode);  // Use unique roomCode per PreFab
+
+            // Set frequency item ID to match the resource (simple string storage)
+            CompoundTag frequencyItemTag = new CompoundTag();
+            frequencyItemTag.putString("id", resource);
+            frequencyItemTag.putInt("count", 1);
+            exporterData.put("frequencyItem", frequencyItemTag);
+
+            registry.put(uuid.toString(), exporterData);
+        }
+
+        return registry;
+    }
+
+    /**
+     * Send success messages to player with summary of configured rates.
+     */
+    private static void sendSuccessMessages(CommandSourceStack source, ListTag importers,
+                                            ListTag exporters, ServerPlayer player) {
+        source.sendSuccess(() -> Component.literal(
+            "§a[Dev2 Test] ✓ Test PreFab given! Hover over it to see the tooltip"), true);
+
+        // Build summary message
+        StringBuilder summary = new StringBuilder("§7  ");
+
+        if (!importers.isEmpty()) {
+            summary.append("Inputs: ");
+            for (int i = 0; i < importers.size(); i++) {
+                CompoundTag importer = importers.getCompound(i);
+                String resource = importer.getString("resource");
+                double rate = importer.getDouble("rate");
+                String itemName = resource.contains(":") ? resource.split(":")[1] : resource;
+
+                if (i > 0) {
+                    summary.append(", ");
+                }
+                summary.append(String.format("%.2f %s/tick", rate, itemName));
+            }
+        }
+
+        if (!exporters.isEmpty()) {
+            if (!importers.isEmpty()) {
+                summary.append(" → ");
+            }
+            summary.append("Outputs: ");
+            for (int i = 0; i < exporters.size(); i++) {
+                CompoundTag exporter = exporters.getCompound(i);
+                String resource = exporter.getString("resource");
+                double rate = exporter.getDouble("rate");
+                String itemName = resource.contains(":") ? resource.split(":")[1] : resource;
+
+                if (i > 0) {
+                    summary.append(", ");
+                }
+                summary.append(String.format("%.2f %s/tick", rate, itemName));
+            }
+        }
+
+        String finalSummary = summary.toString();
+        source.sendSuccess(() -> Component.literal(finalSummary), false);
+
+        LOGGER.info("Test PreFab given to player {} with {} Importers and {} Exporters",
+            player.getName().getString(), importers.size(), exporters.size());
     }
 }

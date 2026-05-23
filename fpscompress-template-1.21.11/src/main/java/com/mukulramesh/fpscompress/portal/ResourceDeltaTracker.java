@@ -4,9 +4,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Tracks import/export deltas for rate measurement during SIMULATING state.
@@ -88,6 +90,11 @@ public class ResourceDeltaTracker {
     // Map: Resource ID (e.g., "minecraft:iron_ingot") -> Deltas
     private final Map<String, ResourceDeltas> deltas = new HashMap<>();
 
+    // Phase 6: Per-UUID delta tracking for multi-output routing
+    // Maps equipment UUID -> (resource ID -> deltas)
+    // Example: {ExporterUUID-A: {iron: ResourceDeltas}, ExporterUUID-B: {copper: ResourceDeltas}}
+    private final Map<UUID, Map<String, ResourceDeltas>> deltasByUUID = new HashMap<>();
+
     // Track first and last activity ticks (for accurate simulation time measurement)
     private long firstActivityTick = -1; // -1 = no activity yet
     private long lastActivityTick = -1;
@@ -96,13 +103,21 @@ public class ResourceDeltaTracker {
      * Record items imported from Overworld into CM dimension.
      * Called after successful PULL transport.
      *
+     * @param equipmentUUID The UUID of the Importer handling this resource
      * @param resourceId The resource ID (e.g., "minecraft:coal")
      * @param amount Number of items imported
      * @param currentTick Current game time (for tracking first/last activity)
      */
-    public void recordImport(String resourceId, long amount, long currentTick) {
+    public void recordImport(UUID equipmentUUID, String resourceId, long amount, long currentTick) {
+        // Keep aggregate tracking (for initial/final state validation)
         deltas.computeIfAbsent(resourceId, k -> new ResourceDeltas())
               .addImported(amount);
+
+        // NEW: Track per UUID
+        deltasByUUID.computeIfAbsent(equipmentUUID, k -> new HashMap<>())
+                    .computeIfAbsent(resourceId, k -> new ResourceDeltas())
+                    .addImported(amount);
+
         updateActivityTicks(currentTick);
     }
 
@@ -110,13 +125,21 @@ public class ResourceDeltaTracker {
      * Record items exported from CM dimension to Overworld.
      * Called after successful PUSH transport.
      *
+     * @param equipmentUUID The UUID of the Exporter handling this resource
      * @param resourceId The resource ID (e.g., "minecraft:iron_ingot")
      * @param amount Number of items exported
      * @param currentTick Current game time (for tracking first/last activity)
      */
-    public void recordExport(String resourceId, long amount, long currentTick) {
+    public void recordExport(UUID equipmentUUID, String resourceId, long amount, long currentTick) {
+        // Keep aggregate tracking (for initial/final state validation)
         deltas.computeIfAbsent(resourceId, k -> new ResourceDeltas())
               .addExported(amount);
+
+        // NEW: Track per UUID
+        deltasByUUID.computeIfAbsent(equipmentUUID, k -> new HashMap<>())
+                    .computeIfAbsent(resourceId, k -> new ResourceDeltas())
+                    .addExported(amount);
+
         updateActivityTicks(currentTick);
     }
 
@@ -236,6 +259,64 @@ public class ResourceDeltaTracker {
     }
 
     /**
+     * Get all UUIDs that have tracked deltas.
+     * Phase 6: Used for per-UUID rate calculation.
+     *
+     * @return Unmodifiable set of equipment UUIDs
+     */
+    public Set<UUID> getTrackedUUIDs() {
+        return Collections.unmodifiableSet(deltasByUUID.keySet());
+    }
+
+    /**
+     * Get all resource IDs tracked for a specific UUID.
+     * Phase 6: Used to iterate resources per Importer/Exporter.
+     *
+     * @param uuid The equipment UUID
+     * @return Unmodifiable set of resource IDs, or empty set if UUID not tracked
+     */
+    public Set<String> getTrackedResourcesForUUID(UUID uuid) {
+        Map<String, ResourceDeltas> uuidDeltas = deltasByUUID.get(uuid);
+        return uuidDeltas != null
+            ? Collections.unmodifiableSet(uuidDeltas.keySet())
+            : Collections.emptySet();
+    }
+
+    /**
+     * Get total imported for a specific UUID and resource.
+     * Phase 6: Used for per-UUID rate calculation.
+     *
+     * @param uuid The equipment UUID
+     * @param resourceId The resource ID
+     * @return Total imported by this UUID, or 0 if not tracked
+     */
+    public long getTotalImportedForUUID(UUID uuid, String resourceId) {
+        Map<String, ResourceDeltas> uuidDeltas = deltasByUUID.get(uuid);
+        if (uuidDeltas == null) {
+            return 0L;
+        }
+        ResourceDeltas deltas = uuidDeltas.get(resourceId);
+        return deltas != null ? deltas.getTotalImported() : 0L;
+    }
+
+    /**
+     * Get total exported for a specific UUID and resource.
+     * Phase 6: Used for per-UUID rate calculation.
+     *
+     * @param uuid The equipment UUID
+     * @param resourceId The resource ID
+     * @return Total exported by this UUID, or 0 if not tracked
+     */
+    public long getTotalExportedForUUID(UUID uuid, String resourceId) {
+        Map<String, ResourceDeltas> uuidDeltas = deltasByUUID.get(uuid);
+        if (uuidDeltas == null) {
+            return 0L;
+        }
+        ResourceDeltas deltas = uuidDeltas.get(resourceId);
+        return deltas != null ? deltas.getTotalExported() : 0L;
+    }
+
+    /**
      * Update first/last activity ticks when resources are transferred.
      *
      * @param currentTick The current game time
@@ -291,6 +372,25 @@ public class ResourceDeltaTracker {
         }
 
         tag.put("resources", resourceList);
+
+        // Phase 6: Serialize per-UUID deltas
+        ListTag uuidDeltasList = new ListTag();
+        for (Map.Entry<UUID, Map<String, ResourceDeltas>> uuidEntry : deltasByUUID.entrySet()) {
+            CompoundTag uuidTag = new CompoundTag();
+            uuidTag.putUUID("uuid", uuidEntry.getKey());
+
+            ListTag uuidResourceList = new ListTag();
+            for (Map.Entry<String, ResourceDeltas> resourceEntry : uuidEntry.getValue().entrySet()) {
+                CompoundTag resourceTag = new CompoundTag();
+                resourceTag.putString("id", resourceEntry.getKey());
+                resourceTag.put("deltas", resourceEntry.getValue().toNBT());
+                uuidResourceList.add(resourceTag);
+            }
+            uuidTag.put("resources", uuidResourceList);
+            uuidDeltasList.add(uuidTag);
+        }
+        tag.put("deltasByUUID", uuidDeltasList);
+
         tag.putLong("firstActivityTick", firstActivityTick);
         tag.putLong("lastActivityTick", lastActivityTick);
         return tag;
@@ -315,6 +415,26 @@ public class ResourceDeltaTracker {
             }
         }
 
+        // Phase 6: Deserialize per-UUID deltas
+        if (tag.contains("deltasByUUID")) {
+            ListTag uuidDeltasList = tag.getList("deltasByUUID", Tag.TAG_COMPOUND);
+            for (int i = 0; i < uuidDeltasList.size(); i++) {
+                CompoundTag uuidTag = uuidDeltasList.getCompound(i);
+                UUID uuid = uuidTag.getUUID("uuid");
+
+                Map<String, ResourceDeltas> resourceDeltas = new HashMap<>();
+                ListTag uuidResourceList = uuidTag.getList("resources", Tag.TAG_COMPOUND);
+                for (int j = 0; j < uuidResourceList.size(); j++) {
+                    CompoundTag resourceTag = uuidResourceList.getCompound(j);
+                    String id = resourceTag.getString("id");
+                    ResourceDeltas deltas = ResourceDeltas.fromNBT(resourceTag.getCompound("deltas"));
+                    resourceDeltas.put(id, deltas);
+                }
+
+                tracker.deltasByUUID.put(uuid, resourceDeltas);
+            }
+        }
+
         tracker.firstActivityTick = tag.getLong("firstActivityTick");
         tracker.lastActivityTick = tag.getLong("lastActivityTick");
         return tracker;
@@ -325,5 +445,6 @@ public class ResourceDeltaTracker {
      */
     public void reset() {
         deltas.clear();
+        deltasByUUID.clear();
     }
 }

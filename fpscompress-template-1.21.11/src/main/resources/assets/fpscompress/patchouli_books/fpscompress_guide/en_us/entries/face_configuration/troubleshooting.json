@@ -1,0 +1,28 @@
+{
+  "name": "Troubleshooting",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Target dropdown is empty\"",
+      "text": "$(bold)Cause$(): No Importers/Exporters in CM dimension$(br2)$(bold)Solution$(): $(li)Enter CM dimension $(li)Place at least one Importer or Exporter $(li)Exit CM $(li)Reopen GUI"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Face configuration doesn't save\"",
+      "text": "$(bold)Checklist$(): $(li)[DONE] Did you click [Apply] button? $(li)[DONE] Server/client sync issue? Relog and check."
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Can't PULL from chest\"",
+      "text": "$(bold)Checklist$(): $(li)[DONE] Chest adjacent to PreFab face? $(li)[DONE] Face mode set to PULL? $(li)[DONE] Face linked to Importer? $(li)[DONE] Chest has items? $(li)[DONE] PreFab in SIMULATING or CACHED state?"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Can't PUSH to chest\"",
+      "text": "$(bold)Checklist$(): $(li)[DONE] Chest adjacent to PreFab face? $(li)[DONE] Face mode set to PUSH? $(li)[DONE] Face linked to Exporter? $(li)[DONE] Exporter has items to send? $(li)[DONE] Chest has space? $(li)[DONE] PreFab in SIMULATING or CACHED state?"
+    }
+  ]
+}

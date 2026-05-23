@@ -1,0 +1,18 @@
+{
+  "name": "Installation",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Requirements",
+      "text": "$(li)$(bold)Minecraft$(): 1.21.1 $(li)$(bold)Mod Loader$(): NeoForge 21.1.221+ $(li)$(bold)Java$(): Java 21 (mandatory) $(li)$(bold)Dependencies$(): $(li)Compact Machines (see wiki) (required) $(li)Patchouli (see wiki) (required) - In-game documentation"
+    },
+    {
+      "type": "text",
+      "title": "Installation Steps",
+      "text": "$(li)Install NeoForge for Minecraft 1.21.1 $(li)Download Compact Machines and place in `mods/` folder $(li)Download Patchouli and place in `mods/` folder $(li)Download FPSCompress and place in `mods/` folder $(li)Launch Minecraft"
+    }
+  ]
+}

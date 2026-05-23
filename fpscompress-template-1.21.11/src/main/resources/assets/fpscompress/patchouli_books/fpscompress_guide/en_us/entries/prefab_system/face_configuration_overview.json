@@ -1,0 +1,27 @@
+{
+  "name": "Face Configuration Overview",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "text": "Each PreFab has 6 faces that can be independently configured:"
+    },
+    {
+      "type": "text",
+      "title": "Face Modes",
+      "text": "$(li)$(bold)$(bold)PULL$():$() Extract from Overworld → Transport to CM Importer - Overworld → CM $(li)$(bold)$(bold)PUSH$():$() Extract from CM Exporter → Transport to Overworld - CM → Overworld $(li)$(bold)$(bold)DISABLED$():$() Face inactive (no resource transport) - N/A"
+    },
+    {
+      "type": "text",
+      "title": "Resource Filters",
+      "text": "$(li)$(bold)$(bold)ITEMS$():$() Transfer items only (ItemStacks) - [DONE] Implemented $(li)$(bold)$(bold)FLUIDS$():$() Transfer fluids only (FluidStacks) - [WIP] Future $(li)$(bold)$(bold)ENERGY$():$() Transfer energy only (FE/RF) - [WIP] Future $(li)$(bold)$(bold)ALL$():$() Transfer all resource types - [WIP] Future"
+    },
+    {
+      "type": "text",
+      "title": "Target Selection",
+      "text": "Each face must link to a specific Importer or Exporter: $(li)$(bold)PULL faces$() link to Importers (inside CM dimension) $(li)$(bold)PUSH faces$() link to Exporters (inside CM dimension) $(li)Linking is done via UUID (unique identifier) $(li)Select target from dropdown in configuration GUI"
+    }
+  ]
+}

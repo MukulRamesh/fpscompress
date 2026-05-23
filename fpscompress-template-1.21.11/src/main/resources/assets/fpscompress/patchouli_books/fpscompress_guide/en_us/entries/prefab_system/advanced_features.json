@@ -1,0 +1,23 @@
+{
+  "name": "Advanced Features",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Portable PreFabs (PreFab-as-Item)",
+      "text": "PreFabs can be broken and carried as items: $(li)All face configuration persists in item NBT $(li)Cached rates are preserved $(li)Importer/Exporter UUIDs remain linked $(li)Place PreFab elsewhere → Continues from same state$(br2)$(bold)Use cases$(): $(li)Move factory to new location $(li)Store PreFab in Ender Chest $(li)Trade PreFabs with other players (entire factory in one item)"
+    },
+    {
+      "type": "text",
+      "title": "Multiple Resource Inputs/Outputs",
+      "text": "A single PreFab can handle complex factories: NORTH: PULL ITEMS → Importer \"Coal\" EAST:  PULL ITEMS → Importer \"Iron Ore\" SOUTH: PULL ITEMS → Importer \"Gold Ore\" WEST:  PUSH ITEMS ← Exporter \"Iron Ingots\" UP:    PUSH ITEMS ← Exporter \"Gold Ingots\" DOWN:  DISABLED$(br2)Each face operates independently."
+    },
+    {
+      "type": "text",
+      "title": "Multi-PreFab Coordination",
+      "text": "$(bold)Status$(): [WIP] Future feature (Factory Controller block)$(br2)Future versions will support: $(li)Factory Controller block holding multiple PreFabs $(li)Unified resource management $(li)Cross-PreFab dependencies (PreFab A output → PreFab B input)"
+    }
+  ]
+}

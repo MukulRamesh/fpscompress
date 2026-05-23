@@ -1,0 +1,6 @@
+{
+  "name": "Importers & Exporters",
+  "description": "Input and output gates that connect your factory to PreFab faces.",
+  "icon": "fpscompress:importer",
+  "sortnum": 2
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Frequency System (Optional)",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "text": "You can \"name\" Importers and Exporters for easy organization:$(br2)$(li)Hold any item (e.g., Coal) $(li)Right-click an Importer/Exporter $(li)That gate is now named after the item$(br2)$(bold)Example$(): $(li)Right-click Importer with Coal → Shows as \"Coal Importer\" in GUI $(li)Right-click Exporter with Iron Ingot → Shows as \"Iron Ingot Exporter\"$(br2)This does not change functionality, just makes it easier to identify gates."
+    }
+  ]
+}

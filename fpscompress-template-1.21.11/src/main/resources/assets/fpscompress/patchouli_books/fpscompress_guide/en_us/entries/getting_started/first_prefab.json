@@ -1,0 +1,17 @@
+{
+  "name": "Your First PreFab",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)PreFabs$() are upgraded Compact Machine blocks that enable factory compression.$(br2)They measure your factory's production rates and simulate them, allowing chunks to stay unloaded for massive performance gains."
+    },
+    {
+      "type": "text",
+      "title": "Creating a PreFab",
+      "text": "$(bold)Step 1:$() Place a Compact Machine block in the world.$(br2)$(bold)Step 2:$() Craft a $(l:getting_started/crafting)TPS Upgrade$() item.$(br2)$(bold)Step 3:$() Right-click the CM block with the TPS Upgrade.$(br2)The CM becomes a PreFab."
+    }
+  ]
+}

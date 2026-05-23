@@ -1,0 +1,23 @@
+{
+  "name": "Troubleshooting",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Can't find Importer/Exporter in dropdown\"",
+      "text": "$(bold)Cause$(): No Importers/Exporters placed in CM dimension$(br2)$(bold)Solution$(): $(li)Enter CM dimension $(li)Place at least one Importer or Exporter $(li)Exit CM dimension $(li)Reopen PreFab GUI (dropdown should now show the gate)"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Resources not entering factory\"",
+      "text": "$(bold)Checklist$(): $(li)[DONE] Importer placed inside CM? $(li)[DONE] PreFab face set to PULL mode? $(li)[DONE] PreFab face linked to correct Importer UUID? $(li)[DONE] Chest connected to PreFab face in Overworld? $(li)[DONE] Chest has items? $(li)[DONE] PreFab in SIMULATING or CACHED state?"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Resources not exiting factory\"",
+      "text": "$(bold)Checklist$(): $(li)[DONE] Exporter placed next to machine output? $(li)[DONE] Machine producing items? $(li)[DONE] PreFab face set to PUSH mode? $(li)[DONE] PreFab face linked to correct Exporter UUID? $(li)[DONE] Chest connected to PreFab face in Overworld? $(li)[DONE] Chest has space for items? $(li)[DONE] PreFab in SIMULATING or CACHED state?"
+    }
+  ]
+}

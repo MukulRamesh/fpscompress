@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -70,6 +71,11 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // Cached production rates: resource ID → rate per tick (positive = output, negative = input)
     private final Map<String, Double> cachedRates = new HashMap<>();
+
+    // Phase 6: Per-UUID rate storage for multi-output routing
+    // Maps equipment UUID → (resource ID → rate per tick)
+    // Example: {ExporterUUID-A: {iron: +5.0}, ExporterUUID-B: {copper: +3.0}}
+    private final Map<UUID, Map<String, Double>> importerExporterRates = new HashMap<>();
 
     // Phase 4: Rate measurement during SIMULATING state
     private ResourceDeltaTracker deltaTracker = new ResourceDeltaTracker();
@@ -190,6 +196,21 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      */
     public void setFaceConfig(Direction direction, FaceConfig config) {
         faceConfigs.put(direction, config);
+
+        // Phase 6: If in CACHED state, validate that reconfiguration doesn't break routing
+        if (currentState == MachineState.CACHED) {
+            CachedConfigurationValidator.ValidationResult validation = validateCachedConfiguration();
+            if (!validation.success()) {
+                // Configuration error - reset to BUILDING (requires re-simulation)
+                FPSCompress.LOGGER.error("Face reconfiguration broke routing, resetting to BUILDING:");
+                for (String error : validation.errors()) {
+                    FPSCompress.LOGGER.error("  {}", error);
+                }
+                lastSimulationResult = "Configuration error: " + String.join("; ", validation.errors());
+                setCurrentState(MachineState.BUILDING);
+            }
+        }
+
         setChanged();
     }
 
@@ -263,6 +284,28 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     public void clearCachedRates() {
         cachedRates.clear();
+        setChanged();
+    }
+
+    // Phase 6: Per-UUID rate accessor methods
+
+    public Map<UUID, Map<String, Double>> getImporterExporterRates() {
+        // Defensive copy
+        Map<UUID, Map<String, Double>> copy = new HashMap<>();
+        for (Map.Entry<UUID, Map<String, Double>> entry : importerExporterRates.entrySet()) {
+            copy.put(entry.getKey(), new HashMap<>(entry.getValue()));
+        }
+        return copy;
+    }
+
+    public void setRateForUUID(UUID uuid, String resourceId, double ratePerTick) {
+        importerExporterRates.computeIfAbsent(uuid, k -> new HashMap<>())
+                             .put(resourceId, ratePerTick);
+        setChanged();
+    }
+
+    public void clearImporterExporterRates() {
+        importerExporterRates.clear();
         setChanged();
     }
 
@@ -486,8 +529,9 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     private void validateLoadedData() {
         // Edge Case 1: CACHED/HALTED state but no rates
         // This should never happen (both states require rates), but handle gracefully.
+        // Check both cachedRates (old schema) and importerExporterRates (new schema v2+)
         if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
-                && cachedRates.isEmpty()) {
+                && cachedRates.isEmpty() && importerExporterRates.isEmpty()) {
             FPSCompress.LOGGER.warn("PreFab loaded with {} state but no rates - resetting to BUILDING",
                 currentState);
             currentState = MachineState.BUILDING;
@@ -498,17 +542,19 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         // Edge Case 2: Not CACHED/HALTED but has rates
         // Rates should only exist in CACHED/HALTED states. Clear invalid data.
         if (currentState != MachineState.CACHED && currentState != MachineState.HALTED
-                && !cachedRates.isEmpty()) {
+                && (!cachedRates.isEmpty() || !importerExporterRates.isEmpty())) {
             FPSCompress.LOGGER.warn("PreFab loaded with rates but not CACHED/HALTED - clearing rates "
                 + "(state: {})", currentState);
             cachedRates.clear();
+            importerExporterRates.clear();
             itemAccumulators.clear();
             cachedProduction.clear();
         }
 
         // Edge Case 3: Room linkage incomplete
-        // roomCode without roomCenter is invalid (can't locate room).
-        if (roomCode != null && roomCenter == null) {
+        // roomCode without roomCenter is invalid for REAL rooms (can't locate room).
+        // EXCEPTION: Fake rooms (prefix "fake_") don't need roomCenter - they're for testing.
+        if (roomCode != null && roomCenter == null && !roomCode.startsWith("fake_")) {
             FPSCompress.LOGGER.warn("PreFab has roomCode '{}' but no roomCenter - clearing roomCode",
                 roomCode);
             roomCode = null;
@@ -529,12 +575,23 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
     }
 
+    /**
+     * Phase 6: Validates that all UUIDs with cached rates have at least one face mapped.
+     * Called during state transitions to CACHED and during face reconfiguration.
+     *
+     * @return ValidationResult with success flag and error/warning messages
+     */
+    private CachedConfigurationValidator.ValidationResult validateCachedConfiguration() {
+        return CachedConfigurationValidator.validate(importerExporterRates, faceConfigs);
+    }
+
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
 
         // Schema version for future migrations (PreFab-as-Item feature)
-        tag.putInt("schemaVersion", 1);
+        // Phase 6: Version 2 = Per-UUID rates
+        tag.putInt("schemaVersion", 2);
 
         // Save room linkage (always persist)
         if (roomCode != null) {
@@ -565,7 +622,30 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
         tag.put("faceConfigs", facesTag);
 
-        // Save cached rates (only if CACHED or HALTED state - portable data)
+        // Phase 6: Save per-UUID rates (only if CACHED or HALTED state - portable data)
+        if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
+                && !importerExporterRates.isEmpty()) {
+            ListTag uuidRatesList = new ListTag();
+
+            for (Map.Entry<UUID, Map<String, Double>> uuidEntry : importerExporterRates.entrySet()) {
+                CompoundTag uuidTag = new CompoundTag();
+                uuidTag.putUUID("uuid", uuidEntry.getKey());
+
+                ListTag resourceRatesList = new ListTag();
+                for (Map.Entry<String, Double> rateEntry : uuidEntry.getValue().entrySet()) {
+                    CompoundTag rateTag = new CompoundTag();
+                    rateTag.putString("id", rateEntry.getKey());
+                    rateTag.putDouble("rate", rateEntry.getValue());
+                    resourceRatesList.add(rateTag);
+                }
+                uuidTag.put("rates", resourceRatesList);
+                uuidRatesList.add(uuidTag);
+            }
+
+            tag.put("importerExporterRates", uuidRatesList);
+        }
+
+        // Save aggregate cached rates for backward compatibility (GUI display)
         // HALTED is a temporary pause during CACHED operation, so rates are still valid
         if ((currentState == MachineState.CACHED || currentState == MachineState.HALTED)
                 && !cachedRates.isEmpty()) {
@@ -657,17 +737,9 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Load cached rates (only if CACHED state)
-        if (tag.contains("rates")) {
-            cachedRates.clear();
-            ListTag ratesList = tag.getList("rates", Tag.TAG_COMPOUND);
-            for (int i = 0; i < ratesList.size(); i++) {
-                CompoundTag rateEntry = ratesList.getCompound(i);
-                String id = rateEntry.getString("id");
-                double rate = rateEntry.getDouble("rate");
-                cachedRates.put(id, rate);
-            }
-        }
+        // Phase 6: Load per-UUID rates (schema version 2+)
+        int schemaVersion = tag.contains("schemaVersion") ? tag.getInt("schemaVersion") : 1;
+        loadRatesFromNBT(tag, schemaVersion);
 
         // Load fractional accumulators (only if CACHED state)
         if (tag.contains("itemAccumulators")) {
@@ -679,6 +751,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 double accum = accumEntry.getDouble("accum");
                 itemAccumulators.put(id, accum);
             }
+        }
+
+        // Load fake Importer/Exporter registries (for test PreFabs from debug commands)
+        if (tag.contains("importerRegistry")) {
+            loadFakeImporterRegistry(tag.getCompound("importerRegistry"));
+        }
+        if (tag.contains("exporterRegistry")) {
+            loadFakeExporterRegistry(tag.getCompound("exporterRegistry"));
         }
 
         // Load accumulated production (only if CACHED state)
@@ -708,6 +788,149 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
         // Validate loaded data for edge cases
         validateLoadedData();
+    }
+
+    /**
+     * Load cached rates from NBT (both per-UUID and aggregate formats).
+     * Extracted to keep loadAdditional() under 150 lines (checkstyle limit).
+     */
+    private void loadRatesFromNBT(CompoundTag tag, int schemaVersion) {
+        FPSCompress.LOGGER.debug("Loading PreFab NBT - schemaVersion: {}, has importerExporterRates: {}, has rates: {}",
+            schemaVersion, tag.contains("importerExporterRates"), tag.contains("rates"));
+
+        if (tag.contains("importerExporterRates")) {
+            importerExporterRates.clear();
+            ListTag uuidRatesList = tag.getList("importerExporterRates", Tag.TAG_COMPOUND);
+
+            FPSCompress.LOGGER.debug("Loading {} UUID rate entries", uuidRatesList.size());
+
+            for (int i = 0; i < uuidRatesList.size(); i++) {
+                CompoundTag uuidTag = uuidRatesList.getCompound(i);
+                UUID uuid = uuidTag.getUUID("uuid");
+
+                Map<String, Double> resourceRates = new HashMap<>();
+                ListTag resourceRatesList = uuidTag.getList("rates", Tag.TAG_COMPOUND);
+                for (int j = 0; j < resourceRatesList.size(); j++) {
+                    CompoundTag rateTag = resourceRatesList.getCompound(j);
+                    String id = rateTag.getString("id");
+                    double rate = rateTag.getDouble("rate");
+                    resourceRates.put(id, rate);
+                }
+
+                importerExporterRates.put(uuid, resourceRates);
+                FPSCompress.LOGGER.debug("Loaded rates for UUID {}: {}",
+                    uuid.toString().substring(0, 8), resourceRates);
+            }
+        } else if (schemaVersion == 1 && tag.contains("rates")) {
+            // Migration: Convert old aggregate rates to per-UUID (schema version 1)
+            FPSCompress.LOGGER.info("Migrating PreFab from schema v1 to v2 (per-UUID rates)");
+            importerExporterRates.clear();
+
+            // Old format: List of {id, rate} without UUID
+            // Strategy: Clear and require re-simulation to learn proper UUID associations
+            FPSCompress.LOGGER.warn(
+                "Cannot migrate aggregate rates to per-UUID format - clearing rates (re-simulation required)"
+            );
+            // Keep cachedRates loaded (for GUI display) but don't populate importerExporterRates
+            // State will transition to BUILDING due to validation failure
+        }
+
+        // Load aggregate cached rates for backward compatibility (GUI display, always load)
+        if (tag.contains("rates")) {
+            cachedRates.clear();
+            ListTag ratesList = tag.getList("rates", Tag.TAG_COMPOUND);
+            for (int i = 0; i < ratesList.size(); i++) {
+                CompoundTag rateEntry = ratesList.getCompound(i);
+                String id = rateEntry.getString("id");
+                double rate = rateEntry.getDouble("rate");
+                cachedRates.put(id, rate);
+            }
+        } else if (!importerExporterRates.isEmpty()) {
+            // Derive cachedRates from importerExporterRates if no aggregate rates saved
+            // (happens for test PreFabs that only have UUID-based rates)
+            cachedRates.clear();
+            for (Map<String, Double> uuidRates : importerExporterRates.values()) {
+                for (Map.Entry<String, Double> entry : uuidRates.entrySet()) {
+                    cachedRates.merge(entry.getKey(), entry.getValue(), Double::sum);
+                }
+            }
+            FPSCompress.LOGGER.debug("Derived {} aggregate rates from per-UUID rates for GUI display",
+                cachedRates.size());
+        }
+    }
+
+    /**
+     * Load fake Importer registry from NBT (for test PreFabs).
+     * Registers fake Importers in the global registry so they appear in GUI and tooltips.
+     */
+    private void loadFakeImporterRegistry(CompoundTag registryTag) {
+        for (String uuidString : registryTag.getAllKeys()) {
+            try {
+                CompoundTag importerData = registryTag.getCompound(uuidString);
+                UUID uuid = UUID.fromString(uuidString);
+                String roomCodeValue = importerData.getString("roomCode");
+
+                // Get frequency item to build display name
+                String displayName = "Unnamed Importer";
+                if (importerData.contains("frequencyItem")) {
+                    CompoundTag freqItem = importerData.getCompound("frequencyItem");
+                    String itemId = freqItem.getString("id");
+                    if (!itemId.isEmpty()) {
+                        // Extract item name from ID (e.g., "minecraft:diamond" -> "Diamond")
+                        String itemName = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+                        itemName = itemName.substring(0, 1).toUpperCase(Locale.ROOT)
+                                 + itemName.substring(1).replace("_", " ");
+                        displayName = itemName + " Importer";
+                    }
+                }
+
+                // Register in global registry (use PreFab position as fake position)
+                ImporterExporterRegistry.registerImporter(uuid, this.getBlockPos(), displayName, roomCodeValue);
+
+                FPSCompress.LOGGER.debug("Registered fake Importer {} with display name: {}",
+                    uuid.toString().substring(0, 8), displayName);
+
+            } catch (Exception e) {
+                FPSCompress.LOGGER.error("Failed to load fake Importer from registry: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Load fake Exporter registry from NBT (for test PreFabs).
+     * Registers fake Exporters in the global registry so they appear in GUI and tooltips.
+     */
+    private void loadFakeExporterRegistry(CompoundTag registryTag) {
+        for (String uuidString : registryTag.getAllKeys()) {
+            try {
+                CompoundTag exporterData = registryTag.getCompound(uuidString);
+                UUID uuid = UUID.fromString(uuidString);
+                String roomCodeValue = exporterData.getString("roomCode");
+
+                // Get frequency item to build display name
+                String displayName = "Unnamed Exporter";
+                if (exporterData.contains("frequencyItem")) {
+                    CompoundTag freqItem = exporterData.getCompound("frequencyItem");
+                    String itemId = freqItem.getString("id");
+                    if (!itemId.isEmpty()) {
+                        // Extract item name from ID (e.g., "minecraft:diamond" -> "Diamond")
+                        String itemName = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+                        itemName = itemName.substring(0, 1).toUpperCase(Locale.ROOT)
+                                 + itemName.substring(1).replace("_", " ");
+                        displayName = itemName + " Exporter";
+                    }
+                }
+
+                // Register in global registry (use PreFab position as fake position)
+                ImporterExporterRegistry.registerExporter(uuid, this.getBlockPos(), displayName, roomCodeValue);
+
+                FPSCompress.LOGGER.debug("Registered fake Exporter {} with display name: {}",
+                    uuid.toString().substring(0, 8), displayName);
+
+            } catch (Exception e) {
+                FPSCompress.LOGGER.error("Failed to load fake Exporter from registry: {}", e.getMessage());
+            }
+        }
     }
 
     // ===== MenuProvider Implementation =====
@@ -783,22 +1006,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             return; // Don't process faces during CACHED/HALTED modes
         }
 
-        // Debug: Log tick every 100 ticks during SIMULATING
-        if (prefab.getCurrentState() == MachineState.SIMULATING
-                && level.getGameTime() % 100 == 0) {
-            FPSCompress.LOGGER.debug("PreFab at {} ticking (state: {}, tick: {})",
-                pos, prefab.getCurrentState(), level.getGameTime());
-        }
-
         // Process each configured face (SIMULATING mode only, due to Phase 4 restriction)
-        int activeFaces = 0;
         for (Direction face : Direction.values()) {
             FaceConfig config = prefab.getFaceConfig(face);
             if (config.getMode() == FaceMode.DISABLED) {
                 continue; // Skip disabled faces
             }
-
-            activeFaces++;
 
             // Only handle ITEMS for MVP (fluids/energy in Phase 7)
             if (config.getResourceType() != ResourceFilter.ITEMS
@@ -811,12 +1024,6 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             } else if (config.getMode() == FaceMode.PUSH) {
                 prefab.handlePushFace(face, config);
             }
-        }
-
-        // Debug: Log if no active faces during SIMULATING
-        if (prefab.getCurrentState() == MachineState.SIMULATING
-                && activeFaces == 0 && level.getGameTime() % 200 == 0) {
-            FPSCompress.LOGGER.warn("PreFab at {} has NO active faces configured!", pos);
         }
     }
 
@@ -883,19 +1090,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         // 5. Insert to Importer buffer
         net.minecraft.world.item.ItemStack remainder = importer.insertItem(extracted);
 
-        // Log successful transport
+        // Phase 4: Track imports during SIMULATING (Phase 6: with UUID)
         int transferred = extracted.getCount() - remainder.getCount();
-        if (transferred > 0) {
-            FPSCompress.LOGGER.info("PULL {}: Transferred {} x{} to Importer",
-                face, extracted.getItem(), transferred);
-
-            // Phase 4: Track imports during SIMULATING
-            if (currentState == MachineState.SIMULATING) {
-                String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
-                deltaTracker.recordImport(resourceId, transferred, level.getGameTime());
-                FPSCompress.LOGGER.info("▶ deltaTracker.recordImport('{}', {}) called (state: {})",
-                    resourceId, transferred, currentState);
-            }
+        if (transferred > 0 && currentState == MachineState.SIMULATING) {
+            String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
+            UUID importerUUID = config.getTargetUUID();  // Already validated non-null above
+            deltaTracker.recordImport(importerUUID, resourceId, transferred, level.getGameTime());
         }
 
         // 6. Put remainder back if Importer buffer full
@@ -974,19 +1174,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // Log successful transport
+        // Phase 4: Track exports during SIMULATING (Phase 6: with UUID)
         int transferred = extracted.getCount() - remainder.getCount();
-        if (transferred > 0) {
-            FPSCompress.LOGGER.info("PUSH {}: Transferred {} x{} to Overworld",
-                face, extracted.getItem(), transferred);
-
-            // Phase 4: Track exports during SIMULATING
-            if (currentState == MachineState.SIMULATING) {
-                String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
-                deltaTracker.recordExport(resourceId, transferred, level.getGameTime());
-                FPSCompress.LOGGER.info("▶ deltaTracker.recordExport('{}', {}) called (state: {})",
-                    resourceId, transferred, currentState);
-            }
+        if (transferred > 0 && currentState == MachineState.SIMULATING) {
+            String resourceId = BuiltInRegistries.ITEM.getKey(extracted.getItem()).toString();
+            UUID exporterUUID = config.getTargetUUID();  // Already validated non-null above
+            deltaTracker.recordExport(exporterUUID, resourceId, transferred, level.getGameTime());
         }
 
         // 6. Put remainder back in Exporter if Overworld full
@@ -1512,49 +1705,55 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             FPSCompress.LOGGER.warn("All activity in single tick - using 1 tick for rate calculation");
         }
 
-        // Calculate rates for all tracked resources using FULL formula
-        clearCachedRates();
+        // Phase 6: Calculate rates per UUID instead of aggregate
+        clearImporterExporterRates();
 
         // Debug: Check what's in deltaTracker
-        java.util.Set<String> trackedResources = deltaTracker.getAllTrackedResources();
-        FPSCompress.LOGGER.info("▶ finishSimulation: deltaTracker has {} tracked resources",
-            trackedResources.size());
+        java.util.Set<UUID> trackedUUIDs = deltaTracker.getTrackedUUIDs();
+        FPSCompress.LOGGER.info("▶ finishSimulation: deltaTracker has {} tracked UUIDs",
+            trackedUUIDs.size());
 
-        for (String resourceId : trackedResources) {
-            long initial = deltaTracker.getInitialState(resourceId);
-            long finalState = deltaTracker.getFinalState(resourceId);
-            long imported = deltaTracker.getTotalImported(resourceId);
-            long exported = deltaTracker.getTotalExported(resourceId);
+        for (UUID uuid : trackedUUIDs) {
+            for (String resourceId : deltaTracker.getTrackedResourcesForUUID(uuid)) {
+                long totalImported = deltaTracker.getTotalImportedForUUID(uuid, resourceId);
+                long totalExported = deltaTracker.getTotalExportedForUUID(uuid, resourceId);
 
-            long netFull = deltaTracker.calculateNetFull(resourceId);
+                // Net production for this UUID: positive = output, negative = input
+                long netProduction = totalExported - totalImported;
 
-            // Log detailed breakdown
-            FPSCompress.LOGGER.info("  {}: Initial={}, Final={}, Imported={}, Exported={}, Net={}",
-                resourceId, initial, finalState, imported, exported, netFull);
+                // Log detailed breakdown
+                FPSCompress.LOGGER.info("  UUID {}: {}: Imported={}, Exported={}, Net={}",
+                    uuid.toString().substring(0, 8), resourceId, totalImported, totalExported, netProduction);
 
-            // Skip passthrough from internal storage (net ~= 0, but internal change != 0)
-            // Tolerance: 1 item count (not rate!)
-            if (Math.abs(netFull) <= 1) {
-                long internalChange = finalState - initial;
-                if (Math.abs(internalChange) > 1) {
-                    FPSCompress.LOGGER.info("    Passthrough from internal storage (internal: {}), "
-                        + "excluding from rates", internalChange);
-                    continue; // Don't cache this resource
+                // Skip if negligible (passthrough detection)
+                if (Math.abs(netProduction) < 1) {
+                    FPSCompress.LOGGER.info("    Negligible net production, excluding from rates");
+                    continue;
+                }
+
+                // Calculate rate per tick
+                double ratePerTick = (double) netProduction / totalTicks;
+
+                // Only store non-zero rates (threshold: 0.0001 items/tick)
+                if (Math.abs(ratePerTick) >= 0.0001) {
+                    setRateForUUID(uuid, resourceId, ratePerTick);
+                    FPSCompress.LOGGER.info(
+                        "Calculated per-UUID rate for {} ({}): {} items/tick (net: {} over {} ticks)",
+                        uuid.toString().substring(0, 8), resourceId, ratePerTick,
+                        netProduction, totalTicks);
                 }
             }
+        }
 
-            // Calculate rate per tick
-            double ratePerTick = (double) netFull / totalTicks;
-
-            FPSCompress.LOGGER.info("▶ Resource {}: net={}, rate={}, storing={}",
-                resourceId, netFull, ratePerTick, (ratePerTick != 0.0));
-
-            if (ratePerTick != 0.0) { // Only store non-zero rates
-                setCachedRate(resourceId, ratePerTick);
-                FPSCompress.LOGGER.info("Calculated rate for {}: {} items/tick (net: {} over {} ticks)",
-                    resourceId, ratePerTick, netFull, totalTicks);
+        // Keep aggregate cachedRates for backward compatibility (GUI display)
+        // But derive from per-UUID rates
+        clearCachedRates();
+        for (Map<String, Double> uuidRates : importerExporterRates.values()) {
+            for (Map.Entry<String, Double> entry : uuidRates.entrySet()) {
+                cachedRates.merge(entry.getKey(), entry.getValue(), Double::sum);
             }
         }
+        FPSCompress.LOGGER.info("▶ Aggregate rates (for GUI): {} resources", cachedRates.size());
 
         // Detect passthrough (activity occurred but net production is zero)
         if (cachedRates.isEmpty()) {
@@ -1563,6 +1762,25 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             lastSimulationResult = "Passthrough (no net production)";
             setCurrentState(MachineState.BUILDING);
             return;
+        }
+
+        // Phase 6: Validate that all UUIDs with rates have faces mapped
+        CachedConfigurationValidator.ValidationResult validation = validateCachedConfiguration();
+        if (!validation.success()) {
+            // Configuration error - reset to BUILDING (requires face reconfiguration)
+            FPSCompress.LOGGER.error("PreFab validation failed, resetting to BUILDING:");
+            for (String error : validation.errors()) {
+                FPSCompress.LOGGER.error("  {}", error);
+            }
+            lastSimulationResult = "Configuration error: " + String.join("; ", validation.errors());
+            setCurrentState(MachineState.BUILDING);
+            setChanged();
+            return;  // Don't transition to CACHED
+        }
+
+        // Log warnings (non-fatal)
+        for (String warning : validation.warnings()) {
+            FPSCompress.LOGGER.warn("PreFab validation warning: {}", warning);
         }
 
         // Record when CACHED state starts and reset production counters
@@ -1591,6 +1809,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
         // Clear cached rates and accumulators
         clearCachedRates();
+        clearImporterExporterRates(); // Phase 6: Clear per-UUID rates
         deltaTracker = new ResourceDeltaTracker();
         itemAccumulators.clear(); // Phase 5: Clear fractional accumulators
         cachedProduction.clear();
@@ -1643,61 +1862,70 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         boolean hadFailure = false;
         String failureMessage = "";
 
-        // Process each cached rate
-        for (Map.Entry<String, Double> entry : cachedRates.entrySet()) {
-            String resourceId = entry.getKey();
-            double ratePerTick = entry.getValue();
+        // Phase 6: Process per-UUID rates instead of aggregate
+        for (Map.Entry<UUID, Map<String, Double>> uuidEntry : importerExporterRates.entrySet()) {
+            UUID equipmentUUID = uuidEntry.getKey();
 
-            // Initialize accumulator if needed
-            itemAccumulators.putIfAbsent(resourceId, 0.0);
+            for (Map.Entry<String, Double> rateEntry : uuidEntry.getValue().entrySet()) {
+                String resourceId = rateEntry.getKey();
+                double ratePerTick = rateEntry.getValue();
 
-            // Accumulate fractional production (ONLY if in CACHED state, not HALTED)
-            double currentAccum = itemAccumulators.get(resourceId);
-            if (currentState == MachineState.CACHED) {
-                currentAccum += ratePerTick;
-            }
-            // In HALTED state: Don't accumulate, just try to transfer what's already there
+                // Build accumulator key: "UUID:resourceId" to track fractional state per UUID
+                String accumKey = equipmentUUID.toString() + ":" + resourceId;
 
-            // Check if we have at least 1 whole item to transfer
-            if (Math.abs(currentAccum) >= 1.0) {
-                int wholeItems = (int) currentAccum; // Truncate to integer (positive or negative)
-                currentAccum -= wholeItems; // Remove transferred amount
+                // Initialize accumulator if needed
+                itemAccumulators.putIfAbsent(accumKey, 0.0);
 
-                // Attempt to transfer whole items
-                boolean success;
-                if (wholeItems > 0) {
-                    // Positive rate = Output (factory produces this resource)
-                    success = transferCachedOutput(resourceId, wholeItems);
-                } else {
-                    // Negative rate = Input (factory consumes this resource)
-                    success = transferCachedInput(resourceId, -wholeItems); // Make positive for transfer
+                // Accumulate fractional production (ONLY if in CACHED state, not HALTED)
+                double currentAccum = itemAccumulators.get(accumKey);
+                if (currentState == MachineState.CACHED) {
+                    currentAccum += ratePerTick;
                 }
+                // In HALTED state: Don't accumulate, just try to transfer what's already there
 
-                if (!success) {
-                    // Transfer failed - put items back into accumulator
-                    currentAccum += wholeItems;
-                    itemAccumulators.put(resourceId, currentAccum);
+                // Check if we have at least 1 whole item to transfer
+                if (Math.abs(currentAccum) >= 1.0) {
+                    int wholeItems = (int) currentAccum; // Truncate to integer (positive or negative)
+                    currentAccum -= wholeItems; // Remove transferred amount
 
-                    // Record failure details for this tick
-                    hadFailure = true;
-                    String itemName = getLocalizedItemName(resourceId);
+                    // Attempt to transfer whole items
+                    boolean success;
                     if (wholeItems > 0) {
-                        failureMessage = String.format("Output blocked: %s (%d needed)",
-                            itemName, wholeItems);
+                        // Positive rate = Output (factory produces this resource)
+                        success = transferCachedOutput(equipmentUUID, resourceId, wholeItems);
                     } else {
-                        failureMessage = String.format("Input starved: %s (%d needed)",
-                            itemName, -wholeItems);
+                        // Negative rate = Input (factory consumes this resource)
+                        success = transferCachedInput(equipmentUUID, resourceId, -wholeItems); // Make positive
                     }
 
-                    FPSCompress.LOGGER.debug("Cache transfer failed: {}", failureMessage);
-                    // Continue trying other resources instead of returning
-                    continue;
-                }
-            }
+                    if (!success) {
+                        // Transfer failed - put items back into accumulator
+                        currentAccum += wholeItems;
+                        itemAccumulators.put(accumKey, currentAccum);
 
-            // Store updated accumulator
-            itemAccumulators.put(resourceId, currentAccum);
-        }
+                        // Record failure details for this tick
+                        hadFailure = true;
+                        String itemName = getLocalizedItemName(resourceId);
+                        String uuidShort = equipmentUUID.toString().substring(0, 8);
+                        if (wholeItems > 0) {
+                            failureMessage = String.format("Output blocked: %s (%d needed, UUID: %s)",
+                                itemName, wholeItems, uuidShort);
+                        } else {
+                            failureMessage = String.format("Input starved: %s (%d needed, UUID: %s)",
+                                itemName, -wholeItems, uuidShort);
+                        }
+
+                        FPSCompress.LOGGER.debug("Cache transfer failed: {}", failureMessage);
+                        // Continue trying other resources instead of returning
+                        continue;
+                    }
+                    // Success - continue with updated currentAccum (will be stored below)
+                }
+
+                // Store updated accumulator (whether we transferred or not)
+                itemAccumulators.put(accumKey, currentAccum);
+            }
+        }  // End of per-UUID rates loop
 
         // Update state based on whether we had any failures this tick
         if (hadFailure) {
@@ -1711,7 +1939,6 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             } else {
                 // Still failing - exponential backoff (double interval, cap at 100 ticks = 5 seconds)
                 haltedRetryInterval = Math.min(haltedRetryInterval * 2, 100);
-                FPSCompress.LOGGER.debug("HALTED backoff increased to {} ticks", haltedRetryInterval);
             }
             lastSimulationResult = failureMessage;
         } else {
@@ -1728,163 +1955,28 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     }
 
     /**
-     * Transfer cached output to Overworld (positive rate = production).
-     * Finds PUSH faces that can accept this resource.
+     * Phase 6: Transfer cached output from a specific Exporter UUID to Overworld via mapped faces.
      *
-     * @param resourceId The resource ID (e.g., "minecraft:iron_ingot")
-     * @param amount Number of items to transfer
-     * @return True if successful, false if output blocked (triggers HALTED)
+     * @param exporterUUID The UUID of the Exporter that produced this resource
+     * @param resourceId The resource identifier (e.g., "minecraft:iron_ingot")
+     * @param amount The number of items to transfer
+     * @return true if fully transferred, false if blocked
      */
-    private boolean transferCachedOutput(String resourceId, int amount) {
-        // Parse resource ID to get Item
-        net.minecraft.resources.ResourceLocation resLoc;
-        try {
-            resLoc = net.minecraft.resources.ResourceLocation.parse(resourceId);
-        } catch (Exception e) {
-            FPSCompress.LOGGER.error("Invalid resource ID: {}", resourceId);
-            return false;
-        }
-
-        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(resLoc);
-        if (item == net.minecraft.world.item.Items.AIR) {
-            FPSCompress.LOGGER.error("Unknown item: {}", resourceId);
-            return false;
-        }
-
-        ItemStack toTransfer = new ItemStack(item, amount);
-
-        // Try each PUSH face
-        for (Direction face : Direction.values()) {
-            FaceConfig config = getFaceConfig(face);
-            if (config.getMode() != FaceMode.PUSH) {
-                continue; // Not a PUSH face
-            }
-
-            // Get Overworld adjacent block
-            BlockPos overworldPos = getBlockPos().relative(face);
-
-            // Try to get item capability from Overworld block
-            IItemHandler overworldHandler = level.getCapability(
-                Capabilities.ItemHandler.BLOCK, overworldPos, face.getOpposite());
-            if (overworldHandler == null) {
-                continue; // No item capability
-            }
-
-            // Try inserting
-            ItemStack remainder = toTransfer.copy();
-            for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
-                remainder = overworldHandler.insertItem(slot, remainder, false);
-                if (remainder.isEmpty()) {
-                    break; // All items inserted
-                }
-            }
-
-            int transferred = toTransfer.getCount() - remainder.getCount();
-            if (transferred > 0) {
-                // Track production for GUI
-                cachedProduction.merge(resourceId, (long) transferred, Long::sum);
-
-                FPSCompress.LOGGER.debug("Cached OUTPUT: Transferred {} x{} via {} face",
-                    resourceId, transferred, face);
-
-                if (!remainder.isEmpty()) {
-                    // Partial transfer - output is getting blocked
-                    FPSCompress.LOGGER.warn("Output partially blocked for {} (transferred {}/{})",
-                        resourceId, transferred, toTransfer.getCount());
-                }
-
-                return remainder.isEmpty(); // Success if fully transferred
-            }
-        }
-
-        // No PUSH face could accept the items - output blocked
-        FPSCompress.LOGGER.warn("Output blocked for {} - no PUSH face available", resourceId);
-        return false;
+    private boolean transferCachedOutput(UUID exporterUUID, String resourceId, int amount) {
+        return CachedTransferHandler.transferCachedOutput(
+            exporterUUID, resourceId, amount, level, getBlockPos(), faceConfigs, cachedProduction);
     }
 
     /**
-     * Transfer cached input from Overworld (negative rate = consumption).
-     * Finds PULL faces that can provide this resource.
+     * Phase 6: Transfer cached input from Overworld to a specific Importer UUID via mapped faces.
      *
-     * @param resourceId The resource ID (e.g., "minecraft:coal")
-     * @param amount Number of items to transfer
-     * @return True if successful, false if input starved (triggers HALTED)
+     * @param importerUUID The UUID of the Importer that needs this resource
+     * @param resourceId The resource identifier (e.g., "minecraft:coal")
+     * @param amount The number of items to transfer
+     * @return true if all items obtained, false if starved
      */
-    private boolean transferCachedInput(String resourceId, int amount) {
-        // Parse resource ID to get Item
-        net.minecraft.resources.ResourceLocation resLoc;
-        try {
-            resLoc = net.minecraft.resources.ResourceLocation.parse(resourceId);
-        } catch (Exception e) {
-            FPSCompress.LOGGER.error("Invalid resource ID: {}", resourceId);
-            return false;
-        }
-
-        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(resLoc);
-        if (item == net.minecraft.world.item.Items.AIR) {
-            FPSCompress.LOGGER.error("Unknown item: {}", resourceId);
-            return false;
-        }
-
-        int stillNeeded = amount;
-
-        FPSCompress.LOGGER.debug("Cached INPUT: Attempting to extract {} x{}", resourceId, amount);
-
-        // Try each PULL face
-        for (Direction face : Direction.values()) {
-            if (stillNeeded <= 0) {
-                break; // Got all items needed
-            }
-
-            FaceConfig config = getFaceConfig(face);
-            if (config.getMode() != FaceMode.PULL) {
-                continue; // Not a PULL face
-            }
-
-            FPSCompress.LOGGER.debug("Cached INPUT: Trying PULL face {}", face);
-
-            // Get Overworld adjacent block
-            BlockPos overworldPos = getBlockPos().relative(face);
-
-            // Try to get item capability from Overworld block
-            IItemHandler overworldHandler = level.getCapability(
-                Capabilities.ItemHandler.BLOCK, overworldPos, face.getOpposite());
-            if (overworldHandler == null) {
-                FPSCompress.LOGGER.debug("Cached INPUT: No item handler at {} (face {})",
-                    overworldPos, face);
-                continue; // No item capability
-            }
-
-            FPSCompress.LOGGER.debug("Cached INPUT: Found item handler at {} with {} slots",
-                overworldPos, overworldHandler.getSlots());
-
-            // Try extracting the specific item type
-            for (int slot = 0; slot < overworldHandler.getSlots(); slot++) {
-                ItemStack inSlot = overworldHandler.getStackInSlot(slot);
-                if (inSlot.getItem() != item) {
-                    continue; // Wrong item type
-                }
-
-                ItemStack extracted = overworldHandler.extractItem(slot, stillNeeded, false);
-                if (!extracted.isEmpty()) {
-                    stillNeeded -= extracted.getCount();
-                    FPSCompress.LOGGER.debug("Cached INPUT: Extracted {} x{} via {} face",
-                        resourceId, extracted.getCount(), face);
-
-                    if (stillNeeded <= 0) {
-                        break; // Got all items needed
-                    }
-                }
-            }
-        }
-
-        if (stillNeeded > 0) {
-            // Couldn't get all required input - starved
-            FPSCompress.LOGGER.warn("Input starved for {} (needed {}, got {})",
-                resourceId, amount, amount - stillNeeded);
-            return false;
-        }
-
-        return true; // Successfully got all required input
+    private boolean transferCachedInput(UUID importerUUID, String resourceId, int amount) {
+        return CachedTransferHandler.transferCachedInput(
+            importerUUID, resourceId, amount, level, getBlockPos(), faceConfigs);
     }
 }

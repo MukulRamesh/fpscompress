@@ -1,0 +1,13 @@
+{
+  "name": "What You'll Need",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:getting_started",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Crafting Recipes",
+      "text": "$(li)$(bold)PreFab Upgrade Template$() - Converts a Compact Machine into a PreFab $(li)$(bold)Simulation Wrench$() - Controls PreFab state and opens configuration GUI $(li)$(bold)Importer Block$() - Input gate for factory (place inside CM) $(li)$(bold)Exporter Block$() - Output gate for factory (place inside CM)"
+    }
+  ]
+}

@@ -46,6 +46,24 @@ public final class ImporterExporterRegistry {
      * @param roomCode Room code where block is placed (null if Overworld/legacy)
      */
     public static void registerImporter(UUID uuid, BlockPos pos, String displayName, @Nullable String roomCode) {
+        // Remove old entry from secondary indexes if it exists
+        Entry oldEntry = IMPORTERS.get(uuid);
+        if (oldEntry != null) {
+            // Clean old secondary index entry
+            if (oldEntry.roomCode() != null) {
+                Set<Entry> oldRoomSet = IMPORTERS_BY_ROOM.get(oldEntry.roomCode());
+                if (oldRoomSet != null) {
+                    oldRoomSet.remove(oldEntry); // Works with UUID-based equals
+                    if (oldRoomSet.isEmpty()) {
+                        IMPORTERS_BY_ROOM.remove(oldEntry.roomCode());
+                    }
+                }
+            } else {
+                IMPORTERS_WITHOUT_ROOM.remove(oldEntry);
+            }
+        }
+
+        // Create new entry
         Entry entry = new Entry(uuid, pos, displayName, roomCode);
         IMPORTERS.put(uuid, entry);
 
@@ -73,6 +91,24 @@ public final class ImporterExporterRegistry {
      * @param roomCode Room code where block is placed (null if Overworld/legacy)
      */
     public static void registerExporter(UUID uuid, BlockPos pos, String displayName, @Nullable String roomCode) {
+        // Remove old entry from secondary indexes if it exists
+        Entry oldEntry = EXPORTERS.get(uuid);
+        if (oldEntry != null) {
+            // Clean old secondary index entry
+            if (oldEntry.roomCode() != null) {
+                Set<Entry> oldRoomSet = EXPORTERS_BY_ROOM.get(oldEntry.roomCode());
+                if (oldRoomSet != null) {
+                    oldRoomSet.remove(oldEntry); // Works with UUID-based equals
+                    if (oldRoomSet.isEmpty()) {
+                        EXPORTERS_BY_ROOM.remove(oldEntry.roomCode());
+                    }
+                }
+            } else {
+                EXPORTERS_WITHOUT_ROOM.remove(oldEntry);
+            }
+        }
+
+        // Create new entry
         Entry entry = new Entry(uuid, pos, displayName, roomCode);
         EXPORTERS.put(uuid, entry);
 
@@ -304,6 +340,22 @@ public final class ImporterExporterRegistry {
      * @param roomCode Room code where block is placed (null if Overworld/legacy)
      */
     public record Entry(UUID uuid, BlockPos pos, String displayName, @Nullable String roomCode) {
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof Entry other)) {
+                return false;
+            }
+            return this.uuid.equals(other.uuid);
+        }
+
+        @Override
+        public int hashCode() {
+            return uuid.hashCode();
+        }
+
         @Override
         public String toString() {
             return String.format("%s at (%d, %d, %d) [room: %s]",

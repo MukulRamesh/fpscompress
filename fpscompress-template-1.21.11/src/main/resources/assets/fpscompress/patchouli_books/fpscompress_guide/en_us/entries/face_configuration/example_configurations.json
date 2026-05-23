@@ -1,0 +1,23 @@
+{
+  "name": "Example Configurations",
+  "icon": "minecraft:compass",
+  "category": "fpscompress:face_configuration",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Example 1: Simple Furnace Setup",
+      "text": "$(bold)Goal$(): Smelt iron ore using coal$(br2)$(bold)Configuration$():$(br2)$(bold)NORTH Face$(): $(li)Mode: PULL $(li)Filter: ITEMS $(li)Target: Coal Importer $(li)Connect: Coal chest to NORTH side of PreFab$(br2)$(bold)EAST Face$(): $(li)Mode: PULL $(li)Filter: ITEMS $(li)Target: Iron Ore Importer $(li)Connect: Ore chest to EAST side of PreFab$(br2)$(bold)SOUTH Face$(): $(li)Mode: PUSH $(li)Filter: ITEMS $(li)Target: Iron Ingot Exporter $(li)Connect: Output chest to SOUTH side of PreFab$(br2)$(bold)All other faces$() (WEST, UP, DOWN): $(li)Mode: DISABLED"
+    },
+    {
+      "type": "text",
+      "title": "Example 2: Complex Processing",
+      "text": "$(bold)Goal$(): Multi-input, multi-output factory$(br2)$(bold)Configuration$():$(br2)NORTH: PULL ITEMS → Coal Importer SOUTH: PUSH ITEMS ← Primary Product Exporter EAST:  PULL ITEMS → Ore Importer WEST:  PUSH ITEMS ← Byproduct Exporter UP:    PULL ITEMS → Catalyst Importer DOWN:  DISABLED$(br2)$(bold)Overworld setup$():          [Catalyst Chest]                 ↓ (UP face) [Ore Chest] → [PreFab] → [Byproduct Chest]         ↑                    ↓    (EAST face)          (WEST face)    [Coal Chest]    [Product Chest]         ↓                ↑    (NORTH face)    (SOUTH face)"
+    },
+    {
+      "type": "text",
+      "title": "Example 3: Vertical Setup",
+      "text": "$(bold)Goal$(): PreFab above floor, using UP/DOWN faces$(br2)$(bold)Configuration$():$(br2)$(bold)DOWN Face$(): $(li)Mode: PULL $(li)Filter: ITEMS $(li)Target: Input Importer $(li)Connect: Hopper below PreFab feeding from chest$(br2)$(bold)UP Face$(): $(li)Mode: PUSH $(li)Filter: ITEMS $(li)Target: Output Exporter $(li)Connect: Hopper above PreFab feeding to chest$(br2)Compact vertical design."
+    }
+  ]
+}

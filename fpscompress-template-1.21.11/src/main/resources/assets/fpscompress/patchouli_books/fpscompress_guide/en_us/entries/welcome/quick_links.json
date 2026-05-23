@@ -1,0 +1,23 @@
+{
+  "name": "Quick Links",
+  "icon": "minecraft:book",
+  "category": "fpscompress:welcome",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Getting Started",
+      "text": "$(li)$(l:getting_started/prerequisites)Getting Started Guide$() - First-time setup and basic usage $(li)$(l:prefab_system/what_is_a_prefab)PreFab System Overview$() - Understanding PreFab blocks and how they work $(li)$(l:importer_exporter_guide/overview)Importer & Exporter Guide$() - Setting up input/output gates"
+    },
+    {
+      "type": "text",
+      "title": "Core Features",
+      "text": "$(li)$(l:face_configuration/opening_the_gui)Face Configuration$() - Configuring PreFab faces step-by-step $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - Understanding BUILDING/SIMULATING/CACHED/HALTED states $(li)$(l:cached_production/what_is_cached_production)Cached Production$() - How virtual production works"
+    },
+    {
+      "type": "text",
+      "title": "Advanced Topics",
+      "text": "$(li)$(l:advanced_setup/multi_prefab_factories)Advanced Setup$() - Multi-PreFab factories and organization $(li)$(l:troubleshooting/installation_issues)Troubleshooting$() - Common issues and solutions $(li)Developer API - For modders integrating with FPSCompress"
+    }
+  ]
+}

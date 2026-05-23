@@ -1,0 +1,12 @@
+{
+  "name": "See Also",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 10,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)$(l:getting_started/prerequisites)Getting Started$() - First-time setup $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - Understanding states $(li)$(l:face_configuration/opening_the_gui)Face Configuration$() - Configuring faces correctly $(li)$(l:cached_production/what_is_cached_production)Cached Production$() - How rates work"
+    }
+  ]
+}

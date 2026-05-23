@@ -1,0 +1,18 @@
+{
+  "name": "Installation Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Mod won't load / Crashes on startup\"",
+      "text": "$(bold)Possible causes$(): $(li)Missing Compact Machines dependency $(li)Wrong Minecraft/NeoForge version $(li)Java version mismatch$(br2)$(bold)Solutions$(): $(li)Check Minecraft version is 1.21.1 $(li)Install Compact Machines mod (required dependency) $(li)Verify NeoForge 21.1.221+ is installed $(li)Ensure Java 21 is installed (`java -version`) $(li)Check crash log for specific error"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Compact Machines not found\"",
+      "text": "$(bold)Cause$(): Compact Machines mod not installed$(br2)$(bold)Solution$(): $(li)Download Compact Machines for 1.21.1 $(li)Place in `mods/` folder $(li)Restart Minecraft$(br2)---"
+    }
+  ]
+}

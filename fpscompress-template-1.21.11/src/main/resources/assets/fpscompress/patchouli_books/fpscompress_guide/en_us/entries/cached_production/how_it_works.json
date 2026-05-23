@@ -1,0 +1,18 @@
+{
+  "name": "How It Works",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Phase 1: Rate Measurement (SIMULATING)",
+      "text": "$(bold)Duration$(): 30-60 seconds (player controlled)$(br2)$(bold)What happens$(): $(li)CM dimension chunks LOAD (factory actually runs) $(li)PreFab counts every resource transported $(li)Tracks resources per tick for each item type $(li)Calculates rate: `Rate = Total_Transported / Time_Elapsed`$(br2)$(bold)Example measurement$(): Simulation Duration: 600 ticks (30 seconds) Resources Transported: $(li)Coal: 600 items → Rate = 600/600 = 1.0 coal/tick $(li)Iron Ore: 600 items → Rate = 600/600 = 1.0 ore/tick $(li)Iron Ingot: 128 items → Rate = 128/600 = 0.213 ingots/tick"
+    },
+    {
+      "type": "text",
+      "title": "Phase 2: Fractional Accumulation (CACHED)",
+      "text": "$(bold)What happens$(): $(li)CM dimension chunks UNLOAD (performance gain) $(li)PreFab uses fractional math each tick $(li)Accumulates fractional production: `accumulator += rate` $(li)When `accumulator >= 1.0`: Transport whole units $(li)Remainder carries to next tick$(br2)$(bold)Example (Iron Ingot production at 0.213/tick)$(): Tick 1: accumulator = 0.0 + 0.213 = 0.213 (no output) Tick 2: accumulator = 0.213 + 0.213 = 0.426 (no output) Tick 3: accumulator = 0.426 + 0.213 = 0.639 (no output) Tick 4: accumulator = 0.639 + 0.213 = 0.852 (no output) Tick 5: accumulator = 0.852 + 0.213 = 1.065         → Push 1 iron ingot to Overworld         → accumulator = 1.065 - 1.0 = 0.065 (remainder) Tick 6: accumulator = 0.065 + 0.213 = 0.278 (no output) ...$(br2)$(bold)Result$(): PreFab pushes 1 iron ingot every ~4.7 ticks, matching real furnace rate."
+    }
+  ]
+}

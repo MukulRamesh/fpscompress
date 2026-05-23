@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
-    "fpscompress:prefab"
+    "fpscompress:prefab_machine",
+    "fpscompress:importer",
+    "fpscompress:exporter"
   ]
 }

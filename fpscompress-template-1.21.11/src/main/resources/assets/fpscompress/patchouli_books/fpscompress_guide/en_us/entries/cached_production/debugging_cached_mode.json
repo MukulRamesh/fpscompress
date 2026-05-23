@@ -1,0 +1,13 @@
+{
+  "name": "Debugging CACHED Mode",
+  "icon": "minecraft:hopper",
+  "category": "fpscompress:cached_production",
+  "sortnum": 9,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Verifying Chunks Are Unloaded",
+      "text": "$(li)Enter CACHED mode $(li)Press F3 (debug screen) $(li)Check \"C:\" value (chunks loaded) $(li)Value should be lower than during SIMULATING$(br2)$(bold)Example$(): $(li)SIMULATING: C: 441/256 (CM chunks loaded) $(li)CACHED: C: 305/256 (CM chunks unloaded)"
+    }
+  ]
+}

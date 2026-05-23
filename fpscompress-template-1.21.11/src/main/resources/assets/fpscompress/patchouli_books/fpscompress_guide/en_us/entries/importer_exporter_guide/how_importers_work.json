@@ -1,0 +1,23 @@
+{
+  "name": "How Importers Work",
+  "icon": "fpscompress:importer",
+  "category": "fpscompress:importer_exporter_guide",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Internal Buffer",
+      "text": "Importers have a $(bold)9-slot internal buffer$(): $(li)PreFab inserts items into buffer $(li)Importer $(bold)actively pushes items$() into adjacent inventories $(li)Buffer prevents item loss if target inventory is full$(br2)$(bold)Buffer states$(): $(li)Empty: PreFab can insert up to 9 stacks $(li)Partial: Some space available $(li)Full: PreFab can't insert more (may trigger HALTED state)"
+    },
+    {
+      "type": "text",
+      "title": "Active Pushing",
+      "text": "Importers $(bold)actively push$() items into adjacent inventories: [Importer] → (pushes via IItemHandler) → [Chest/Machine]$(br2)This means Importers work proactively, not passively."
+    },
+    {
+      "type": "text",
+      "title": "Tick Behavior",
+      "text": "Importers $(bold)actively push$() items every tick: $(li)Receive items from PreFab $(li)Push items into adjacent inventories $(li)Act as an active middleman/buffer"
+    }
+  ]
+}

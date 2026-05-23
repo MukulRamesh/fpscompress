@@ -1,0 +1,18 @@
+{
+  "name": "Importer/Exporter Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"No Importers/Exporters in target dropdown\"",
+      "text": "$(bold)Cause$(): No gates placed in CM dimension$(br2)$(bold)Solution$(): $(li)Enter CM dimension (right-click CM with Personal Shrinking Device) $(li)Place at least one Importer or Exporter $(li)Exit CM dimension $(li)Reopen PreFab GUI - dropdown should populate"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Importers/Exporters have no UUID/Name in GUI\"",
+      "text": "$(bold)Cause$(): Gates not named with frequency system$(br2)$(bold)Solution$() (optional): $(li)Hold an item (e.g., Coal) $(li)Right-click Importer/Exporter $(li)Gate now shows as \"Coal Importer\" in dropdown$(br2)If still showing UUID only: $(li)This is normal behavior (UUID is the unique ID) $(li)Frequency system just adds a friendly name$(br2)---"
+    }
+  ]
+}

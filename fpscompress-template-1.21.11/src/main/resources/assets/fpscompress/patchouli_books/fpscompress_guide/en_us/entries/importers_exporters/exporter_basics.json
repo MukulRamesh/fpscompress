@@ -1,0 +1,27 @@
+{
+  "name": "Exporter Basics",
+  "icon": "fpscompress:exporter",
+  "category": "fpscompress:importers_exporters",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(bold)Exporters$() are output gates placed inside CM dimensions.$(br2)They actively pull items from adjacent machines and send them to PreFab PUSH faces.$(br2)Think of them as: $(italic)\"Where resources from your factory exit to the Overworld\"$()"
+    },
+    {
+      "type": "text",
+      "title": "How Exporters Work",
+      "text": "$(bold)1.$() Exporter actively pulls from adjacent machines (every tick)$(br2)$(bold)2.$() Stores items in internal buffer$(br2)$(bold)3.$() PreFab extracts from buffer and pushes to Overworld$(br2)Works with machines that don't push (like furnaces)."
+    },
+    {
+      "type": "text",
+      "title": "Placing Exporters",
+      "text": "$(bold)Direct connection:$()$(br)[Machine] → [Exporter]$(br2)$(bold)Better: Use a chest$(br)[Machine] → [Chest] → [Exporter]$(br2)$(italic)Intermediate chests create more reliable, better-behaved systems.$()"
+    },
+    {
+      "type": "text",
+      "title": "Active Pulling",
+      "text": "Unlike Importers (passive), Exporters are $(bold)active$():$(br2)Every tick, they check all 6 adjacent sides and pull items from any machine with available output.$(br2)9-slot buffer allows for timing differences."
+    }
+  ]
+}

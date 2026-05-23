@@ -1,0 +1,22 @@
+{
+  "name": "HALTED State Issues",
+  "icon": "minecraft:barrier",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "PreFabs enter $(bold)HALTED$() state when:$(br2)$(li)Input chest is empty (can't pull)$(li)Output chest is full (can't push)$(li)Importer/Exporter was broken$(br2)CM chunks stay $(bold)unloaded$() and do not reload."
+    },
+    {
+      "type": "text",
+      "title": "How to Recover",
+      "text": "$(bold)Step 1:$() Diagnose$(br)- Check input chests (empty?)$(br)- Check output chests (full?)$(br2)$(bold)Step 2:$() Fix$(br)- Restock inputs$(br)- Clear outputs$(br2)$(bold)Step 3:$() Resume$(br)Right-click with wrench → SIMULATING"
+    },
+    {
+      "type": "text",
+      "title": "Preventing HALTED",
+      "text": "$(li)Use larger chests (Barrels, Storage Drawers)$(li)Balance input supply to match consumption$(li)Automate restocking (hoppers, pipes)$(li)Monitor chest levels with comparators$(br2)$(bold)Tip:$() 1 coal/tick = 1200 coal/minute needed."
+    }
+  ]
+}

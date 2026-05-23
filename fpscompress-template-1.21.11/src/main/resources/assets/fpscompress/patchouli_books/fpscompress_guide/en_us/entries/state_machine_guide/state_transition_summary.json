@@ -1,0 +1,12 @@
+{
+  "name": "State Transition Summary",
+  "icon": "minecraft:clock",
+  "category": "fpscompress:state_machine_guide",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "text": "$(li)$(bold)BUILDING:$() Right-click - SIMULATING $(li)$(bold)SIMULATING:$() Right-click - CACHED $(li)$(bold)SIMULATING:$() Right-click - BUILDING $(li)$(bold)CACHED:$() Input/output problem - HALTED $(li)$(bold)CACHED:$() Right-click - SIMULATING $(li)$(bold)HALTED:$() Fix - SIMULATING"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Getting Help",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 9,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Log Files",
+      "text": "$(bold)Location$(): `.minecraft/logs/latest.log`$(br2)$(bold)Look for$(): $(li)`[FPSCompress]` log lines $(li)Error stack traces $(li)Warning messages$(br2)$(bold)Include in bug reports$(): $(li)Full log file (or relevant excerpt) $(li)Steps to reproduce $(li)Mod version"
+    },
+    {
+      "type": "text",
+      "title": "Bug Reports",
+      "text": "$(bold)Report at$(): GitHub Issues (check mod page for link)$(br2)$(bold)Include$(): $(li)FPSCompress version $(li)Minecraft version $(li)NeoForge version $(li)Compact Machines version $(li)Steps to reproduce $(li)Log file $(li)Screenshots (if applicable)"
+    },
+    {
+      "type": "text",
+      "title": "Common Log Errors",
+      "text": "$(bold)Error: \"Can't find Importer UUID abc-123\"$() $(li)Importer was broken or moved $(li)Solution: Replace Importer, reconfigure PreFab face$(br2)$(bold)Error: \"CM room not found for code XYZ\"$() $(li)CM dimension issue $(li)Solution: Re-enter CM to initialize, replace PreFab$(br2)$(bold)Error: \"Capability not found\"$() $(li)Adjacent block doesn't support IItemHandler $(li)Solution: Use supported blocks (chests, hoppers, machines)$(br2)---"
+    }
+  ]
+}
