@@ -8,12 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Documentation**: Comprehensive documentation in multiple formats
+  - **GitHub Wiki**: Published to https://github.com/MukulRamesh/fpscompress/wiki
+    - Home page with mod overview and quick navigation
+    - Getting Started guide for installation and basic usage
+    - Advanced Setup for server configuration and performance tuning
+    - PreFab System detailed guide with examples
+    - Cached Production workflow documentation
+    - Developer API reference for integration
+    - Face Configuration technical details
+    - Importer/Exporter setup guide
+    - State Machine behavior documentation
+    - Troubleshooting guide for common issues
+  - **Patchouli In-Game Book**: Integrated in-game documentation system
+    - Automated conversion tool (`wiki_to_patchouli.py`) to generate Patchouli JSON from WIKI markdown
+    - 9 categories with organized entries covering all mod features
+    - 112 generated JSON files (categories + entries + pages)
+    - Cross-referenced pages with clickable links between sections
+    - Formatted text with bold, italic, lists, and proper page breaks
 - **Frequency System**: Importer/Exporter blocks now use "frequency" terminology instead of "filter"
   - Right-click with any item to set the frequency (e.g., "Apple Importer", "Iron Exporter")
   - Visual frequency indicators render the frequency item on all 6 sides of the block
   - 3D item rendering with full brightness, similar to item frames
   - Placement restricted to Compact Machines dimension in survival mode (creative mode can place anywhere)
 - **Localization**: Added frequency-related translation keys to `en_us.json`
+- **Test PreFab Command**: `/fps_dev2 give-test-prefab` now properly creates functional test PreFabs
+  - Supports single item: `/fps_dev2 give-test-prefab <inputItem> <inputRate> <outputItem> <outputRate>`
+  - Supports multiple items: `/fps_dev2 give-test-prefab list "<inputs>" "<outputs>"`
+  - Test PreFabs maintain CACHED state, room code, and rates when placed/broken
+  - Resources tab in Status GUI displays rates correctly
 
 ### Changed
 - **Terminology**: Renamed "filter" to "frequency" across the entire codebase
@@ -37,6 +60,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Block tags referenced `fpscompress:prefab` but block was registered as `fpscompress:prefab_machine`
   - Updated `mineable/pickaxe.json` and `needs_iron_tool.json` to use correct block ID
   - PreFab blocks now properly drop with all NBT data preserved when broken
+- **Test PreFab NBT Persistence**: Fixed test PreFabs losing cached data when placed
+  - Schema version now correctly set to 2 for UUID-based rate storage
+  - `buildUUIDRates()` now creates ListTag format matching `PrefabBlockEntity` loading code
+  - `PrefabBlock.setPlacedBy()` restores NBT from item to block entity on placement
+  - `validateLoadedData()` allows fake rooms (no roomCenter validation for `fake_*` roomCodes)
+  - UUID-based rates check added alongside aggregate rates check to prevent state reset
+  - `loadRatesFromNBT()` derives aggregate `cachedRates` from `importerExporterRates` for GUI display
+- **Code Quality**: Fixed all SpotBugs warnings (5 findings → 0)
+  - `CachedConfigurationValidator`: Fixed inefficient map iteration (keySet → entrySet)
+  - `ValidationResult` record: Added defensive unmodifiable copies of List fields using `List.copyOf()`
+  - Added `@SuppressFBWarnings` annotations with justifications for false positives
+  - All static analysis checks now pass (Checkstyle + SpotBugs)
 
 ### Breaking Changes
 - **NBT Format Change**: Existing Importer/Exporter blocks will lose their frequency settings when loading old saves
