@@ -92,8 +92,8 @@ Factory compression mod that caches production rates to run factories virtually 
 [[dependencies.${mod_id}]]
     modId="patchouli"
     type="required"
-    # Patchouli version 93+ for Minecraft 1.21.1 NeoForge
-    versionRange="[93,)"
+    # Patchouli version 1.21.1-93-NEOFORGE or higher
+    versionRange="[1.21.1-93,)"
     ordering="NONE"
     side="BOTH"
 
