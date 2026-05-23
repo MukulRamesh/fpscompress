@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+---
+
+## [0.3.0] - 2026-05-23
+
+### Added
 - **Phase 6: Multi-Output Routing System**: UUID-based cached production with per-equipment rate tracking
   - `CachedTransferHandler`: New utility class for routing cached outputs to specific PreFab faces
     - Transfers resources from specific Exporter UUIDs to mapped faces only
@@ -170,6 +176,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Room-based filtering system
 - Basic registry tracking
 
-[Unreleased]: https://github.com/mukulramesh/fpscompress/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mukulramesh/fpscompress/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mukulramesh/fpscompress/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mukulramesh/fpscompress/compare/v0.1.0-alpha...v0.2.0
 [0.1.0-alpha]: https://github.com/mukulramesh/fpscompress/releases/tag/v0.1.0-alpha
