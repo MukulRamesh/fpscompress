@@ -49,7 +49,6 @@ FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compressi
 - **Caching is the primary goal** - Everything else exists to enable the caching system
 - **Importer/Exporter clarity** - Clear input/output points (no complex coordinate math)
 - **Vanilla-only for MVP** - No AE2, no Controller block, no external mod integrations until caching works
-- **No internal storage** - Players could cheat (Importer → Chest → Exporter), but that's post-MVP validation
 
 ### Current State
 
@@ -369,7 +368,7 @@ Overworld:
 CM Dimension:
   [Importer #1] → [Furnace input]
   [Furnace output] → [Exporter #1]
-  
+
 Overworld:
   [PreFab SOUTH=PUSH ITEMS ← Exporter #1] → [Iron Chest]
 ```
@@ -508,7 +507,7 @@ ironAccumulator += rate; // Add 0.2133 each tick
 if (ironAccumulator >= 1.0) {
     int wholeItems = (int) ironAccumulator;
     ironAccumulator -= wholeItems;
-    
+
     // Push to Overworld via Exporter
     ExporterBlockEntity exporter = findExporterByUUID(cmLevel, exporterUUID);
     ItemStack toPush = new ItemStack(Items.IRON_INGOT, wholeItems);

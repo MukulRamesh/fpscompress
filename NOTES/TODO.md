@@ -1,8 +1,8 @@
 # FPSCompress TODO List - Conduit Architecture
 
-**Last Updated**: 2026-05-12 (Restructured: Uncompleted items at top)
+**Last Updated**: 2026-05-23
+
 **Architecture**: Conduit-based caching system (see ARCHITECTURE_CONDUIT.md)
-**Current Phase**: MVP COMPLETE ✅ + Post-MVP Room Filtering ✅
 
 **Primary Goal**: Cache factory input/output rates to run factories without chunk loading.
 
