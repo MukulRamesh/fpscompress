@@ -25,21 +25,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### Documentation
-- [ ] Add Patchouli support (in-game wiki/guidebook)
-  - [ ] Add Patchouli dependency to build.gradle
-  - [ ] Create book JSON (book name, landing text, model)
-  - [ ] Create categories (Getting Started, PreFab System, Importer/Exporter, etc.)
-  - [ ] Write entry pages for each major feature
-  - [ ] Add crafting recipes to relevant pages
-  - [ ] Test book in-game (verify all pages load, images render)
-- [ ] Update GitHub wiki with current architecture
-  - [ ] Document conduit-based system
-  - [ ] Add visual diagrams (PreFab faces, Importer/Exporter linking)
-  - [ ] Document state machine (BUILDING/SIMULATING/CACHED/HALTED)
-  - [ ] Add setup tutorials (basic factory, frequency system)
-  - [ ] Keep wiki in sync with Patchouli book content
-
 ### PreFab Blueprint System (Scanner & Printer)
 **Status**: Not started
 **Goal**: Scan PreFab factories to create blueprints, then print copies with resource costs
@@ -1275,6 +1260,36 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - [x] Test recipes in survival mode
 
 **Details**: See [CHANGELOG.md v0.2.0](../../CHANGELOG.md#020---2026-05-16) for full recipe specifications and JEI integration
+
+### 3.6. Patchouli In-Game Documentation
+**Status**: ✅ **COMPLETE** (2026-05-16, v0.2.0)
+- [x] Add Patchouli support (in-game wiki/guidebook)
+  - [x] Add Patchouli dependency to build.gradle (version 1.21.1-93-NEOFORGE)
+  - [x] Create book JSON (book name, landing text, model)
+  - [x] Create categories (Getting Started, PreFab System, Importer/Exporter, etc.)
+  - [x] Write entry pages for each major feature
+  - [x] Add crafting recipes to relevant pages
+  - [x] Test book in-game (verify all pages load, images render)
+- [x] Create automated conversion system (wiki_to_patchouli.py)
+  - [x] Converts WIKI markdown files to Patchouli JSON format
+  - [x] Handles formatting (bold, italic, lists, links, tables, code blocks)
+  - [x] Maps structure: .md files → categories, H2 → entries, H3 → pages
+  - [x] Generates 9 categories, 90 entries, 227 pages with 99 cross-references
+- [x] GitHub wiki documentation
+  - [x] Document conduit-based system
+  - [x] Add setup tutorials (basic factory, frequency system)
+  - [x] Document state machine (BUILDING/SIMULATING/CACHED/HALTED)
+  - [x] Keep wiki in sync with Patchouli book content via conversion script
+
+**Implementation Details**:
+- Patchouli JAR placed in `libs/` folder (646KB)
+- Book registered: `patchouli_books/fpscompress_guide/book.json`
+- Output location: `src/main/resources/assets/fpscompress/patchouli_books/fpscompress_guide/en_us/`
+- Source of truth: WIKI markdown files → regenerate Patchouli JSON via script
+- Added dependency to neoforge.mods.toml (version 93+ required)
+- Added localization keys for book name and landing text
+
+**Details**: See [CHANGELOG.md v0.2.0](../../CHANGELOG.md#020---2026-05-16) and [CLAUDE.md](../../CLAUDE.md#documentation-conversion) for complete documentation system
 
 ### 4. Importer/Exporter Frequency System
 **Status**: ✅ **COMPLETE** (2026-05-16)
