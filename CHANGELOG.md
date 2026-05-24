@@ -107,6 +107,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `CLAUDE.md`: Updated developer documentation with correct player experience workflow
   - Added new "Common Mistakes" entry warning against using wrench for state changes
 
+### Technical
+- **Code Quality: Major Refactoring**: Resolved checkstyle violations by extracting service classes from `PrefabBlockEntity`
+  - **Problem**: `PrefabBlockEntity.java` violated checkstyle limits (1,667 lines, method 160 lines over 2,000/150 limits)
+  - **Solution**: Extracted 7 service classes using delegation pattern with package-private field access
+  - **Result**: File size reduced 1,667 → 806 lines (51.6% reduction, 1,194 lines under limit)
+  - **New Service Classes** (2,026 lines total):
+    - `DisplayPreferenceManager.java` (116 lines): Rate display preferences, GUI sync
+    - `RateCalculationEngine.java` (231 lines): Delta accounting formula, rate calculation, state transition
+    - `PrefabNBTSerializer.java` (557 lines): NBT serialization, schema migration, data validation
+    - `StateTransitionManager.java` (328 lines): State machine (BUILDING→SIMULATING→CACHED→HALTED)
+    - `InventoryScanningService.java` (348 lines): Room scanning, Machine Wall detection, buffer inspection
+    - `CachedProductionHandler.java` (187 lines): Fractional accumulator math, HALTED exponential backoff
+    - `TransportTickHandler.java` (259 lines): Resource routing between Overworld and CM dimension
+  - **Architecture**: Services hold reference to `PrefabBlockEntity` for direct field access (intentional design)
+  - **Linter Compliance**: All 3 linters passing (compileJava, checkstyleMain, spotbugsMain)
+    - Fixed 7 SpotBugs EI_EXPOSE_REP2 warnings (added @SuppressFBWarnings with justification)
+    - Fixed 9 unused private method warnings (removed delegation stubs)
+    - Fixed 10 Checkstyle LineLength violations (split long annotations)
+    - Fixed 3 unused imports (ItemStack, BuiltInRegistries, Map)
+  - **Benefits**: Improved maintainability, clear separation of concerns, easier testing
+  - Files created: 7 new service classes in `com.mukulramesh.fpscompress.portal` package
+  - Files modified: `PrefabBlockEntity.java` (stripped to 806 lines, all fields now package-private)
+  - Completed: 2026-05-24
+
 ---
 
 ## [0.3.0] - 2026-05-23
