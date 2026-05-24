@@ -27,6 +27,7 @@
   "fpscompress.message.already_cached": "Machine is already running in cached mode!",
   "fpscompress.message.machine_halted": "Machine halted! Check inputs/outputs.",
   "fpscompress.message.unknown_state": "Unknown machine state!",
+  "fpscompress.prefab.entry_blocked": "PreFab is active! Only creative mode players can enter during operation.",
 
   "fpscompress.state.building": "Building",
   "fpscompress.state.simulating": "Simulating",

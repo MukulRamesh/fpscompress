@@ -2,7 +2,9 @@ package com.mukulramesh.fpscompress.portal;
 
 import com.mojang.logging.LogUtils;
 import com.mukulramesh.fpscompress.FPSCompress;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
@@ -175,6 +177,32 @@ public class PrefabBlock extends Block implements EntityBlock {
             LOGGER.warn("PreFab at {} has no room code", pos);
             return net.minecraft.world.ItemInteractionResult.FAIL;
         }
+
+        // Prevent non-privileged players from entering PreFabs during active operation
+        // Only allow entry during BUILDING state (player is setting up the factory)
+        // Creative players and operators (permission level >= 2) can always enter for debugging
+        MachineState currentState = prefab.getCurrentState();
+        boolean isCreative = serverPlayer.isCreative();
+
+        LOGGER.info("PreFab entry check: state={}, creative={}, player={}",
+            currentState, isCreative, serverPlayer.getName().getString());
+
+        // Block non-BUILDING entry for survival players
+        // TODO: Add config option to allow specific permission levels to bypass (e.g., level 4 for server admins)
+        // For now, only creative mode can bypass the restriction
+        if (currentState != MachineState.BUILDING && !isCreative) {
+            LOGGER.warn("Blocking entry for player {} - state is {} (not BUILDING)",
+                serverPlayer.getName().getString(), currentState);
+            serverPlayer.displayClientMessage(
+                Component.translatable("fpscompress.prefab.entry_blocked")
+                    .withStyle(ChatFormatting.RED),
+                false
+            );
+            return net.minecraft.world.ItemInteractionResult.FAIL;
+        }
+
+        LOGGER.info("Allowing entry for player {} - state={}, creative={}",
+            serverPlayer.getName().getString(), currentState, isCreative);
 
         // Cache player's current position and rotation for exit
         PlayerPositionCache.cacheEntryPosition(

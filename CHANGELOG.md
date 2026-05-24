@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PreFab Entry Protection**: Survival players cannot enter PreFabs during active operation
+  - Blocks entry to PreFabs in SIMULATING, CACHED, or HALTED states (only BUILDING allows entry)
+  - Creative mode players can always enter for testing/debugging purposes
+  - Shows red error message: "PreFab is active! Only creative mode players can enter during operation."
+  - Prevents accidental factory breakage from entering unloaded dimensions during CACHED mode
+  - Location: `PrefabBlock.useItemOn()` checks state before teleporting player
+  - Future enhancement: Config option to allow specific permission levels to bypass restriction
 
 ---
 

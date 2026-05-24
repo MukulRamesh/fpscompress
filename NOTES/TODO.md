@@ -25,18 +25,32 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### CACHED State Entry Prevention (Survival Mode)
-- [ ] Prevent survival players from entering PreFab during CACHED state
-  - **Problem**: CM chunks unload during CACHED mode (performance optimization)
-  - **Risk**: Player enters PreFab while CACHED → breaks Importer/Exporter → UUID links broken → transport fails → HALTED state
-  - **Current behavior**: Nothing prevents entry (player can break factory setup while chunks unloaded)
-- [ ] Implementation tasks:
-  - [ ] Hook `PrefabBlock.useWithoutItem()` to check state before teleport
-  - [ ] If state == CACHED and player is not creative → Cancel teleport, show chat message
-  - [ ] Localize message: "fpscompress.prefab.cached_entry_blocked" → "Factory is running in CACHED mode. Reset to Building to enter."
-  - [ ] Add tooltip to PreFab item explaining CACHED entry restriction
-  - [ ] Test: Survival player right-clicks CACHED PreFab → Entry blocked
-  - [ ] Test: Creative player right-clicks CACHED PreFab → Entry allowed (for debugging)
+#### Active PreFab Entry Prevention (Survival Mode) ✓
+- [x] Prevent survival players from entering PreFab during active operation (SIMULATING/CACHED/HALTED)
+  - **Problem**: CM chunks may be unloaded or factory actively running during non-BUILDING states
+  - **Risk**: Player enters PreFab during active operation → breaks factory state → UUID links broken → transport fails
+  - **Solution**: Block non-creative players from entering any non-BUILDING state
+- [x] Implementation tasks:
+  - [x] Hook `PrefabBlock.useItemOn()` to check state before teleport
+  - [x] If state != BUILDING and player is not creative → Cancel teleport, show chat message
+  - [x] Localize message: "fpscompress.prefab.entry_blocked" → "PreFab is active! Only creative mode or admins can enter during operation."
+  - [x] Allow entry only during BUILDING state (when player is setting up factory)
+  - [x] Bypass logic: **Creative mode only** (simplest and safest default)
+- [x] Testing tasks (manual - requires game restart):
+  - [x] Test: Survival player right-clicks HALTED PreFab → Entry blocked ✓
+  - [x] Test: Survival player right-clicks SIMULATING PreFab → Entry blocked ✓
+  - [x] Test: Survival player right-clicks CACHED PreFab → Entry blocked ✓
+  - [x] Test: Creative player right-clicks active PreFab → Entry allowed ✓
+  - [x] Test: Any player right-clicks BUILDING PreFab → Entry allowed ✓
+
+#### Config Option for Permission-Based Entry (Future Enhancement)
+- [ ] Add config option to allow specific permission levels to bypass entry restriction
+  - **Use case**: Server admins (level 4) need to debug broken factories without switching to creative
+  - **Default behavior**: Creative mode only (current implementation)
+  - **Config option**: `allowedPermissionLevel` (0 = creative only, 2 = cheats enabled, 4 = full admin)
+  - **Location**: `PrefabBlock.useItemOn()` - check config value instead of hardcoded creative check
+  - **File**: Add to `FPSCompressConfig.java` (common config)
+  - **Note**: Consider security implications - lower permission levels could still break factories
 
 #### Minimum Simulation Time Requirement (Survival Mode)
 - [ ] Enforce minimum simulation duration before allowing transition to CACHED state
