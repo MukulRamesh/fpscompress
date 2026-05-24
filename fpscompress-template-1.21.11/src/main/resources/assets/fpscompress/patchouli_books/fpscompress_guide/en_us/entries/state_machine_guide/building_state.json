@@ -17,12 +17,12 @@
     {
       "type": "text",
       "title": "What You Should Do",
-      "text": "$(li)$(bold)Open Face Configuration GUI$(): $(li)Shift + Right-click PreFab with Simulation Wrench$(br2)$(li)$(bold)Configure faces$(): $(li)Set mode (PULL/PUSH/DISABLED) $(li)Set filter (ITEMS/FLUIDS/ENERGY) $(li)Select target Importer/Exporter$(br2)$(li)$(bold)Place Importers/Exporters$() inside CM: $(li)Enter CM dimension $(li)Place Importers next to machine inputs $(li)Place Exporters next to machine outputs $(li)Optionally: Name them with frequency system$(br2)$(li)$(bold)Connect chests$() in Overworld: $(li)Place chests adjacent to PreFab faces $(li)PULL faces: Chest with input materials $(li)PUSH faces: Empty chest for outputs"
+      "text": "$(li)$(bold)Open Face Configuration GUI$(): $(li)$(bold)Shift + Right-click$() PreFab with Simulation Wrench$(br2)$(li)$(bold)Configure faces$(): $(li)Set mode (PULL/PUSH/DISABLED) $(li)Set filter (ITEMS/FLUIDS/ENERGY) $(li)Select target Importer/Exporter$(br2)$(li)$(bold)Place Importers/Exporters$() inside CM: $(li)Enter CM dimension $(li)Place Importers next to machine inputs $(li)Place Exporters next to machine outputs $(li)Optionally: Name them with frequency system$(br2)$(li)$(bold)Connect chests$() in Overworld: $(li)Place chests adjacent to PreFab faces $(li)PULL faces: Chest with input materials $(li)PUSH faces: Empty chest for outputs"
     },
     {
       "type": "text",
       "title": "Transitions",
-      "text": "$(bold)From BUILDING to SIMULATING$(): $(li)Enter PreFab Config (empty hand right click) $(li)Click button to start simulating $(li)PreFab begins measuring production rates$(br2)$(bold)Visual indicator$() (future feature): Block texture changes to show state$(br2)---"
+      "text": "$(bold)From BUILDING to SIMULATING$(): $(li)$(bold)Right-click PreFab with empty hand$() (or any non-wrench item) $(li)Opens control menu $(li)Click button to start simulating $(li)PreFab begins measuring production rates$(br2)$(bold)Note:$() The Simulation Wrench opens the $(italic)face config GUI$(), not the control menu. Use an empty hand for state changes.$(br2)$(bold)Visual indicator$() (future feature): Block texture changes to show state$(br2)---"
     }
   ]
 }

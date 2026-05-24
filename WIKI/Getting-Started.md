@@ -14,9 +14,11 @@ Before starting, make sure you have:
 
 ### Crafting Recipes
 1. **PreFab Upgrade Template** - Converts a Compact Machine into a PreFab
-2. **Simulation Wrench** - Controls PreFab state and opens configuration GUI
+2. **Simulation Wrench** - Opens face configuration GUI (NOT for state switching)
 3. **Importer Block** - Input gate for factory (place inside CM)
 4. **Exporter Block** - Output gate for factory (place inside CM)
+
+**Important Note:** The Simulation Wrench is **only** for configuring PreFab faces (Shift+Right-click). To switch between states (BUILDING/SIMULATING/CACHED), use an **empty hand or non-wrench item** to open the control menu.
 
 ## Step-by-Step Setup
 
@@ -58,7 +60,7 @@ Before starting, make sure you have:
 ### 4. Configure PreFab Faces
 
 1. Hold the Simulation Wrench
-2. Right-click the PreFab
+2. **Shift + Right-click** the PreFab
 3. The Face Configuration GUI opens
 
 **For each face you want to use**:
@@ -97,11 +99,12 @@ Place chests next to the PreFab faces you configured:
 
 ### 6. Start Simulation (Calibration)
 
-1. With empty hand or any item (No Simulation Wrench)
-2. Right-click PreFab
-3. PreFab enters `SIMULATING` state
-4. CM chunks load (factory actually runs)
-5. PreFab measures production rates
+1. With **empty hand or any non-wrench item** (NOT the Simulation Wrench)
+2. Right-click PreFab to open control menu
+3. Click button to start simulation
+4. PreFab enters `SIMULATING` state
+5. CM chunks load (factory actually runs)
+6. PreFab measures production rates
 
 **What's happening**:
 - Resources flow from input chest → Importer → Furnace
@@ -111,10 +114,11 @@ Place chests next to the PreFab faces you configured:
 
 ### 7. Finish Simulation (Enter CACHED Mode)
 
-1. Right-click PreFab with Simulation Wrench again
-2. PreFab calculates production rates
-3. PreFab enters `CACHED` state
-4. **CM chunks unload** (performance gain)
+1. Right-click PreFab with **empty hand** (or non-wrench item) again
+2. Click button to stop simulation
+3. PreFab calculates production rates
+4. PreFab enters `CACHED` state
+5. **CM chunks unload** (performance gain)
 
 ### 8. Watch It Run
 
@@ -205,6 +209,7 @@ This does not change functionality, just makes it easier to identify gates.
 ❌ **Forgetting to place Importers/Exporters** - PreFab needs gates to link to
 ❌ **Not connecting chests** - PULL/PUSH faces need adjacent inventories
 ❌ **Ending simulation too early** - Wait for accurate rates
+❌ **Using Simulation Wrench to change states** - Wrench is only for face config (Shift+Right-click). Use empty hand for state control.
 
 ## Tips
 

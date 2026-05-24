@@ -6,7 +6,7 @@
   "pages": [
     {
       "type": "text",
-      "text": "┌─────────────┐ │  BUILDING   │ ← Initial state (setup) └──────┬──────┘        │ Right-click with wrench        ▼ ┌─────────────┐ │ SIMULATING  │ ← Measuring rates (chunks LOADED) └──────┬──────┘        │ Right-click with wrench        ▼ ┌─────────────┐ │   CACHED    │ ← Virtual production (chunks UNLOADED) └──────┬──────┘        │ Input starved or output blocked        ▼ ┌─────────────┐ │   HALTED    │ ← Input/Output Problem detected (chunks stay UNLOADED) └──────┬──────┘        │ Fix issue        └─────→ Back to CACHED"
+      "text": "┌─────────────┐ │  BUILDING   │ ← Initial state (setup) └──────┬──────┘        │ Right-click (empty hand / non-wrench)        ▼ ┌─────────────┐ │ SIMULATING  │ ← Measuring rates (chunks LOADED) └──────┬──────┘        │ Right-click (empty hand / non-wrench)        ▼ ┌─────────────┐ │   CACHED    │ ← Virtual production (chunks UNLOADED) └──────┬──────┘        │ Input starved or output blocked        ▼ ┌─────────────┐ │   HALTED    │ ← Input/Output Problem detected (chunks stay UNLOADED) └──────┬──────┘        │ Fix issue        └─────→ Back to CACHED"
     }
   ]
 }

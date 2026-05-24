@@ -31,15 +31,18 @@ FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compressi
 1. Build factory inside a Compact Machine room
 2. **Place Importer/Exporter blocks** inside CM room (input/output gates)
 3. Right-click CM block with "PreFab Upgrade Template" item → becomes PreFab
-4. Shift+Right-click PreFab with Simulation Wrench → Open face config GUI
+4. **Shift+Right-click PreFab with Simulation Wrench** → Open face config GUI
 5. Configure each face:
    - Set mode (PULL/PUSH/DISABLED)
    - Set filter (ITEMS/FLUIDS/ENERGY)
    - **Link to specific Importer/Exporter** (select from dropdown)
 6. Connect chests/hoppers to PreFab faces in Overworld
-7. Start SIMULATION: PreFab observes actual production rates (CM chunks loaded)
-8. Finish SIMULATION: PreFab calculates rates, enters CACHED mode (CM chunks **unload**)
-9. CACHED mode: PreFab uses math to simulate production based on cached rates
+7. **Right-click PreFab with empty hand** → Open control menu → Start SIMULATION
+8. PreFab observes actual production rates (CM chunks loaded)
+9. **Right-click PreFab with empty hand** → Stop simulation → Enters CACHED mode (CM chunks **unload**)
+10. CACHED mode: PreFab uses math to simulate production based on cached rates
+
+**Important:** The Simulation Wrench is **only** for face configuration (Shift+Right-click). State changes (BUILDING→SIMULATING→CACHED) are done via the control menu (right-click with empty hand or non-wrench item).
 
 **Key Design Principles**:
 - **PreFabs are conduits, not storage** - resources transport instantly between dimensions

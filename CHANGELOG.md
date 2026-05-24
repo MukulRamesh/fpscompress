@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Location: `PrefabBlock.useItemOn()` checks state before teleporting player
   - Future enhancement: Config option to allow specific permission levels to bypass restriction
 
+### Fixed
+- **Documentation Clarity**: Fixed widespread misconception about Simulation Wrench usage
+  - **Issue**: Multiple documentation sources incorrectly stated the wrench is used to switch PreFab states
+  - **Reality**: Wrench is **only** for face configuration (Shift+Right-click), not state control
+  - **State Control**: Use empty hand or non-wrench item to open control menu for state transitions
+  - Updated 12 documentation files across Patchouli in-game docs, GitHub WIKI, and language files:
+    - `simulation_wrench.json`: Added clarification that wrench doesn't control states
+    - `state_overview.json`: Changed state diagram arrows from "Right-click with wrench" to "Right-click (empty hand / non-wrench)"
+    - `building_state.json`, `simulating_state.json`: Updated transition instructions
+    - `what_youll_need.json`, `step_by_step_setup.json`: Added important notes and corrected steps
+    - `State-Machine-Guide.md`, `Getting-Started.md`: Updated both wiki folders with correct workflow
+    - `en_us.json`: Changed wrench tooltip from "control simulation state" to "Shift+Right-click PreFab to configure faces"
+    - `CLAUDE.md`: Updated developer documentation with correct player experience workflow
+  - Added new "Common Mistakes" entry warning against using wrench for state changes
+
 ---
 
 ## [0.3.0] - 2026-05-23

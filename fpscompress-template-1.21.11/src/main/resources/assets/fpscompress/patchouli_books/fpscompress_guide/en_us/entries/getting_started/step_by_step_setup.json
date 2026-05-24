@@ -22,7 +22,7 @@
     {
       "type": "text",
       "title": "4. Configure PreFab Faces",
-      "text": "$(li)Hold the Simulation Wrench $(li)Right-click the PreFab $(li)The Face Configuration GUI opens$(br2)$(bold)For each face you want to use$(): $(li)Select a face (North, South, East, West, Up, Down) $(li)Set $(bold)Mode$(): $(li)`PULL` - Extract from Overworld → Send to Importer $(li)`PUSH` - Extract from Exporter → Send to Overworld $(li)`DISABLED` - Face inactive $(li)Set $(bold)Resource Filter$(): $(li)`ITEMS` - Transfer items only $(li)`FLUIDS` - Transfer fluids only (future) $(li)`ENERGY` - Transfer energy only (future) $(li)`ALL` - Transfer all resource types $(li)Set $(bold)Target$(): $(li)Select the Importer or Exporter from dropdown $(li)The dropdown shows all Importers/Exporters in the CM dimension$(br2)$(bold)Example configuration$(): NORTH face: PULL ITEMS → Importer #1 (coal input) SOUTH face: PUSH ITEMS ← Exporter #1 (iron output) All other faces: DISABLED"
+      "text": "$(li)Hold the Simulation Wrench $(li)$(bold)Shift + Right-click$() the PreFab $(li)The Face Configuration GUI opens$(br2)$(bold)For each face you want to use$(): $(li)Select a face (North, South, East, West, Up, Down) $(li)Set $(bold)Mode$(): $(li)`PULL` - Extract from Overworld → Send to Importer $(li)`PUSH` - Extract from Exporter → Send to Overworld $(li)`DISABLED` - Face inactive $(li)Set $(bold)Resource Filter$(): $(li)`ITEMS` - Transfer items only $(li)`FLUIDS` - Transfer fluids only (future) $(li)`ENERGY` - Transfer energy only (future) $(li)`ALL` - Transfer all resource types $(li)Set $(bold)Target$(): $(li)Select the Importer or Exporter from dropdown $(li)The dropdown shows all Importers/Exporters in the CM dimension$(br2)$(bold)Example configuration$(): NORTH face: PULL ITEMS → Importer #1 (coal input) SOUTH face: PUSH ITEMS ← Exporter #1 (iron output) All other faces: DISABLED"
     },
     {
       "type": "text",
@@ -32,12 +32,12 @@
     {
       "type": "text",
       "title": "6. Start Simulation (Calibration)",
-      "text": "$(li)With empty hand or any item (No Simulation Wrench) $(li)Right-click PreFab $(li)PreFab enters `SIMULATING` state $(li)CM chunks load (factory actually runs) $(li)PreFab measures production rates$(br2)$(bold)What's happening$(): $(li)Resources flow from input chest → Importer → Furnace $(li)Products flow from Furnace → Exporter → Output chest $(li)PreFab counts how many items/tick are transported $(li)Wait 30-60 seconds for accurate measurement"
+      "text": "$(li)With $(bold)empty hand or any non-wrench item$() (NOT the Simulation Wrench) $(li)Right-click PreFab to open control menu $(li)Click button to start simulation $(li)PreFab enters `SIMULATING` state $(li)CM chunks load (factory actually runs) $(li)PreFab measures production rates$(br2)$(bold)What's happening$(): $(li)Resources flow from input chest → Importer → Furnace $(li)Products flow from Furnace → Exporter → Output chest $(li)PreFab counts how many items/tick are transported $(li)Wait 30-60 seconds for accurate measurement"
     },
     {
       "type": "text",
       "title": "7. Finish Simulation (Enter CACHED Mode)",
-      "text": "$(li)Right-click PreFab with Simulation Wrench again $(li)PreFab calculates production rates $(li)PreFab enters `CACHED` state $(li)$(bold)CM chunks unload$() (performance gain)"
+      "text": "$(li)Right-click PreFab with $(bold)empty hand$() (or non-wrench item) again $(li)Click button to stop simulation $(li)PreFab calculates production rates $(li)PreFab enters `CACHED` state $(li)$(bold)CM chunks unload$() (performance gain)"
     },
     {
       "type": "text",

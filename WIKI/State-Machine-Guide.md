@@ -8,12 +8,12 @@ PreFabs operate in one of four states: BUILDING, SIMULATING, CACHED, and HALTED.
 ┌─────────────┐
 │  BUILDING   │ ← Initial state (setup)
 └──────┬──────┘
-       │ Right-click with wrench
+       │ Right-click (empty hand / non-wrench)
        ▼
 ┌─────────────┐
 │ SIMULATING  │ ← Measuring rates (chunks LOADED)
 └──────┬──────┘
-       │ Right-click with wrench
+       │ Right-click (empty hand / non-wrench)
        ▼
 ┌─────────────┐
 │   CACHED    │ ← Virtual production (chunks UNLOADED)
@@ -44,7 +44,7 @@ Initial state for setup and configuration.
 ### What You Should Do
 
 1. **Open Face Configuration GUI**:
-   - Shift + Right-click PreFab with Simulation Wrench
+   - **Shift + Right-click** PreFab with Simulation Wrench
 
 2. **Configure faces**:
    - Set mode (PULL/PUSH/DISABLED)
@@ -65,9 +65,12 @@ Initial state for setup and configuration.
 ### Transitions
 
 **From BUILDING to SIMULATING**:
-- Enter PreFab Config (empty hand right click)
+- **Right-click PreFab with empty hand** (or any non-wrench item)
+- Opens control menu
 - Click button to start simulating
 - PreFab begins measuring production rates
+
+**Note:** The Simulation Wrench opens the *face config GUI*, not the control menu. Use an empty hand for state changes.
 
 **Visual indicator** (future feature): Block texture changes to show state
 
@@ -119,13 +122,13 @@ Iron Ingot:  0 imported, 128 exported
 
 ### What You Should Do
 
-1. **Start simulation**: Right-click PreFab with wrench
+1. **Start simulation**: Right-click PreFab with **empty hand** (or non-wrench item), open control menu, click start
 2. **Wait**: Let factory run for 30-60 seconds
 3. **Monitor** (optional):
    - Check input chests (should be draining)
    - Check output chests (should be filling)
    - Verify factory is running (enter CM, see machines working)
-4. **Finish simulation**: Right-click PreFab with wrench again
+4. **Finish simulation**: Right-click PreFab with empty hand again, stop from menu
 
 **Don't**:
 - ❌ End simulation too early (inaccurate rates)
@@ -134,15 +137,18 @@ Iron Ingot:  0 imported, 128 exported
 ### Transitions
 
 **From SIMULATING to CACHED**:
-- Enter PreFab Config (empty hand right click)
+- **Right-click PreFab with empty hand** (or non-wrench item)
+- Opens control menu
 - Click button to stop simulating
 - PreFab unloads CM chunks
 - PreFab enters CACHED state
 
 **From SIMULATING to BUILDING**:
-- Enter PreFab Config (empty hand right click)
+- Right-click PreFab with empty hand
 - Click button to stop simulating
 - Click button to enter building state
+
+**Remember:** Simulation Wrench is for *face configuration* (Shift+Right-click), not state control.
 
 **IMPORTANT:** If some items were still unprocessed/in-transit when the simulation ends, *they get output through the output side*. This is to make sure that you always get your resources back, even if the simulation ending cuts off production.
 ---
@@ -198,7 +204,8 @@ Tick 5: accumulator = 1.065 → Push 1 iron, remainder 0.065
 - Automatic transition, no player action
 
 **From CACHED to SIMULATING**:
-- Right-click PreFab with Simulation Wrench
+- Right-click PreFab with empty hand (or non-wrench item)
+- Open control menu and restart simulation
 - Used to recalibrate rates (if you need to make factory changes)
 
 ---
@@ -276,12 +283,14 @@ Production paused due to input starvation or output blockage.
 
 | Current State | Action | Next State |
 |---------------|--------|------------|
-| BUILDING | Right-click | SIMULATING |
-| SIMULATING | Right-click | CACHED |
-| SIMULATING | Right-click | BUILDING |
+| BUILDING | Right-click (empty hand) → Start simulation | SIMULATING |
+| SIMULATING | Right-click (empty hand) → Stop simulation | CACHED |
+| SIMULATING | Right-click (empty hand) → Reset | BUILDING |
 | CACHED | Input/output problem | HALTED |
-| CACHED | Right-click | SIMULATING |
-| HALTED | Fix | SIMULATING |
+| CACHED | Right-click (empty hand) → Restart simulation | SIMULATING |
+| HALTED | Fix issue | CACHED |
+
+**Note:** "Right-click (empty hand)" means right-clicking with an empty hand or any non-wrench item to open the control menu. The Simulation Wrench is only for face configuration (Shift+Right-click).
 
 ## Visual Indicators
 
@@ -378,10 +387,11 @@ Production paused due to input starvation or output blockage.
 - Different input resources (iron ore → gold ore)
 
 **How to recalibrate**:
-1. Right-click PreFab (enter config menu)
-2. Wait 60 seconds
-3. Right-click again (stop simulation from menu)
-4. New rates measured and cached.
+1. Right-click PreFab with empty hand (enter control menu)
+2. Start new simulation
+3. Wait 60 seconds
+4. Right-click with empty hand again (stop simulation from menu)
+5. New rates measured and cached.
 
 ### State Persistence
 

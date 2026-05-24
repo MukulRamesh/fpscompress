@@ -7,7 +7,7 @@
     {
       "type": "text",
       "title": "Crafting Recipes",
-      "text": "$(li)$(bold)PreFab Upgrade Template$() - Converts a Compact Machine into a PreFab $(li)$(bold)Simulation Wrench$() - Controls PreFab state and opens configuration GUI $(li)$(bold)Importer Block$() - Input gate for factory (place inside CM) $(li)$(bold)Exporter Block$() - Output gate for factory (place inside CM)"
+      "text": "$(li)$(bold)PreFab Upgrade Template$() - Converts a Compact Machine into a PreFab $(li)$(bold)Simulation Wrench$() - Opens face configuration GUI (NOT for state switching) $(li)$(bold)Importer Block$() - Input gate for factory (place inside CM) $(li)$(bold)Exporter Block$() - Output gate for factory (place inside CM)$(br2)$(bold)Important Note$(): The Simulation Wrench is $(bold)only$() for configuring PreFab faces (Shift+Right-click). To switch between states (BUILDING/SIMULATING/CACHED), use an $(bold)empty hand or non-wrench item$() to open the control menu."
     }
   ]
 }

@@ -16,7 +16,7 @@
   "item.fpscompress.prefab_machine.rates_more": "...and %s more",
 
   "item.fpscompress.simulation_wrench": "Simulation Wrench",
-  "item.fpscompress.simulation_wrench.tooltip": "Right-click to control simulation state",
+  "item.fpscompress.simulation_wrench.tooltip": "Shift+Right-click PreFab to configure faces",
 
   "fpscompress.message.upgrade_installed": "PreFab Upgrade installed!",
   "fpscompress.message.already_upgraded": "PreFab upgrade already installed!",

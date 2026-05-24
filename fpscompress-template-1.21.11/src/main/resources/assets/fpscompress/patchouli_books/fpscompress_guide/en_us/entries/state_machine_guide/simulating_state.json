@@ -27,12 +27,12 @@
     {
       "type": "text",
       "title": "What You Should Do",
-      "text": "$(li)$(bold)Start simulation$(): Right-click PreFab with wrench $(li)$(bold)Wait$(): Let factory run for 30-60 seconds $(li)$(bold)Monitor$() (optional): $(li)Check input chests (should be draining) $(li)Check output chests (should be filling) $(li)Verify factory is running (enter CM, see machines working) $(li)$(bold)Finish simulation$(): Right-click PreFab with wrench again$(br2)$(bold)Don't$(): $(li)[X] End simulation too early (inaccurate rates) $(li)[X] Let inputs run out (skews measurement negatively)"
+      "text": "$(li)$(bold)Start simulation$(): Right-click PreFab with $(bold)empty hand$() (or non-wrench item), open control menu, click start $(li)$(bold)Wait$(): Let factory run for 30-60 seconds $(li)$(bold)Monitor$() (optional): $(li)Check input chests (should be draining) $(li)Check output chests (should be filling) $(li)Verify factory is running (enter CM, see machines working) $(li)$(bold)Finish simulation$(): Right-click PreFab with empty hand again, stop from menu$(br2)$(bold)Don't$(): $(li)[X] End simulation too early (inaccurate rates) $(li)[X] Let inputs run out (skews measurement negatively)"
     },
     {
       "type": "text",
       "title": "Transitions",
-      "text": "$(bold)From SIMULATING to CACHED$(): $(li)Enter PreFab Config (empty hand right click) $(li)Click button to stop simulating $(li)PreFab unloads CM chunks $(li)PreFab enters CACHED state$(br2)$(bold)From SIMULATING to BUILDING$(): $(li)Enter PreFab Config (empty hand right click) $(li)Click button to stop simulating $(li)Click button to enter building state$(br2)$(bold)IMPORTANT:$() If some items were still unprocessed/in-transit when the simulation ends, $(italic)they get output through the output side$(). This is to make sure that you always get your resources back, even if the simulation ending cuts off production. ---"
+      "text": "$(bold)From SIMULATING to CACHED$(): $(li)$(bold)Right-click PreFab with empty hand$() (or non-wrench item) $(li)Opens control menu $(li)Click button to stop simulating $(li)PreFab unloads CM chunks $(li)PreFab enters CACHED state$(br2)$(bold)From SIMULATING to BUILDING$(): $(li)Right-click PreFab with empty hand $(li)Click button to stop simulating $(li)Click button to enter building state$(br2)$(bold)Remember:$() Simulation Wrench is for $(italic)face configuration$() (Shift+Right-click), not state control.$(br2)$(bold)IMPORTANT:$() If some items were still unprocessed/in-transit when the simulation ends, $(italic)they get output through the output side$(). This is to make sure that you always get your resources back, even if the simulation ending cuts off production. ---"
     }
   ]
 }

@@ -6,7 +6,7 @@
   "pages": [
     {
       "type": "text",
-      "text": "The $(bold)Simulation Wrench$() is your tool for configuring PreFabs.$(br2)$(bold)Shift + Right-click$() on a PreFab to open the face configuration GUI.$(br2)While held, the wrench also visualizes which PreFab faces are inputs and which are outputs."
+      "text": "The $(bold)Simulation Wrench$() is your tool for $(bold)configuring PreFab faces$(), not for switching states.$(br2)$(bold)Shift + Right-click$() on a PreFab to open the face configuration GUI.$(br2)While held, the wrench also visualizes which PreFab faces are inputs and which are outputs.$(br2)$(bold)Note:$() To switch between states (BUILDING/SIMULATING/CACHED), use an $(italic)empty hand or non-wrench item$() to open the control menu."
     },
     {
       "type": "text",
