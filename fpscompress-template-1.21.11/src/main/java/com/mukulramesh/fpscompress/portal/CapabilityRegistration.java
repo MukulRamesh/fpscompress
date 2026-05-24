@@ -8,8 +8,11 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 /**
  * Event handler for registering capabilities on PreFab BlockEntities.
  *
- * TODO Phase 8: Implement face-based capability registration for new conduit architecture.
- * The old virtual buffer capability system has been removed.
+ * NOTE: Face-based capability registration intentionally NOT implemented (see TODO.md).
+ * Reference: TODO.md "Phase 8: Dynamic Capabilities (Optional for MVP)"
+ *
+ * Reason: PreFab uses active transport (tick-based) instead of capability exposure.
+ * Hoppers/pipes interact with Importers/Exporters directly, not PreFab faces.
  *
  * @author Dev 1 - Core Registry Team
  */
@@ -26,15 +29,14 @@ public final class CapabilityRegistration {
     /**
      * Register capabilities on the MOD event bus.
      *
-     * TODO Phase 8: Implement face-based capability registration.
-     * Old virtual buffer capability system has been removed.
+     * Phase 8 intentionally deferred - see class javadoc and TODO.md for rationale.
      *
      * @param event The RegisterCapabilitiesEvent
      */
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        // TODO Phase 8: Implement face-based capability registration
-        // New architecture will expose capabilities based on face configuration (PULL/PUSH modes)
-        FPSCompress.LOGGER.info("PreFab capability registration - awaiting Phase 8 implementation");
+        // Phase 8 deferred: Active transport used instead of capability exposure
+        // See TODO.md "Phase 8: Dynamic Capabilities (Optional for MVP)"
+        FPSCompress.LOGGER.info("PreFab capability registration - Phase 8 intentionally deferred");
     }
 }

@@ -19,8 +19,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * - CACHED → BUILDING: Reset to configuration mode
  * - HALTED → SIMULATING: Resume after fixing inputs/outputs
  *
- * TODO Phase 6: Implement state transitions with CMInterceptorImpl chunk loading
- *
  * @author Dev 1 - Core Registry Team
  */
 public class SimulationWrenchItem extends Item {
@@ -38,7 +36,6 @@ public class SimulationWrenchItem extends Item {
      * Called when the player right-clicks a block with this item.
      *
      * Phase 1 Part C: Shift+Right-click opens face config GUI
-     * TODO Phase 6: Implement full state machine
      *
      * @param context The use context
      * @return The interaction result

@@ -9,7 +9,8 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
  * Stub for data attachments (deprecated).
  * Kept to prevent crashes/hangs from old references.
  *
- * TODO: Remove this file completely once all references are cleaned up.
+ * TODO: Remove this file - see TODO.md "Code Cleanup & Technical Debt" section
+ * BLOCKED: Still registered in FPSCompress.java:209
  */
 public final class FPSDataAttachments {
 

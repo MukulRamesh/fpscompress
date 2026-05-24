@@ -23,16 +23,9 @@ import java.util.Locale;
  * - Set filter (ALL/ITEMS/FLUIDS/ENERGY)
  * - Save changes (sends packet to server)
  *
- * TODO: GUI Structural Improvements (Post-Phase 1)
- * This GUI needs a proper inventory-based implementation:
- * 1. Create proper container GUI with inventory slots (not AbstractContainerScreen hack)
- * 2. Mode/Filter should be labels, NOT clickable buttons - buttons are for actions only
- * 3. Add proper texture background instead of transparent overlay
- * 4. Consider using toggle buttons or radio button groups for mode/filter selection
- * 5. Separate face selection from configuration - possibly use tabs or pages
- * 6. Add visual feedback for which Importer/Exporter each face links to (Phase 2)
- *
+ * TODO: Refactor to proper container GUI - see TODO.md "Code Cleanup & Technical Debt"
  * Current implementation is functional but not architecturally sound.
+ * See TODO.md for complete improvement plan.
  */
 public class PreFabConfigScreen extends AbstractContainerScreen<PreFabConfigMenu> {
     private Direction selectedFace;
