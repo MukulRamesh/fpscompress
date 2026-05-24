@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Rate Calculation Formula**: Upgraded from MVP formula to full delta accounting formula
+  - **Old (MVP)**: `Net = Exported - Imported` (flow-only tracking)
+  - **New (Full)**: `Net = (Final - Initial) + (Exported - Imported)` (flow + storage deltas)
+  - **Storage Delta**: Accounts for items buffered in machines, Importer/Exporter buffers, and chests
+  - **Flow Delta**: Tracks items that physically crossed PreFab faces during simulation
+  - **Distribution**: Aggregate net production distributed to UUIDs proportionally based on flow contribution
+  - **Purpose**: Prevents underestimating rates when items buffer inside factory during simulation
+  - **Purpose**: Prevents overestimating rates when items are exported from existing storage
+  - **Example**: Furnace smelts 64 coal → 64 iron, but only 32 iron exported (32 buffered)
+    - Old: `Net = 32 - 0 = 32` (underestimate)
+    - New: `Net = (32 - 0) + (32 - 0) = 64` (correct!)
+  - **Files Modified**: `PrefabBlockEntity.java` (rate calculation in `calculateRatesAndTransition()`)
+  - **Technical**: Storage delta from room-wide scans distributed proportionally to UUIDs based on their relative flow
+  - **Edge Cases**: Zero flow delta splits storage equally; passthrough still detected when both deltas sum to zero
+  - Completed: 2026-05-24
+
 ### Added
 - **Minimum Simulation Time Requirement**: Enforce minimum duration before allowing CACHED transition
   - **Config**: `minimumSimulationTicks` (default: 2400 = 2 minutes, range: 0-72000 ticks)

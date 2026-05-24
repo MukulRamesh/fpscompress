@@ -1793,7 +1793,8 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             FPSCompress.LOGGER.warn("All activity in single tick - using 1 tick for rate calculation");
         }
 
-        // Phase 6: Calculate rates per UUID instead of aggregate
+        // Phase 6: Calculate rates per UUID using FULL formula
+        // Strategy: Calculate aggregate net production with storage delta, then distribute to UUIDs
         clearImporterExporterRates();
 
         // Debug: Check what's in deltaTracker
@@ -1801,26 +1802,72 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         FPSCompress.LOGGER.info("▶ finishSimulation: deltaTracker has {} tracked UUIDs",
             trackedUUIDs.size());
 
+        // Step 1: Calculate aggregate net production for each resource using FULL formula
+        Map<String, Long> aggregateNetProduction = new HashMap<>();
+        for (String resourceId : deltaTracker.getAllTrackedResources()) {
+            long initialState = deltaTracker.getInitialState(resourceId);
+            long finalState = deltaTracker.getFinalState(resourceId);
+            long totalImported = deltaTracker.getTotalImported(resourceId);
+            long totalExported = deltaTracker.getTotalExported(resourceId);
+
+            // FULL FORMULA: Net = (Final - Initial) + (Exported - Imported)
+            long storageDelta = finalState - initialState;
+            long flowDelta = totalExported - totalImported;
+            long netProduction = storageDelta + flowDelta;
+
+            FPSCompress.LOGGER.info("  Aggregate {}: Init={}, Final={}, Imported={}, Exported={}",
+                resourceId, initialState, finalState, totalImported, totalExported);
+            FPSCompress.LOGGER.info("    Storage delta={}, Flow delta={}, FULL NET={}",
+                storageDelta, flowDelta, netProduction);
+
+            if (Math.abs(netProduction) >= 1) {
+                aggregateNetProduction.put(resourceId, netProduction);
+            }
+        }
+
+        // Step 2: Distribute aggregate net production to UUIDs based on their flow contribution
         for (UUID uuid : trackedUUIDs) {
             for (String resourceId : deltaTracker.getTrackedResourcesForUUID(uuid)) {
-                long totalImported = deltaTracker.getTotalImportedForUUID(uuid, resourceId);
-                long totalExported = deltaTracker.getTotalExportedForUUID(uuid, resourceId);
+                long uuidImported = deltaTracker.getTotalImportedForUUID(uuid, resourceId);
+                long uuidExported = deltaTracker.getTotalExportedForUUID(uuid, resourceId);
+                long uuidFlowDelta = uuidExported - uuidImported;
 
-                // Net production for this UUID: positive = output, negative = input
-                long netProduction = totalExported - totalImported;
+                // Get aggregate values
+                long aggregateImported = deltaTracker.getTotalImported(resourceId);
+                long aggregateExported = deltaTracker.getTotalExported(resourceId);
+                long aggregateFlowDelta = aggregateExported - aggregateImported;
 
-                // Log detailed breakdown
-                FPSCompress.LOGGER.info("  UUID {}: {}: Imported={}, Exported={}, Net={}",
-                    uuid.toString().substring(0, 8), resourceId, totalImported, totalExported, netProduction);
+                // Calculate this UUID's share of the aggregate net production
+                Long aggregateNet = aggregateNetProduction.get(resourceId);
+                if (aggregateNet == null) {
+                    continue; // Resource filtered out (negligible production)
+                }
 
-                // Skip if negligible (passthrough detection)
-                if (Math.abs(netProduction) < 1) {
-                    FPSCompress.LOGGER.info("    Negligible net production, excluding from rates");
+                // Proportional distribution based on flow contribution
+                long uuidNetProduction;
+                if (aggregateFlowDelta == 0) {
+                    // No flow delta - all UUIDs get equal share of storage delta
+                    int uuidCount = (int) trackedUUIDs.stream()
+                        .filter(u -> deltaTracker.getTrackedResourcesForUUID(u).contains(resourceId))
+                        .count();
+                    uuidNetProduction = aggregateNet / Math.max(1, uuidCount);
+                } else {
+                    // Proportional to flow contribution
+                    double proportion = (double) uuidFlowDelta / aggregateFlowDelta;
+                    uuidNetProduction = Math.round(aggregateNet * proportion);
+                }
+
+                FPSCompress.LOGGER.info("  UUID {}: {}: Flow={}, Proportion share of net={}",
+                    uuid.toString().substring(0, 8), resourceId, uuidFlowDelta, uuidNetProduction);
+
+                // Skip if negligible after distribution
+                if (Math.abs(uuidNetProduction) < 1) {
+                    FPSCompress.LOGGER.info("    Negligible after distribution, excluding from rates");
                     continue;
                 }
 
                 // Calculate rate per tick
-                double ratePerTick = (double) netProduction / totalTicks;
+                double ratePerTick = (double) uuidNetProduction / totalTicks;
 
                 // Only store non-zero rates (threshold: 0.0001 items/tick)
                 if (Math.abs(ratePerTick) >= 0.0001) {
@@ -1828,7 +1875,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                     FPSCompress.LOGGER.info(
                         "Calculated per-UUID rate for {} ({}): {} items/tick (net: {} over {} ticks)",
                         uuid.toString().substring(0, 8), resourceId, ratePerTick,
-                        netProduction, totalTicks);
+                        uuidNetProduction, totalTicks);
                 }
             }
         }
