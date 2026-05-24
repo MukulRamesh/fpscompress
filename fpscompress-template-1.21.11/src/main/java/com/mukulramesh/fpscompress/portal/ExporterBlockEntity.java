@@ -39,7 +39,7 @@ public class ExporterBlockEntity extends BlockEntity {
     // Player right-clicks with an item to set the frequency
     private ItemStack frequencyItem = ItemStack.EMPTY;
 
-    // Internal buffer (9 slots, items only for MVP)
+    // Internal buffer (9 slots for items)
     private final ItemStackHandler inventory = new ItemStackHandler(9) {
         @Override
         protected void onContentsChanged(int slot) {

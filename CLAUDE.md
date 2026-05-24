@@ -48,22 +48,21 @@ FPSCompress is a NeoForge 1.21.11 Minecraft mod implementing a factory compressi
 - **PreFabs are conduits, not storage** - resources transport instantly between dimensions
 - **Caching is the primary goal** - Everything else exists to enable the caching system
 - **Importer/Exporter clarity** - Clear input/output points (no complex coordinate math)
-- **Vanilla-only for MVP** - No AE2, no Controller block, no external mod integrations until caching works
+- **Vanilla-first approach** - Core system works with vanilla, mod integration as optional enhancements
 
 ### Current State
 
-**Codebase Status**: Cleaned up, deprecated code removed
-- Active source: 19 Java files in `src/main/java/`
-- Deprecated code: Deleted from project (preserved in git history)
+**Codebase Status**: Core system complete, active development on enhancements
+- Active source: 19+ Java files in `src/main/java/`
+- Core Features: ✅ Face configuration, Importer/Exporter system, rate measurement, cached production
 - Documentation: Complete, organized (see START_HERE.md)
 
-**Implementation Status**: Architecture defined, ready for Phase 1
-- Phase 1: Face configuration + adjacent block detection (DE-RISK)
-- Phase 2: Importer/Exporter blocks
-- Phase 3-6: Transport → Rate measurement → Caching → Wrench control
-- Phase 7-8: Enhanced GUI + Dynamic capabilities (optional)
+**Implementation Status**: v0.2.0+ (Core caching system functional)
+- ✅ Phase 1-6: Face config, Importers/Exporters, transport, rate measurement, caching, state control
+- ✅ Enhanced features: Frequency system, customizable rate units, blueprint scanning
+- 🔄 Current focus: Polish, performance optimization, advanced features (see TODO.md)
 
-**See TODO.md for complete implementation roadmap.**
+**See TODO.md for current development roadmap and CHANGELOG.md for completed features.**
 
 ---
 
@@ -423,32 +422,31 @@ Overworld:
 
 ---
 
-## Important Constraints
+## Core Features (Implemented)
 
-### MVP Scope (What IS Included)
-- ✅ One PreFab block in world
-- ✅ Importer/Exporter blocks in CM dimension
-- ✅ Face configuration (PULL/PUSH modes, UUID linking)
+### Current System Capabilities
+- ✅ PreFab block with face configuration (PULL/PUSH/DISABLED modes)
+- ✅ Importer/Exporter blocks with UUID-based linking
+- ✅ Frequency system for visual organization and rate display
 - ✅ Transport between Overworld and CM dimension
-- ✅ Rate measurement (SIMULATING state)
-- ✅ Cached production (CACHED state with fractional math)
-- ✅ Vanilla blocks only (chests, furnaces, hoppers)
+- ✅ Rate measurement with delta accounting (SIMULATING state)
+- ✅ Cached production with fractional math (CACHED state)
+- ✅ Customizable rate display units (per tick/second/minute/hour)
+- ✅ Blueprint system for factory scanning and printing
+- ✅ Vanilla blocks support (chests, furnaces, hoppers, etc.)
 
-### MVP Scope (What is NOT Included)
-- ❌ AE2 integration
-- ❌ Refined Storage integration
-- ❌ Factory Controller block
-- ❌ Multiple PreFab management
-- ❌ Any external mod integrations
-- ❌ PreFab-as-item portability
-- ❌ Advanced filters (item/fluid whitelists)
-- ❌ Anti-cheat validation (players can cheat with hidden chests, but that's post-MVP)
+### Future Enhancements (Planned)
+- 🔄 AE2 integration (optional enhancement)
+- 🔄 Refined Storage integration (optional enhancement)
+- 🔄 Factory Controller block (multi-PreFab management)
+- 🔄 Advanced filters (item/fluid whitelists)
+- 🔄 Anti-cheat validation (bidirectional redstone protocol)
 
 ### Design Principles
 - **No internal storage**: PreFabs are conduits, not chests
 - **Faces are independent**: Each face has separate config
 - **Caching is the goal**: Everything exists to enable rate-based virtual production
-- **MVP first**: Get basic caching working before adding features
+- **Vanilla-first**: Core system works without external mods
 - **Performance**: Unload CM chunks during CACHED mode (that's the whole point!)
 - **Fractional math**: Production rates < 1.0 item/tick require accumulator pattern
 
@@ -535,22 +533,27 @@ interceptor.setRoomChunkState(roomCode, false);
 
 ---
 
-## Post-MVP Features (Future)
+## Future Enhancements
 
-### Anti-Cheat Validation (v1.0+)
+### Anti-Cheat Validation
 - **Problem**: Players can place chest in CM dimension, factory "produces" from storage
 - **Solution**: Bidirectional redstone protocol for graceful shutdown validation
-- See VALIDATION_REDSTONE_PROTOCOL.md for complete specification
+- **Status**: Design complete (see VALIDATION_REDSTONE_PROTOCOL.md)
+- **Priority**: Medium (server admins can use existing tools for now)
 
-### AE2 Integration (v1.1+)
+### AE2 Integration
 - Factory Controller block holds multiple PreFab items
 - Controller exposes unified interface to AE2 network
 - Automatic resource routing via ME system
+- **Status**: Planned for future release
+- **Priority**: High community request
 
-### PreFab-as-Item (v1.2+)
+### Multi-PreFab Management
 - Store all data in item NBT (not BlockEntity)
 - Portable factories (carry in inventory, ender chest)
 - Trade PreFabs with other players
+- **Status**: Foundation complete (NBT preservation implemented)
+- **Priority**: Medium (current single-PreFab system works well)
 
 ---
 
@@ -606,17 +609,18 @@ python wiki_to_patchouli.py
 1. **START_HERE.md** - Entry point for new contributors
 2. **README_ARCHITECTURE.md** - High-level overview
 3. **IMPORTER_EXPORTER_SYSTEM.md** - How the three-block system works
-4. **MVP_SCOPE.md** - What's in/out of MVP scope
-5. **TODO.md** - Implementation roadmap (7 phases)
+4. **TODO.md** - Current development roadmap
+5. **CHANGELOG.md** - Completed features and release history
 
 **Technical Specs**:
 - **ARCHITECTURE_CONDUIT.md** - Complete technical specification
-- **ARCHITECTURE_PIVOT.md** - Why we changed from virtual buffers
-- **VALIDATION_DELTA_ACCOUNTING.md** - MVP rate measurement via import/export deltas
-- **VALIDATION_REDSTONE_PROTOCOL.md** - Post-MVP anti-cheat system
+- **ARCHITECTURE_PIVOT.md** - Why we changed from virtual buffers (historical)
+- **VALIDATION_DELTA_ACCOUNTING.md** - Rate measurement via delta accounting
+- **VALIDATION_REDSTONE_PROTOCOL.md** - Anti-cheat system design (future)
 - **CM_API_INTEGRATION.md** - Compact Machines integration details
 
 **Reference**:
+- **MVP_SCOPE.md** - Historical reference (initial implementation scope)
 - **CLEANUP_SUMMARY.md** - What was deleted and why (old code in git history)
 
 **User Documentation**:
@@ -652,17 +656,17 @@ src/main/java/com/mukulramesh/fpscompress/
 # Run in Minecraft
 ./gradlew runClient
 
-# Check what to implement next
-cat TODO.md | grep "Phase 1"
+# Check what's next
+cat TODO.md | grep "Pending Tasks"
 ```
 
 ### Getting Help
 - Questions about architecture? → See ARCHITECTURE_CONDUIT.md
 - Questions about Importers/Exporters? → See IMPORTER_EXPORTER_SYSTEM.md
-- Questions about scope? → See MVP_SCOPE.md
-- Questions about implementation? → See TODO.md
+- Questions about current features? → See CHANGELOG.md
+- Questions about next steps? → See TODO.md
 - Lost? → Read START_HERE.md
 
 ---
 
-**Ready to start? Read START_HERE.md, then follow TODO.md Phase 1!**
+**Ready to start? Read START_HERE.md for an overview, then check TODO.md for current priorities!**

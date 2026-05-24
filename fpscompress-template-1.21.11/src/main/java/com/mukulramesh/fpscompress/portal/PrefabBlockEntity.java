@@ -1229,7 +1229,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 continue; // Skip disabled faces
             }
 
-            // Only handle ITEMS for MVP (fluids/energy in Phase 7)
+            // Only handle ITEMS for now (fluids/energy support planned for future)
             if (config.getResourceType() != ResourceFilter.ITEMS
                     && config.getResourceType() != ResourceFilter.ALL) {
                 continue;

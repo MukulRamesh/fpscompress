@@ -2,8 +2,8 @@
 
 **Welcome!** This is the entry point for understanding the FPSCompress mod architecture.
 
-**Last Updated**: 2026-05-11  
-**Status**: Core MVP systems complete, polish and advanced features in progress
+**Last Updated**: 2026-05-24  
+**Status**: Core caching system complete (v0.2.0+), active development on enhancements
 
 ---
 
@@ -16,15 +16,15 @@
    - Core concept: Cache factory rates to run without chunk loading
    - Player experience walkthrough
 
-2. **MVP_SCOPE.md** (10 min read)
-   - Crystal-clear definition of what IS and ISN'T in MVP
-   - Success criteria
-   - Common scope creep to avoid
+2. **CHANGELOG.md** (10 min read)
+   - What features are already implemented
+   - Recent additions and fixes
+   - Version history
 
 3. **TODO.md** (15 min read)
-   - 7-phase implementation roadmap
-   - Tasks for each phase
-   - Testing plan
+   - Current development roadmap
+   - Pending tasks and priorities
+   - Future feature plans
 
 4. **ARCHITECTURE_CONDUIT.md** (20 min read)
    - Complete technical specification
@@ -46,13 +46,14 @@
 ### Essential Reading (Start Here)
 - ✅ **README_ARCHITECTURE.md** - What is FPSCompress?
 - ✅ **IMPORTER_EXPORTER_SYSTEM.md** - How resources enter/exit factories (READ THIS!)
-- ✅ **MVP_SCOPE.md** - What's in MVP scope?
-- ✅ **TODO.md** - Implementation roadmap
+- ✅ **CHANGELOG.md** - Completed features and version history
+- ✅ **TODO.md** - Current development roadmap
 - ✅ **ARCHITECTURE_CONDUIT.md** - Technical specification
 
 ### Reference Documentation
 - 📘 **CLAUDE.md** - Project guidelines and build commands
 - 📘 **CM_API_INTEGRATION.md** - Compact Machines integration details
+- 📘 **MVP_SCOPE.md** - Historical reference (initial implementation goals)
 - 📘 **ARCHITECTURE_PIVOT.md** - Why we changed architectures (history)
 - 📘 **CLEANUP_SUMMARY.md** - What was deleted (history)
 
@@ -174,8 +175,8 @@ Removed from project (preserved in git history - commit `11737a0`)
 
 ## ❓ Common Questions
 
-### Q: Where do I start coding?
-**A**: Read MVP_SCOPE.md, then follow TODO.md Phase 1 (Face Config Data Structures).
+### Q: Where do I start contributing?
+**A**: Read CHANGELOG.md to understand current features, then check TODO.md "Pending Tasks" section for next priorities.
 
 ### Q: Why was code deleted?
 **A**: Architecture changed from virtual buffer storage to conduit transport. Old code removed to reduce project clutter. All files preserved in git history (commit `11737a0`).
@@ -183,17 +184,17 @@ Removed from project (preserved in git history - commit `11737a0`)
 ### Q: What's the goal of this mod?
 **A**: Cache factory production rates so factories can run without loading chunks (performance optimization).
 
-### Q: Why no AE2 integration?
-**A**: MVP focuses on proving caching works. AE2 is post-MVP (see MVP_SCOPE.md).
+### Q: What features are already working?
+**A**: Core caching system is complete! Face configuration, Importer/Exporter linking, rate measurement, cached production, frequency system, blueprint scanning. See CHANGELOG.md.
 
 ### Q: Do I need to understand the old virtual buffer system?
 **A**: No! New architecture is simpler. Ignore deprecated code unless curious about history.
 
-### Q: What's the compilation status?
-**A**: ⚠️ Code compiles but has deprecated dependencies. Phase 1-2 will fix compilation by implementing new system.
+### Q: When will AE2 integration be added?
+**A**: Planned as a future enhancement. Core system works great with vanilla blocks now.
 
-### Q: How long will MVP take?
-**A**: Estimated 4-6 weeks (see TODO.md "Priority Order" section).
+### Q: What's next for development?
+**A**: See TODO.md "Pending Tasks" section for current priorities (performance optimizations, advanced features, polish).
 
 ---
 
@@ -201,10 +202,10 @@ Removed from project (preserved in git history - commit `11737a0`)
 
 ### Documentation
 - [README_ARCHITECTURE.md](README_ARCHITECTURE.md) - High-level overview
-- [MVP_SCOPE.md](MVP_SCOPE.md) - Scope definition
-- [TODO.md](TODO.md) - Implementation roadmap
+- [CHANGELOG.md](../CHANGELOG.md) - Completed features and releases
+- [TODO.md](TODO.md) - Current development roadmap
 - [ARCHITECTURE_CONDUIT.md](ARCHITECTURE_CONDUIT.md) - Technical spec
-- [CLAUDE.md](CLAUDE.md) - Project guidelines
+- [CLAUDE.md](../CLAUDE.md) - Project guidelines
 
 ### Code
 - [Source files](../fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/) - Active code
@@ -249,15 +250,16 @@ cd "fpscompress-template-1.21.11"
 - Understand: "Conduits not storage, PULL/PUSH faces, fractional math"
 - Core system is complete, review existing code
 
-### Day 3: Review Current Code
+### Day 3: Review Implemented Features
+- Read CHANGELOG.md to see what's already complete
 - Browse source files in `../fpscompress-template-1.21.11/src/main/java/`
 - Key files: PrefabBlockEntity.java, ImporterBlock.java, ExporterBlock.java
 - Understand how face configs, transport, and caching work
 
-### Day 4: Understand Next Steps
-- Read TODO.md to see what's left
-- Read MVP_SCOPE.md "Post-MVP Features" section
-- Identify areas where you can contribute
+### Day 4: Find Contribution Opportunities
+- Read TODO.md "Pending Tasks" section
+- Review planned enhancements in CLAUDE.md "Future Enhancements"
+- Identify areas where you can contribute (polish, optimizations, new features)
 
 ### Day 5: Start Contributing
 - Pick a feature from "In progress" section of README.md

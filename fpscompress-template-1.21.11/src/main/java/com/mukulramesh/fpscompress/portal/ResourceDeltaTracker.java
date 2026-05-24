@@ -13,13 +13,15 @@ import java.util.UUID;
 /**
  * Tracks import/export deltas for rate measurement during SIMULATING state.
  *
- * <p>MVP Implementation: Only tracks totalImported and totalExported.
- * Initial/Final state scanning is POST-MVP (v1.0+ anti-cheat validation).
+ * <p>Current Implementation: Tracks both flow deltas (totalImported/Exported) and
+ * storage deltas (initialState/finalState) for accurate rate measurement.
  *
- * <p>Formula: Net Production = Exported - Imported
- * - Positive = Factory produced this resource (output)
- * - Negative = Factory consumed this resource (input)
- * - Zero = Passthrough (no production/consumption)
+ * <p>Formula: Net Production = (finalState - initialState) + (totalExported - totalImported)
+ * - Flow Delta: Resources that crossed PreFab faces during simulation
+ * - Storage Delta: Change in buffered resources (machines, Importer/Exporter buffers)
+ * - Positive net = Factory produced (output)
+ * - Negative net = Factory consumed (input)
+ * - Zero net = Passthrough (no production/consumption)
  *
  * @see <a href="../../../../../VALIDATION_DELTA_ACCOUNTING.md">VALIDATION_DELTA_ACCOUNTING.md</a>
  */
@@ -144,12 +146,12 @@ public class ResourceDeltaTracker {
     }
 
     /**
-     * Calculate net production for a resource.
-     * MVP Formula: Net = Exported - Imported
+     * Calculate net production for a resource (simplified flow-only formula).
+     * Legacy Formula: Net = Exported - Imported
      *
      * @param resourceId The resource ID
      * @return Net production (positive = produced, negative = consumed, zero = passthrough)
-     * @deprecated Use {@link #calculateNetFull(String)} for post-MVP validation with initial/final state
+     * @deprecated Use {@link #calculateNetFull(String)} for accurate delta accounting with storage deltas
      */
     @Deprecated
     public long calculateNet(String resourceId) {

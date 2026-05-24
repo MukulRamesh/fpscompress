@@ -10,11 +10,11 @@
 
 ## 📋 Document Organization
 
-This TODO list is organized with **uncompleted items at the top** for quick reference, followed by completed phases and documentation in the same order below. Jump to:
-- [Pending Tasks](#-pending-tasks) - What's left to do
-- [MVP Implementation](#-mvp-implementation-focus-here-first) - Completed phases
-- [Post-MVP Features](#-post-mvp-features-implement-after-mvp-works) - Future enhancements
-- [Testing Plan](#-testing-plan-mvp) - Test scenarios
+This TODO list is organized with **pending tasks at the top** for quick reference, followed by completed phases and documentation. Jump to:
+- [Pending Tasks](#-pending-tasks) - Current development priorities
+- [Completed Core Implementation](#-completed-core-implementation) - Phases 1-6 (caching system)
+- [Future Enhancements](#-future-enhancements) - Planned advanced features
+- [Testing Plan](#-testing-plan) - Test scenarios
 - [Reference Documents](#-reference-documents) - Related docs
 
 ---
@@ -540,31 +540,26 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ---
 
-## 🎯 MVP Implementation (Focus Here First)
+## ✅ Completed Core Implementation
 
-**MVP Scope**: Get ONE PreFab block to cache production rates correctly.
+**Core Caching System** (v0.1.0 - v0.2.0): Production rate caching is fully functional!
 
-**Explicitly OUT of scope for MVP**:
-- ❌ AE2 integration
-- ❌ Factory Controller block
-- ❌ Multiple PreFab management
-- ❌ Refined Storage integration
-- ❌ Any other mod integrations
-- ❌ PreFab-as-item portability system
-- ❌ Advanced filters (item/fluid whitelists)
-- ❌ Anti-cheat validation (trust players for MVP)
+**What Works**:
+- ✅ PreFab block with 6 configurable faces (PULL/PUSH/DISABLED)
+- ✅ Importer/Exporter blocks with UUID-based linking
+- ✅ Transport between Overworld and CM dimension
+- ✅ Rate measurement with delta accounting (SIMULATING state)
+- ✅ Cached production using fractional math (CACHED state, chunks unloaded)
+- ✅ Frequency system for visual organization
+- ✅ Customizable rate display units (per tick/second/minute/hour)
+- ✅ Blueprint system for factory scanning
+- ✅ Vanilla compatibility (hoppers, chests, furnaces, all machines)
 
-**MVP Delivers**:
-- ✅ One PreFab block in the world
-- ✅ Configure its 6 faces (PULL/PUSH/DISABLED)
-- ✅ Transport resources between Overworld and CM dimension
-- ✅ Measure production rates (SIMULATING state)
-- ✅ Run cached production using math (CACHED state, chunks unloaded)
-- ✅ Vanilla compatibility only (hoppers, chests, furnaces)
+**See CHANGELOG.md for detailed feature descriptions and version history.**
 
 ---
 
-## 🎯 MVP Implementation (Focus Here First)
+## 🎯 Completed Core Implementation
 
 ### Phase 1: Face Configuration + Adjacent Block Detection (De-risk)
 **Status**: ✅ **COMPLETE** (2026-05-02)
@@ -1093,9 +1088,9 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ---
 
-## 📋 Post-MVP Features (Implement After MVP Works)
+## 📋 Future Enhancements
 
-**All of these are explicitly OUT OF SCOPE for MVP. Only implement after core caching works perfectly.**
+**These features are planned for future releases to enhance the core caching system.**
 
 ### 1. PreFab-as-Item System (Major Feature - Post-MVP)
 **Status**: ✅ **FOUNDATION COMPLETE** (2026-05-08)
@@ -1359,7 +1354,7 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ---
 
-## 🧪 Testing Plan (MVP)
+## 🧪 Testing Plan
 
 ### Test 1: Face Config Persistence
 1. Place PreFab block
@@ -1408,35 +1403,43 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ---
 
-## 📊 Success Criteria
+## 📊 Core System Status
 
-**MVP is complete when**:
-✅ Face configs save/load from NBT correctly
-✅ Basic transport works (PULL/PUSH modes)
-✅ Rate measurement works during SIMULATING
-✅ Cached production works using fractional math
-✅ CM chunks unload during CACHED mode (performance gain!)
-✅ Cache breaking triggers HALTED state
-✅ Player can control states with wrench
+**Core Caching System** (v0.1.0 - v0.2.0): ✅ **COMPLETE**
+- ✅ Face configs save/load from NBT correctly
+- ✅ Basic transport works (PULL/PUSH modes)
+- ✅ Rate measurement with delta accounting works
+- ✅ Cached production works using fractional math
+- ✅ CM chunks unload during CACHED mode (performance gain!)
+- ✅ Cache breaking triggers HALTED state
+- ✅ State control via GUI (empty hand right-click)
+- ✅ Face configuration GUI (Shift+right-click with wrench)
+- ✅ Status display with customizable rate units
+- ✅ Frequency system for visual organization
+- ✅ Blueprint scanning and printing
 
-**Nice to have** (post-MVP):
-⭐ Face configuration GUI
-⭐ Status display (right-click without wrench)
-⭐ Item/fluid filters
-⭐ Multiple PreFab support
+**Current Focus**: Performance optimization, polish, and advanced features (see "Pending Tasks" above)
 
 ---
 
-## 🚀 Priority Order
+## 🚀 Development History
 
-**Week 1**: Phase 1 (Face config + adjacent detection + simple GUI) - **DE-RISK FIRST**
-**Week 2**: Phase 2 (Importer/Exporter blocks) + Phase 3 (Basic transport)
-**Week 3**: Phase 4 (Rate measurement) + Phase 5 (Cached production)
-**Week 4**: Phase 6 (Wrench control) + Testing
-**Week 5**: Phase 7 (Enhanced GUI - optional) + Phase 8 (Dynamic capabilities - optional)
-**Week 6**: Polish, optimization, documentation
+**Phases 1-6** (2025-2026): Core caching system implementation
+- Phase 1: Face configuration + adjacent detection ✅
+- Phase 2: Importer/Exporter blocks ✅
+- Phase 3: Basic transport ✅
+- Phase 4: Rate measurement ✅
+- Phase 5: Cached production ✅
+- Phase 6: State control + GUI ✅
 
-**Key change**: Start with adjacent block detection and minimal GUI to prove concept works before building Importers/Exporters.
+**Phase 7+** (2026): Enhanced features
+- Frequency system ✅
+- Customizable rate units ✅
+- Blueprint scanning ✅
+- Delta accounting formula upgrade ✅
+- Minimum simulation time requirement ✅
+
+**Next**: Performance optimization, advanced features, mod integrations (see TODO.md "Pending Tasks")
 
 ---
 

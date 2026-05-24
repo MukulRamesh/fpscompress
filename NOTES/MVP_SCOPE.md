@@ -1,7 +1,13 @@
-# MVP Scope Definition
+# MVP Scope Definition (Historical Reference)
 
-**Last Updated**: 2026-05-11  
-**Status**: ✅ **MVP COMPLETE** - Core systems functional, advanced features in progress
+> **NOTE**: This document is now a **historical reference**. The MVP phase is complete (v0.2.0+).  
+> For current development status, see [CHANGELOG.md](../CHANGELOG.md).  
+> For upcoming work, see [TODO.md](TODO.md) "Pending Tasks" section.
+
+**Last Updated**: 2026-05-24  
+**Status**: ✅ **MVP COMPLETE** (v0.1.0 - v0.2.0) - Core caching system fully functional
+
+This document describes the **original MVP scope** that guided initial implementation. All core features listed below are now implemented and working.
 
 ---
 

@@ -9,7 +9,7 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
  * Event handler for registering capabilities on PreFab BlockEntities.
  *
  * NOTE: Face-based capability registration intentionally NOT implemented (see TODO.md).
- * Reference: TODO.md "Phase 8: Dynamic Capabilities (Optional for MVP)"
+ * Reference: TODO.md "Phase 8: Dynamic Capabilities (Deferred)"
  *
  * Reason: PreFab uses active transport (tick-based) instead of capability exposure.
  * Hoppers/pipes interact with Importers/Exporters directly, not PreFab faces.
@@ -36,7 +36,7 @@ public final class CapabilityRegistration {
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
         // Phase 8 deferred: Active transport used instead of capability exposure
-        // See TODO.md "Phase 8: Dynamic Capabilities (Optional for MVP)"
+        // See TODO.md "Phase 8: Dynamic Capabilities (Deferred)"
         FPSCompress.LOGGER.info("PreFab capability registration - Phase 8 intentionally deferred");
     }
 }
