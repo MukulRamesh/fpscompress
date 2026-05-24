@@ -25,15 +25,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### Config Option for Permission-Based Entry (Future Enhancement)
-- [ ] Add config option to allow specific permission levels to bypass entry restriction
-  - **Use case**: Server admins (level 4) need to debug broken factories without switching to creative
-  - **Default behavior**: Creative mode only (current implementation)
-  - **Config option**: `allowedPermissionLevel` (0 = creative only, 2 = cheats enabled, 4 = full admin)
-  - **Location**: `PrefabBlock.useItemOn()` - check config value instead of hardcoded creative check
-  - **File**: Add to `FPSCompressConfig.java` (common config)
-  - **Note**: Consider security implications - lower permission levels could still break factories
-
 #### Minimum Simulation Time Requirement (Survival Mode)
 - [ ] Enforce minimum simulation duration before allowing transition to CACHED state
   - **Goal**: Prevent inaccurate rate measurements from too-short simulations
@@ -505,6 +496,32 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 **Estimated effort**: 2-3 weeks total (1 week per version)
 **Priority**: MEDIUM (MVP backoff sufficient, these are polish)
 **Performance gain**: Current 99% → Post-MVP 99.9%+
+
+### Config Option for Permission-Based Entry
+**Status**: Not started
+**Goal**: Allow server admins to bypass PreFab entry restriction for debugging
+
+**Use Case**: Server admins (permission level 4) need to debug broken factories without switching to creative mode
+
+**Implementation**:
+- [ ] Add config option to `FPSCompressConfig.java`:
+  - [ ] `allowedPermissionLevel` (default: 0 = creative only)
+  - [ ] Values: 0 (creative only), 2 (cheats enabled), 4 (full admin)
+  - [ ] Config type: COMMON (server-controlled)
+- [ ] Modify `PrefabBlock.useItemOn()`:
+  - [ ] Replace hardcoded creative check with config value lookup
+  - [ ] Check: `!serverPlayer.isCreative() && !serverPlayer.hasPermissions(config.allowedPermissionLevel)`
+- [ ] Add localization for config option description
+- [ ] Test: Level 4 admin can enter CACHED PreFab when config = 4
+- [ ] Test: Level 2 player blocked when config = 4 (only level 4+ allowed)
+
+**Security Considerations**:
+- Lower permission levels (2-3) could still break factories if allowed
+- Default to creative-only (0) for maximum safety
+- Document that enabling this assumes admins know the risks
+
+**Estimated effort**: 2-3 days
+**Priority**: LOW (QoL for server admins, not gameplay-critical)
 
 ### Per-Face Resource Filters
 **Status**: Not started
