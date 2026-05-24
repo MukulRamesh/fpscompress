@@ -25,14 +25,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### Crafting Recipes
-- [x] Add crafting recipe for PreFab Upgrade Template
-- [x] Add crafting recipe for Simulation Wrench
-- [x] Add crafting recipe for Importer block
-- [x] Add crafting recipe for Exporter block
-- [x] Ensure recipes are balanced (not too cheap/expensive)
-- [x] Test recipes in survival mode
-
 #### Documentation
 - [ ] Add Patchouli support (in-game wiki/guidebook)
   - [ ] Add Patchouli dependency to build.gradle
@@ -1272,6 +1264,17 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
   - Tooltips for items
   - UI messages (upgrade installed, simulation states, etc.)
   - State names (Building, Simulating, Cached, Halted)
+
+### 3.5. Crafting Recipes
+**Status**: ✅ **COMPLETE** (2026-05-16, v0.2.0)
+- [x] Add crafting recipe for PreFab Upgrade Template
+- [x] Add crafting recipe for Simulation Wrench
+- [x] Add crafting recipe for Importer block
+- [x] Add crafting recipe for Exporter block
+- [x] Ensure recipes are balanced (not too cheap/expensive)
+- [x] Test recipes in survival mode
+
+**Details**: See [CHANGELOG.md v0.2.0](../../CHANGELOG.md#020---2026-05-16) for full recipe specifications and JEI integration
 
 ### 4. Importer/Exporter Frequency System
 **Status**: ✅ **COMPLETE** (2026-05-16)
