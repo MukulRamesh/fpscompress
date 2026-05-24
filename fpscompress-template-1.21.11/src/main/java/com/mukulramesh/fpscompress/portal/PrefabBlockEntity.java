@@ -8,8 +8,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -27,7 +25,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,11 +43,18 @@ import net.minecraft.world.phys.AABB;
  * - Machine state (BUILDING/SIMULATING/CACHED/HALTED)
  * - Face configurations (6 independent face settings)
  * - Cached production rates (for CACHED mode fractional math)
+ *
+ * Note: Fields are package-private to allow direct access by service classes
+ * (DisplayPreferenceManager, RateCalculationEngine, PrefabNBTSerializer, etc.)
+ * This is an intentional design choice for the delegation pattern.
  */
 public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
+    // CHECKSTYLE:OFF VisibilityModifier
+    // Fields are intentionally package-private for service class access
+    // (DisplayPreferenceManager, RateCalculationEngine, PrefabNBTSerializer, etc.)
+
     // Room linkage
-    // Package-private for service access
     @Nullable
     String roomCode;
 
@@ -112,6 +116,8 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     boolean useAutoNormalize = true; // true = use auto-normalized display (default)
     com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode =
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK; // Original mode from auto-normalize
+
+    // CHECKSTYLE:ON VisibilityModifier
 
     // Delegated services (all 7 services)
     private final DisplayPreferenceManager displayManager;
@@ -1472,164 +1478,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * Separated from finishSimulation() for clarity.
      */
     private void calculateRatesAndTransition() {
-        long totalTicks = simulationEndTick - simulationStartTick;
-
-        if (totalTicks == 0) {
-            // All activity happened in same tick - use 1 tick to avoid division by zero
-            totalTicks = 1;
-            FPSCompress.LOGGER.warn("All activity in single tick - using 1 tick for rate calculation");
-        }
-
-        // Phase 6: Calculate rates per UUID using FULL formula
-        // Strategy: Calculate aggregate net production with storage delta, then distribute to UUIDs
-        clearImporterExporterRates();
-
-        // Debug: Check what's in deltaTracker
-        java.util.Set<UUID> trackedUUIDs = deltaTracker.getTrackedUUIDs();
-        FPSCompress.LOGGER.info("▶ finishSimulation: deltaTracker has {} tracked UUIDs",
-            trackedUUIDs.size());
-
-        // Step 1: Calculate aggregate net production for each resource using FULL formula
-        Map<String, Long> aggregateNetProduction = new HashMap<>();
-        for (String resourceId : deltaTracker.getAllTrackedResources()) {
-            long initialState = deltaTracker.getInitialState(resourceId);
-            long finalState = deltaTracker.getFinalState(resourceId);
-            long totalImported = deltaTracker.getTotalImported(resourceId);
-            long totalExported = deltaTracker.getTotalExported(resourceId);
-
-            // FULL FORMULA: Net = (Final - Initial) + (Exported - Imported)
-            long storageDelta = finalState - initialState;
-            long flowDelta = totalExported - totalImported;
-            long netProduction = storageDelta + flowDelta;
-
-            FPSCompress.LOGGER.info("  Aggregate {}: Init={}, Final={}, Imported={}, Exported={}",
-                resourceId, initialState, finalState, totalImported, totalExported);
-            FPSCompress.LOGGER.info("    Storage delta={}, Flow delta={}, FULL NET={}",
-                storageDelta, flowDelta, netProduction);
-
-            if (Math.abs(netProduction) >= 1) {
-                aggregateNetProduction.put(resourceId, netProduction);
-            }
-        }
-
-        // Step 2: Distribute aggregate net production to UUIDs based on their flow contribution
-        for (UUID uuid : trackedUUIDs) {
-            for (String resourceId : deltaTracker.getTrackedResourcesForUUID(uuid)) {
-                long uuidImported = deltaTracker.getTotalImportedForUUID(uuid, resourceId);
-                long uuidExported = deltaTracker.getTotalExportedForUUID(uuid, resourceId);
-                long uuidFlowDelta = uuidExported - uuidImported;
-
-                // Get aggregate values
-                long aggregateImported = deltaTracker.getTotalImported(resourceId);
-                long aggregateExported = deltaTracker.getTotalExported(resourceId);
-                long aggregateFlowDelta = aggregateExported - aggregateImported;
-
-                // Calculate this UUID's share of the aggregate net production
-                Long aggregateNet = aggregateNetProduction.get(resourceId);
-                if (aggregateNet == null) {
-                    continue; // Resource filtered out (negligible production)
-                }
-
-                // Proportional distribution based on flow contribution
-                long uuidNetProduction;
-                if (aggregateFlowDelta == 0) {
-                    // No flow delta - all UUIDs get equal share of storage delta
-                    int uuidCount = (int) trackedUUIDs.stream()
-                        .filter(u -> deltaTracker.getTrackedResourcesForUUID(u).contains(resourceId))
-                        .count();
-                    uuidNetProduction = aggregateNet / Math.max(1, uuidCount);
-                } else {
-                    // Proportional to flow contribution
-                    double proportion = (double) uuidFlowDelta / aggregateFlowDelta;
-                    uuidNetProduction = Math.round(aggregateNet * proportion);
-                }
-
-                FPSCompress.LOGGER.info("  UUID {}: {}: Flow={}, Proportion share of net={}",
-                    uuid.toString().substring(0, 8), resourceId, uuidFlowDelta, uuidNetProduction);
-
-                // Skip if negligible after distribution
-                if (Math.abs(uuidNetProduction) < 1) {
-                    FPSCompress.LOGGER.info("    Negligible after distribution, excluding from rates");
-                    continue;
-                }
-
-                // Calculate rate per tick
-                double ratePerTick = (double) uuidNetProduction / totalTicks;
-
-                // Only store non-zero rates (threshold: 0.0001 items/tick)
-                if (Math.abs(ratePerTick) >= 0.0001) {
-                    setRateForUUID(uuid, resourceId, ratePerTick);
-                    FPSCompress.LOGGER.info(
-                        "Calculated per-UUID rate for {} ({}): {} items/tick (net: {} over {} ticks)",
-                        uuid.toString().substring(0, 8), resourceId, ratePerTick,
-                        uuidNetProduction, totalTicks);
-                }
-            }
-        }
-
-        // Keep aggregate cachedRates for backward compatibility (GUI display)
-        // But derive from per-UUID rates
-        clearCachedRates();
-        for (Map<String, Double> uuidRates : importerExporterRates.values()) {
-            for (Map.Entry<String, Double> entry : uuidRates.entrySet()) {
-                cachedRates.merge(entry.getKey(), entry.getValue(), Double::sum);
-            }
-        }
-        FPSCompress.LOGGER.info("▶ Aggregate rates (for GUI): {} resources", cachedRates.size());
-
-        // Auto-normalize rates for better display
-        if (!cachedRates.isEmpty()) {
-            com.mukulramesh.fpscompress.gui.RateNormalizer.NormalizationResult autoResult =
-                com.mukulramesh.fpscompress.gui.RateNormalizer.autoNormalize(cachedRates);
-            this.autoNormalizedTicks = autoResult.normalizedTicks();
-            this.currentDisplayMode = autoResult.suggestedMode();
-            this.autoNormalizedDisplayMode = autoResult.suggestedMode(); // Store original mode
-            this.focusedResourceId = null; // Clear focus on new simulation
-            this.useAutoNormalize = true; // Enable auto-normalize by default
-            FPSCompress.LOGGER.info("Auto-normalized: {} ticks, mode {}",
-                autoNormalizedTicks, currentDisplayMode.name());
-        }
-
-        // Detect passthrough (activity occurred but net production is zero)
-        if (cachedRates.isEmpty()) {
-            // Passthrough detected - items moved but net production is zero
-            FPSCompress.LOGGER.info("Passthrough detected (net production = 0) - resetting to BUILDING");
-            lastSimulationResult = "Passthrough (no net production)";
-            setCurrentState(MachineState.BUILDING);
-            return;
-        }
-
-        // Phase 6: Validate that all UUIDs with rates have faces mapped
-        CachedConfigurationValidator.ValidationResult validation = validateCachedConfiguration();
-        if (!validation.success()) {
-            // Configuration error - reset to BUILDING (requires face reconfiguration)
-            FPSCompress.LOGGER.error("PreFab validation failed, resetting to BUILDING:");
-            for (String error : validation.errors()) {
-                FPSCompress.LOGGER.error("  {}", error);
-            }
-            lastSimulationResult = "Configuration error: " + String.join("; ", validation.errors());
-            setCurrentState(MachineState.BUILDING);
-            setChanged();
-            return;  // Don't transition to CACHED
-        }
-
-        // Log warnings (non-fatal)
-        for (String warning : validation.warnings()) {
-            FPSCompress.LOGGER.warn("PreFab validation warning: {}", warning);
-        }
-
-        // Record when CACHED state starts and reset production counters
-        cachedStateStartTick = level.getGameTime();
-        cachedProduction.clear();
-
-        // Clear result message on success (only keep failure messages visible)
-        lastSimulationResult = "";
-
-        // Transition state
-        setCurrentState(MachineState.CACHED);
-
-        FPSCompress.LOGGER.info("PreFab at {} finished simulation (tick {}), cached {} rates",
-            getBlockPos(), simulationEndTick, cachedRates.size());
+        rateEngine.calculateRatesAndTransition();
     }
 
     /**
