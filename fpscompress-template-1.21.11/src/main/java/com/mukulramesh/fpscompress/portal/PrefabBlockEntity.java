@@ -1,5 +1,6 @@
 package com.mukulramesh.fpscompress.portal;
 
+import com.mukulramesh.fpscompress.Config;
 import com.mukulramesh.fpscompress.FPSCompress;
 import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import com.mukulramesh.fpscompress.scanner.InventoryScanner;
@@ -85,6 +86,10 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     private final Map<String, Long> cachedProduction = new HashMap<>(); // Accumulated during CACHED
     private String lastSimulationResult = ""; // Result of last simulation (for GUI display)
 
+    // Minimum simulation time enforcement (Phase 2)
+    private long simulationElapsedTicks = 0; // Ticks elapsed in SIMULATING state
+    private long simulationRequiredTicks = 0; // Snapshot of config at simulation start
+
     // Phase 5: Fractional accumulators for cached production
     private final Map<String, Double> itemAccumulators = new HashMap<>(); // Resource ID → fractional accumulator
 
@@ -167,6 +172,34 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     public void setCurrentState(MachineState state) {
         this.currentState = state;
         setChanged();
+    }
+
+    /**
+     * Increment simulation elapsed time (called each tick during SIMULATING state).
+     */
+    public void incrementSimulationElapsed() {
+        simulationElapsedTicks++;
+    }
+
+    /**
+     * Get elapsed ticks in current simulation.
+     */
+    public long getSimulationElapsedTicks() {
+        return simulationElapsedTicks;
+    }
+
+    /**
+     * Get required ticks for simulation (snapshot from config at simulation start).
+     */
+    public long getSimulationRequiredTicks() {
+        return simulationRequiredTicks;
+    }
+
+    /**
+     * Check if player is in creative mode.
+     */
+    private boolean isCreativeMode(Player player) {
+        return player != null && player.getAbilities().instabuild;
     }
 
     /**
@@ -690,6 +723,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.putLong("simulationEndTick", simulationEndTick);
         }
 
+        // Save simulation timer fields (only if SIMULATING state - for minimum time enforcement)
+        if (currentState == MachineState.SIMULATING) {
+            tag.putLong("simulationElapsedTicks", simulationElapsedTicks);
+            tag.putLong("simulationRequiredTicks", simulationRequiredTicks);
+        }
+
         // TRANSIENT FIELDS (not saved for PreFab-as-Item portability):
         // - deltaTracker (only valid during active simulation)
         // - simulationStartTick (recalculate on simulation start)
@@ -776,6 +815,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         // Load simulation end tick (only if CACHED state - for GUI display)
         if (tag.contains("simulationEndTick")) {
             simulationEndTick = tag.getLong("simulationEndTick");
+        }
+
+        // Load simulation timer fields (only if SIMULATING state - for minimum time enforcement)
+        if (tag.contains("simulationElapsedTicks")) {
+            simulationElapsedTicks = tag.getLong("simulationElapsedTicks");
+        }
+        if (tag.contains("simulationRequiredTicks")) {
+            simulationRequiredTicks = tag.getLong("simulationRequiredTicks");
         }
 
         // TRANSIENT FIELDS (not loaded - will be initialized/rebuilt):
@@ -997,6 +1044,11 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                            PrefabBlockEntity prefab) {
         if (level.isClientSide()) {
             return;
+        }
+
+        // SIMULATING state: Increment elapsed time counter
+        if (prefab.getCurrentState() == MachineState.SIMULATING) {
+            prefab.incrementSimulationElapsed();
         }
 
         // Phase 5: Handle CACHED and HALTED modes (fractional production without CM chunks)
@@ -1575,6 +1627,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                             // Phase 6: Clear previous result and enter SIMULATING
                             lastSimulationResult = "";
                             simulationStartTick = level.getGameTime();
+
+                            // Capture config value at simulation start (snapshot behavior)
+                            simulationRequiredTicks = Config.SERVER.getMinimumSimulationTicks();
+                            simulationElapsedTicks = 0; // Reset counter
+                            FPSCompress.LOGGER.debug("Simulation started with minimum time requirement: {} ticks",
+                                simulationRequiredTicks);
+
                             setCurrentState(MachineState.SIMULATING);
 
                             FPSCompress.LOGGER.info("PreFab at {} entered SIMULATING state", worldPosition);
@@ -1612,6 +1671,35 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         if (cmLevel == null || roomCode == null) {
             FPSCompress.LOGGER.error("Cannot finish simulation: CM dimension or roomCode not available");
             return;
+        }
+
+        // Creative mode bypass: Allow instant finish
+        if (player != null && isCreativeMode(player)) {
+            FPSCompress.LOGGER.debug("Creative mode player finishing simulation (bypassed minimum time)");
+            // Continue to normal finish logic
+        } else {
+            // Survival mode: Enforce minimum time
+            if (simulationElapsedTicks < simulationRequiredTicks) {
+                long remainingTicks = simulationRequiredTicks - simulationElapsedTicks;
+                long remainingSeconds = remainingTicks / 20;
+                long totalMinutes = simulationRequiredTicks / 1200;
+
+                String timeMessage = String.format(
+                    "Simulation incomplete. Minimum time: %d minutes (%d seconds remaining)",
+                    totalMinutes,
+                    remainingSeconds
+                );
+
+                if (player != null) {
+                    player.displayClientMessage(
+                        Component.literal("§c" + timeMessage),
+                        false
+                    );
+                }
+
+                FPSCompress.LOGGER.info("Finish simulation blocked: {} ticks remaining", remainingTicks);
+                return; // Abort finish
+            }
         }
 
         // Check if any activity occurred

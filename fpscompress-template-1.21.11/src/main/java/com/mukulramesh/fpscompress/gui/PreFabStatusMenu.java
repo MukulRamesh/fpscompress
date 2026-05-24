@@ -91,7 +91,9 @@ public class PreFabStatusMenu extends AbstractContainerMenu {
                             prefabEntity.getLiveStats(),
                             prefabEntity.getCachedRates(),
                             prefabEntity.getCachedProduction(),
-                            prefabEntity.getLastSimulationResult()
+                            prefabEntity.getLastSimulationResult(),
+                            prefabEntity.getSimulationElapsedTicks(),
+                            prefabEntity.getSimulationRequiredTicks()
                         )
                     );
                 }

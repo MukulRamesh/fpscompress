@@ -51,6 +51,8 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     private java.util.Map<String, Double> syncedCachedRates = java.util.Collections.emptyMap();
     private java.util.Map<String, Long> syncedCachedProduction = java.util.Collections.emptyMap();
     private String syncedLastSimulationResult = "";
+    private long syncedSimulationElapsedTicks = 0; // Elapsed ticks in SIMULATING state
+    private long syncedSimulationRequiredTicks = 0; // Required ticks from config snapshot
 
     // Tooltip hover areas (set during rendering)
     private int stateY = 0;
@@ -72,13 +74,15 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
      * Update screen with fresh data from server.
      * Called by StatusGuiSyncPacket handler.
      */
-    // CHECKSTYLE.OFF: ParameterNumber - Packet data unpacking requires 9 parameters
+    // CHECKSTYLE.OFF: ParameterNumber - Packet data unpacking requires 11 parameters
     public void updateFromServer(MachineState state, long simulationStartTick, long simulationEndTick,
                                  long cachedStateStartTick, long currentTick,
                                  java.util.Map<String, long[]> liveStats,
                                  java.util.Map<String, Double> cachedRates,
                                  java.util.Map<String, Long> cachedProduction,
-                                 String lastSimulationResult) {
+                                 String lastSimulationResult,
+                                 long simulationElapsedTicks,
+                                 long simulationRequiredTicks) {
     // CHECKSTYLE.ON: ParameterNumber
         this.syncedState = state;
         this.syncedSimulationStartTick = simulationStartTick;
@@ -89,6 +93,8 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         this.syncedCachedRates = cachedRates;
         this.syncedCachedProduction = cachedProduction;
         this.syncedLastSimulationResult = lastSimulationResult;
+        this.syncedSimulationElapsedTicks = simulationElapsedTicks;
+        this.syncedSimulationRequiredTicks = simulationRequiredTicks;
     }
 
     /**
@@ -102,6 +108,49 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         } catch (Exception e) {
             // Fallback to short ID if item lookup fails
             return resourceId.contains(":") ? resourceId.substring(resourceId.indexOf(':') + 1) : resourceId;
+        }
+    }
+
+    /**
+     * Format ticks as "Xm XXs" (e.g., "2m 30s").
+     *
+     * @param ticks Number of ticks (20 ticks = 1 second)
+     * @return Formatted time string
+     */
+    private String formatTime(long ticks) {
+        long seconds = ticks / 20;
+        long minutes = seconds / 60;
+        long remainingSeconds = seconds % 60;
+        return String.format("%dm %02ds", minutes, remainingSeconds);
+    }
+
+    /**
+     * Render tooltip for state button (extracted to reduce renderTooltips() method length).
+     */
+    private void renderStateButtonTooltip(GuiGraphics graphics, MachineState state, int mouseX, int mouseY) {
+        if (state == MachineState.SIMULATING && syncedSimulationRequiredTicks > 0) {
+            // SIMULATING with minimum time: Show progress tooltip
+            Component tooltip;
+            if (syncedSimulationElapsedTicks < syncedSimulationRequiredTicks) {
+                long remaining = syncedSimulationRequiredTicks - syncedSimulationElapsedTicks;
+                tooltip = Component.literal(
+                    String.format("Survival: %s remaining | Creative: Click to finish now",
+                        formatTime(remaining))
+                );
+            } else {
+                tooltip = Component.literal("Click to finish simulation and cache rates");
+            }
+            graphics.renderTooltip(font, tooltip, mouseX, mouseY);
+        } else {
+            Component tooltip = switch (state) {
+                case BUILDING -> Component.literal("Load chunks and start measuring rates");
+                case SIMULATING -> Component.literal("Calculate rates and enter cached mode");
+                case CACHED -> Component.literal("Clear rates and return to building mode");
+                default -> Component.literal(""); // Should never happen
+            };
+            if (!tooltip.getString().isEmpty()) {
+                graphics.renderTooltip(font, tooltip, mouseX, mouseY);
+            }
         }
     }
 
@@ -246,7 +295,15 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
 
         return switch (state) {
             case BUILDING -> Component.literal("Start Simulation");
-            case SIMULATING -> Component.literal("Finish Simulation");
+            case SIMULATING -> {
+                // Show progress indication in button label
+                if (syncedSimulationRequiredTicks > 0 && syncedSimulationElapsedTicks < syncedSimulationRequiredTicks) {
+                    int percentage = (int) ((syncedSimulationElapsedTicks * 100) / syncedSimulationRequiredTicks);
+                    yield Component.literal("Simulating... " + percentage + "%");
+                } else {
+                    yield Component.literal("Finish Simulation");
+                }
+            }
             case CACHED -> Component.literal("Reset to Building");
             case HALTED -> Component.literal("Reset Cache");
         };
@@ -357,10 +414,49 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
 
         // State-specific basic stats (simplified for Control tab)
         if (syncedState == MachineState.SIMULATING) {
-            long elapsedTicks = syncedCurrentTick - syncedSimulationStartTick;
-            Component elapsedText = Component.literal("§7Elapsed: §b" + elapsedTicks + " ticks");
-            graphics.drawString(font, elapsedText, 10, yOffset, 0xFFFFFF, false);
-            yOffset += 10;
+            // Show minimum time progress if configured
+            if (syncedSimulationRequiredTicks > 0) {
+                // Time display: "Simulating: 2m 30s / 5m 00s"
+                String timeText = String.format("Simulating: %s / %s",
+                    formatTime(syncedSimulationElapsedTicks), formatTime(syncedSimulationRequiredTicks));
+                graphics.drawString(font, timeText, 10, yOffset, 0xFFFFFF, false);
+                yOffset += 15;
+
+                // Progress bar (visual)
+                int progressBarWidth = 180;
+                int progressBarHeight = 10;
+                int progressBarX = 20;
+                int progressBarY = yOffset;
+
+                // Background (unfilled)
+                graphics.fill(progressBarX, progressBarY,
+                    progressBarX + progressBarWidth, progressBarY + progressBarHeight,
+                    0xFF404040); // Dark gray
+
+                // Filled portion (green)
+                float progress = Math.min(1.0f, (float) syncedSimulationElapsedTicks / syncedSimulationRequiredTicks);
+                int filledWidth = (int) (progressBarWidth * progress);
+                graphics.fill(progressBarX, progressBarY,
+                    progressBarX + filledWidth, progressBarY + progressBarHeight,
+                    0xFF00FF00); // Bright green
+
+                // Percentage text (centered on bar)
+                int percentage = (int) (progress * 100);
+                String percentText = percentage + "%";
+                int textWidth = font.width(percentText);
+                graphics.drawString(font, percentText,
+                    progressBarX + (progressBarWidth - textWidth) / 2,
+                    progressBarY + 1, // Slight offset for centering
+                    0xFFFFFF, false);
+
+                yOffset += 20;
+            } else {
+                // No minimum time - show regular elapsed ticks
+                long elapsedTicks = syncedCurrentTick - syncedSimulationStartTick;
+                Component elapsedText = Component.literal("§7Elapsed: §b" + elapsedTicks + " ticks");
+                graphics.drawString(font, elapsedText, 10, yOffset, 0xFFFFFF, false);
+                yOffset += 10;
+            }
 
             if (menu.isCreativeMode()) {
                 Component deltaText = Component.literal("§7[Delta Accounting Active]");
@@ -720,16 +816,8 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                 renderingTooltip = true;
             } else if (state != MachineState.HALTED || !haltedConfirmationPending) {
                 // Other states: Simple tooltip (but not during confirmation)
-                Component tooltip = switch (state) {
-                    case BUILDING -> Component.literal("Load chunks and start measuring rates");
-                    case SIMULATING -> Component.literal("Calculate rates and enter cached mode");
-                    case CACHED -> Component.literal("Clear rates and return to building mode");
-                    default -> Component.literal(""); // Should never happen
-                };
-                if (!tooltip.getString().isEmpty()) {
-                    graphics.renderTooltip(font, tooltip, mouseX, mouseY);
-                    renderingTooltip = true;
-                }
+                renderStateButtonTooltip(graphics, state, mouseX, mouseY);
+                renderingTooltip = true;
             }
         }
 

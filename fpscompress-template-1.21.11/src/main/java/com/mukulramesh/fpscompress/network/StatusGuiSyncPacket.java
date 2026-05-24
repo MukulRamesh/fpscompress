@@ -25,7 +25,9 @@ public record StatusGuiSyncPacket(
     Map<String, long[]> liveStats, // resourceId → [imported, exported]
     Map<String, Double> cachedRates, // resourceId → rate
     Map<String, Long> cachedProduction, // resourceId → total produced during CACHED
-    String lastSimulationResult // Result message (e.g., "Passthrough detected", "Success")
+    String lastSimulationResult, // Result message (e.g., "Passthrough detected", "Success")
+    long simulationElapsedTicks, // Elapsed ticks in SIMULATING state (for minimum time enforcement)
+    long simulationRequiredTicks // Required ticks from config snapshot (for minimum time enforcement)
 ) implements CustomPacketPayload {
 
     public static final Type<StatusGuiSyncPacket> TYPE =
@@ -107,6 +109,8 @@ public record StatusGuiSyncPacket(
             CACHED_RATES_CODEC.encode(buf, packet.cachedRates);
             CACHED_PRODUCTION_CODEC.encode(buf, packet.cachedProduction);
             ByteBufCodecs.STRING_UTF8.encode(buf, packet.lastSimulationResult);
+            ByteBufCodecs.VAR_LONG.encode(buf, packet.simulationElapsedTicks);
+            ByteBufCodecs.VAR_LONG.encode(buf, packet.simulationRequiredTicks);
         },
         buf -> {
             MachineState state = com.mukulramesh.fpscompress.portal.MachineState.STREAM_CODEC.decode(buf);
@@ -118,9 +122,11 @@ public record StatusGuiSyncPacket(
             Map<String, Double> cachedRates = CACHED_RATES_CODEC.decode(buf);
             Map<String, Long> cachedProduction = CACHED_PRODUCTION_CODEC.decode(buf);
             String lastSimulationResult = ByteBufCodecs.STRING_UTF8.decode(buf);
+            long simulationElapsedTicks = ByteBufCodecs.VAR_LONG.decode(buf);
+            long simulationRequiredTicks = ByteBufCodecs.VAR_LONG.decode(buf);
             return new StatusGuiSyncPacket(state, simulationStartTick, simulationEndTick,
                 cachedStateStartTick, currentTick, liveStats, cachedRates, cachedProduction,
-                lastSimulationResult);
+                lastSimulationResult, simulationElapsedTicks, simulationRequiredTicks);
         }
     );
 
@@ -147,7 +153,9 @@ public record StatusGuiSyncPacket(
                     packet.liveStats,
                     packet.cachedRates,
                     packet.cachedProduction,
-                    packet.lastSimulationResult
+                    packet.lastSimulationResult,
+                    packet.simulationElapsedTicks,
+                    packet.simulationRequiredTicks
                 );
             }
         });

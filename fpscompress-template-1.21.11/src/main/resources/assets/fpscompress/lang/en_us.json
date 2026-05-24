@@ -34,6 +34,18 @@
   "fpscompress.state.cached": "Cached",
   "fpscompress.state.halted": "Halted",
 
+  "fpscompress.config.minimum_simulation_ticks": "Minimum Simulation Time (ticks)",
+  "fpscompress.config.minimum_simulation_ticks.tooltip": "Minimum time in SIMULATING state before survival players can finish (0=disabled). Creative mode bypasses this. 20 ticks = 1 second.",
+
+  "fpscompress.simulation.minimum_time_not_reached": "Simulation incomplete. Minimum time: %s (%s remaining)",
+  "fpscompress.simulation.time_format_minutes": "%dm %02ds",
+  "fpscompress.simulation.creative_bypass": "Creative mode: Minimum time bypassed",
+
+  "fpscompress.gui.simulation.elapsed_time": "Simulating: %s / %s",
+  "fpscompress.gui.simulation.progress": "Progress: %d%%",
+  "fpscompress.gui.simulation.button.finish_disabled": "Minimum simulation time not reached (%s remaining)",
+  "fpscompress.gui.simulation.button.simulating": "Simulating...",
+
   "fpscompress.configuration.title": "FPSCompress Configuration",
   "fpscompress.configuration.section.fpscompress.common.toml": "FPSCompress Configuration",
   "fpscompress.configuration.section.fpscompress.common.toml.title": "FPSCompress Configuration",

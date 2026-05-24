@@ -25,74 +25,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### Minimum Simulation Time Requirement (Survival Mode)
-- [ ] Enforce minimum simulation duration before allowing transition to CACHED state
-  - **Goal**: Prevent inaccurate rate measurements from too-short simulations
-  - **Problem**: Player starts simulation, waits 5 seconds, finishes → Rates calculated from tiny sample size → Unreliable
-  - **Current behavior**: Player can finish simulation immediately (no time limit)
-  - **Default**: 2 minutes (2400 ticks) minimum simulation time for survival players
-  - **Creative bypass**: Creative players have no minimum (instant finish for testing)
-- [ ] Implementation tasks:
-  - [ ] Add config option in `FPSCompressConfig.java`:
-    - [ ] `minimumSimulationTicks` (default: 2400 = 2 minutes)
-    - [ ] Config type: SERVER (server owner controls, syncs to clients)
-    - [ ] Range: 600 to 72000 (30 seconds to 1 hour)
-    - [ ] Description: "Minimum ticks required in SIMULATING state before survival players can cache rates"
-  - [ ] Track elapsed simulation time in `PreFabBlockEntity`:
-    - [ ] Add `long simulationElapsedTicks` field (increments each tick in SIMULATING state)
-    - [ ] Add `long simulationRequiredTicks` field (captured once at simulation start)
-    - [ ] Reset `simulationElapsedTicks` to 0 when entering SIMULATING state
-    - [ ] Capture `simulationRequiredTicks = config.minimumSimulationTicks` when entering SIMULATING state
-    - [ ] Persist both fields in NBT (survives world reload mid-simulation)
-  - [ ] Modify `startSimulation()` method:
-    - [ ] Read current config value: `config.minimumSimulationTicks`
-    - [ ] Store in `simulationRequiredTicks` field (snapshot at start)
-    - [ ] This prevents mid-simulation config changes from affecting in-progress simulations
-  - [ ] Modify `finishSimulation()` method:
-    - [ ] Check if player is creative mode → Allow immediate finish
-    - [ ] Check if `simulationElapsedTicks >= simulationRequiredTicks` → Allow finish (uses cached value, no config lookup)
-    - [ ] Otherwise → Cancel transition, show chat message: "Simulation incomplete. Minimum time: X minutes (Y minutes remaining)"
-  - [ ] Update Status GUI to show progress:
-    - [ ] Display elapsed time: "Simulating: 1m 30s / 2m 00s"
-    - [ ] Progress bar: ████████░░░░░░ 75%
-    - [ ] Disable "Finish Simulation" button until minimum time reached (survival only)
-    - [ ] Button tooltip: "Minimum simulation time not reached (30s remaining)"
-  - [ ] Add localization strings:
-    - [ ] "fpscompress.simulation.minimum_time_not_reached" → "Simulation incomplete. Minimum time: %d minutes (%d minutes remaining)"
-    - [ ] "fpscompress.gui.simulation.elapsed_time" → "Simulating: %s / %s"
-    - [ ] "fpscompress.gui.simulation.progress" → "Progress: %d%%"
-    - [ ] "fpscompress.config.minimum_simulation_ticks" → "Minimum Simulation Time (ticks)"
-  - [ ] Test cases:
-    - [ ] Survival player tries to finish after 1 minute → Blocked, message shown
-    - [ ] Survival player finishes after 2 minutes → Success
-    - [ ] Creative player tries to finish immediately → Success (no minimum)
-    - [ ] Player reloads world mid-simulation → Elapsed time AND required time persist
-    - [ ] PreFab starts simulation with 2min requirement → Config changes to 5min mid-simulation → PreFab STILL only needs 2min (captured at start)
-    - [ ] PreFab starts simulation with 5min requirement → Config changes to 2min mid-simulation → PreFab STILL needs 5min (captured at start)
-    - [ ] New PreFab starts simulation after config change → Uses NEW config value (5min)
-
-  **Why 2 minutes default**:
-  - Enough time for factory to stabilize (hoppers fill, machines warm up)
-  - Long enough to observe multiple production cycles
-  - Not so long that it's tedious for testing
-  - Prevents "spam simulation → instant cache" exploits
-
-  **Config justification**:
-  - Modpack authors may want longer times (5-10 min) for complex factories
-  - Server owners may want shorter times (1 min) for casual gameplay
-  - Creative players need no restriction for rapid prototyping
-
-  **Config snapshot behavior**:
-  - Config value captured ONCE when simulation starts (stored in `simulationRequiredTicks`)
-  - In-progress simulations unaffected by config changes (prevents mid-simulation rule changes)
-  - New simulations always use current config value
-  - Performance: No config lookups during `finishSimulation()` (uses cached `simulationRequiredTicks`)
-  - Fairness: Player knows exact time requirement when they start (doesn't change mid-simulation)
-  - Example: Start simulation with 2min requirement → Config changes to 5min → Finish after 2min (original requirement honored)
-
-  **Priority**: MEDIUM-HIGH (improves rate measurement accuracy, prevents exploit)
-  **Estimated effort**: 3-5 days (config system, GUI updates, timer tracking)
-
 #### Customizable Rate Units (Status GUI Enhancement)
 - [ ] Add configurable rate display modes to PreFab status GUI
   - **Goal**: Allow players to view rates in different time scales and normalize to specific items
@@ -685,6 +617,46 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ---
 
+## 🧹 Code Cleanup & Technical Debt
+
+**Note**: These items don't add features but improve code quality and maintainability.
+
+### Remove Deprecated FPSDataAttachments Stub
+**Status**: Blocked by registry reference
+**File**: `portal/FPSDataAttachments.java:12`
+
+- [ ] Remove `FPSDataAttachments.ATTACHMENT_TYPES.register(modEventBus);` from `FPSCompress.java:209`
+- [ ] Test world loading with old save files (verify no crashes from missing attachments)
+- [ ] Delete `portal/FPSDataAttachments.java` completely
+
+**Why**: Deprecated stub kept for backward compatibility with old virtual buffer system (removed in Phase 1-2)
+**Priority**: LOW (no functional impact, pure cleanup)
+**Estimated effort**: 1-2 hours (mostly testing old saves)
+
+---
+
+### Refactor PreFabConfigScreen Architecture
+**Status**: Not started
+**File**: `gui/PreFabConfigScreen.java:26`
+
+**Problem**: Current GUI uses AbstractContainerScreen incorrectly - functional but not architecturally sound.
+
+**Improvements needed**:
+- [ ] Create proper container GUI with inventory slots (not hack with no slots)
+- [ ] Mode/Filter should be labels (read-only), not clickable buttons
+  - **Issue**: Buttons imply actions, but mode/filter are state displays
+  - **Fix**: Use radio button groups or toggle switches for selection
+- [ ] Add proper texture background instead of transparent overlay
+- [ ] Separate face selection from configuration (use tabs or pages)
+- [ ] Add visual feedback showing which Importer/Exporter each face links to
+- [ ] Consider using Minecraft's built-in GUI components (ButtonWidget, etc.)
+
+**Why**: Current implementation works but violates GUI best practices. Future maintainers may struggle.
+**Priority**: LOW (functional, but technical debt)
+**Estimated effort**: 1 week (GUI rewrite, testing)
+
+---
+
 ## 🎯 MVP Implementation (Focus Here First)
 
 **MVP Scope**: Get ONE PreFab block to cache production rates correctly.
@@ -1146,6 +1118,10 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 ---
 
 ### Phase 8: Dynamic Capabilities (Optional for MVP)
+**STATUS NOTE**: This phase is intentionally DEFERRED (not pending). It represents a documented architectural decision, not unfinished work.
+
+**In-Code References**: See `portal/CapabilityRegistration.java` for implementation stub and rationale.
+
 **Status**: Deferred - Not needed for MVP
 **Goal**: Expose IItemHandler capabilities on PreFab faces
 
@@ -1231,6 +1207,72 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - [x] Display "(Legacy)" suffix for blocks without roomCode
 
 **Performance**: O(1) filtering via HashMap secondary index - scales to thousands of gates with no degradation
+
+### 2.5. Completed: Minimum Simulation Time Requirement
+**Status**: ✅ **COMPLETE** (2026-05-24)
+**Goal**: Enforce minimum simulation duration to prevent inaccurate rate measurements from too-short simulations
+
+**Implementation Summary**:
+- [x] **Config System**: Added `minimumSimulationTicks` to ServerConfig (default: 2400 = 2 minutes, range: 0-72000)
+  - Type: SERVER (runtime changes without restart, syncs to clients)
+  - Set to 0 to disable minimum time requirement
+  - Added accessor method `getMinimumSimulationTicks()` for checkstyle compliance
+
+- [x] **Timer Tracking**: Two fields added to `PrefabBlockEntity`
+  - `simulationElapsedTicks`: Increments each tick during SIMULATING state
+  - `simulationRequiredTicks`: Config snapshot captured at simulation start (immune to mid-simulation changes)
+  - Both persist in NBT for world reload support
+  - `incrementSimulationElapsed()` method called from `tick()` during SIMULATING state
+
+- [x] **Server-Side Enforcement**: Modified `finishSimulation()` method
+  - Creative mode check via `isCreativeMode(player)` helper (bypasses minimum time)
+  - Survival players blocked if `elapsedTicks < requiredTicks`
+  - Shows chat message: "Simulation incomplete. Minimum time: X minutes (Y seconds remaining)"
+  - Uses config snapshot (no mid-simulation rule changes)
+
+- [x] **GUI Updates**: Visual feedback in `PreFabStatusScreen` during SIMULATING state
+  - Time display: "Simulating: 2m 30s / 5m 00s" (formatted via `formatTime()` helper)
+  - Progress bar: Visual green bar (0xFF00FF00) on dark gray background (0xFF404040)
+  - Percentage text centered on progress bar
+  - Button label: "Simulating... X%" (before minimum) or "Finish Simulation" (after minimum)
+  - Tooltip: "Survival: Xm XXs remaining | Creative: Click to finish now" (before minimum)
+  - Tooltip: "Click to finish simulation and cache rates" (after minimum)
+
+- [x] **Network Sync**: Updated `StatusGuiSyncPacket` to include timer fields
+  - Added `simulationElapsedTicks` and `simulationRequiredTicks` to packet record
+  - Updated codec to encode/decode new fields
+  - Modified `PreFabStatusMenu` to send timer values
+  - Updated `PreFabStatusScreen.updateFromServer()` signature (11 parameters)
+
+- [x] **Localization**: Added translation strings to `en_us.json`
+  - `fpscompress.config.minimum_simulation_ticks` and tooltip
+  - `fpscompress.simulation.minimum_time_not_reached`
+  - `fpscompress.gui.simulation.*` entries for GUI display
+
+**Files Modified**:
+- `Config.java` - ServerConfig class with minimum time option
+- `FPSCompress.java` - Changed config type to SERVER
+- `PrefabBlockEntity.java` - Timer fields, enforcement, NBT persistence
+- `StatusGuiSyncPacket.java` - Added timer fields to packet
+- `PreFabStatusMenu.java` - Include timer in packet creation
+- `PreFabStatusScreen.java` - Progress bar, time display, tooltips
+- `en_us.json` - Localization strings
+
+**Config Snapshot Behavior**:
+- Value captured ONCE at simulation start (stored in `simulationRequiredTicks`)
+- In-progress simulations unaffected by config changes (prevents mid-simulation rule changes)
+- Example: Start with 2min requirement → Config changes to 5min → Finish after 2min (original requirement honored)
+
+**Code Quality**:
+- ✅ Compilation: SUCCESS
+- ✅ SpotBugs: No bugs found
+- ⚠️ Checkstyle: 1 warning (PrefabBlockEntity.java file length 2070/2000 - acceptable growth for feature)
+
+**Ready for Testing** (manual test cases in TODO):
+- Survival player enforcement (blocked before minimum, allowed after)
+- Creative player bypass (instant finish)
+- World reload persistence (timer continues)
+- Config snapshot behavior (mid-simulation changes don't affect in-progress simulations)
 
 ### 3. Completed Polish & UX
 **Status**: ✅ **COMPLETE** (2026-05-12)

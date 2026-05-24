@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Minimum Simulation Time Requirement**: Enforce minimum duration before allowing CACHED transition
+  - **Config**: `minimumSimulationTicks` (default: 2400 = 2 minutes, range: 0-72000 ticks)
+    - Type: SERVER (runtime changes without restart, syncs to clients)
+    - Set to 0 to disable minimum time requirement
+  - **Timer Tracking**: Two fields added to `PrefabBlockEntity`
+    - `simulationElapsedTicks`: Increments each tick during SIMULATING state
+    - `simulationRequiredTicks`: Config snapshot captured at simulation start (immune to mid-simulation changes)
+    - Both persist in NBT for world reload support
+  - **Enforcement**: Server-side validation in `finishSimulation()` method
+    - Survival players blocked if `elapsedTicks < requiredTicks` with chat message showing remaining time
+    - Creative players bypass minimum time (instant finish for rapid prototyping)
+  - **GUI Updates**: Visual feedback in Status screen during SIMULATING state
+    - Time display: "Simulating: 2m 30s / 5m 00s" (formatted as minutes:seconds)
+    - Progress bar: Visual green bar showing 0-100% completion
+    - Button label: "Simulating... X%" (before minimum) or "Finish Simulation" (after minimum)
+    - Tooltip: "Survival: Xm XXs remaining | Creative: Click to finish now"
+  - **Config Snapshot Behavior**: Value captured once at simulation start, not re-read at finish
+    - Prevents mid-simulation rule changes from affecting in-progress simulations
+    - Example: Start with 2min requirement → Config changes to 5min → Finish after 2min (original requirement honored)
+  - **Purpose**: Prevents inaccurate rate measurements from too-short simulations (e.g., 5-second "spam simulation → instant cache" exploits)
+  - Files modified: `Config.java`, `PrefabBlockEntity.java`, `StatusGuiSyncPacket.java`, `PreFabStatusScreen.java`, `PreFabStatusMenu.java`, `en_us.json`
+  - Completed: 2026-05-24
+
 - **PreFab Entry Protection**: Survival players cannot enter PreFabs during active operation
   - Blocks entry to PreFabs in SIMULATING, CACHED, or HALTED states (only BUILDING allows entry)
   - Creative mode players can always enter for testing/debugging purposes
