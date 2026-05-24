@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-05-24
+
 ### Added
 - **Customizable Rate Display Units**: Enhanced PreFab status GUI with flexible rate visualization
   - **Time Scale Toggle**: Button cycles through 5 display modes (Auto → Per Tick → Per Second → Per Minute → Per Hour)
@@ -40,24 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Files modified: `PrefabBlockEntity.java` (5 new fields + NBT), `StatusGuiSyncPacket.java` (5 new fields), `PreFabStatusScreen.java` (button + transformation logic), `PreFabStatusMenu.java` (sync), `Dev2TestCommands.java` (auto-normalize), `RateDisplayPreferencePacket.java` (preferences sync)
   - Completed: 2026-05-24
 
-### Changed
-- **Rate Calculation Formula**: Upgraded from MVP formula to full delta accounting formula
-  - **Old (MVP)**: `Net = Exported - Imported` (flow-only tracking)
-  - **New (Full)**: `Net = (Final - Initial) + (Exported - Imported)` (flow + storage deltas)
-  - **Storage Delta**: Accounts for items buffered in machines, Importer/Exporter buffers, and chests
-  - **Flow Delta**: Tracks items that physically crossed PreFab faces during simulation
-  - **Distribution**: Aggregate net production distributed to UUIDs proportionally based on flow contribution
-  - **Purpose**: Prevents underestimating rates when items buffer inside factory during simulation
-  - **Purpose**: Prevents overestimating rates when items are exported from existing storage
-  - **Example**: Furnace smelts 64 coal → 64 iron, but only 32 iron exported (32 buffered)
-    - Old: `Net = 32 - 0 = 32` (underestimate)
-    - New: `Net = (32 - 0) + (32 - 0) = 64` (correct!)
-  - **Files Modified**: `PrefabBlockEntity.java` (rate calculation in `calculateRatesAndTransition()`)
-  - **Technical**: Storage delta from room-wide scans distributed proportionally to UUIDs based on their relative flow
-  - **Edge Cases**: Zero flow delta splits storage equally; passthrough still detected when both deltas sum to zero
-  - Completed: 2026-05-24
-
-### Added
 - **Minimum Simulation Time Requirement**: Enforce minimum duration before allowing CACHED transition
   - **Config**: `minimumSimulationTicks` (default: 2400 = 2 minutes, range: 0-72000 ticks)
     - Type: SERVER (runtime changes without restart, syncs to clients)
@@ -88,6 +74,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents accidental factory breakage from entering unloaded dimensions during CACHED mode
   - Location: `PrefabBlock.useItemOn()` checks state before teleporting player
   - Future enhancement: Config option to allow specific permission levels to bypass restriction
+
+### Changed
+- **Rate Calculation Formula**: Upgraded from MVP formula to full delta accounting formula
+  - **Old (MVP)**: `Net = Exported - Imported` (flow-only tracking)
+  - **New (Full)**: `Net = (Final - Initial) + (Exported - Imported)` (flow + storage deltas)
+  - **Storage Delta**: Accounts for items buffered in machines, Importer/Exporter buffers, and chests
+  - **Flow Delta**: Tracks items that physically crossed PreFab faces during simulation
+  - **Distribution**: Aggregate net production distributed to UUIDs proportionally based on flow contribution
+  - **Purpose**: Prevents underestimating rates when items buffer inside factory during simulation
+  - **Purpose**: Prevents overestimating rates when items are exported from existing storage
+  - **Example**: Furnace smelts 64 coal → 64 iron, but only 32 iron exported (32 buffered)
+    - Old: `Net = 32 - 0 = 32` (underestimate)
+    - New: `Net = (32 - 0) + (32 - 0) = 64` (correct!)
+  - **Files Modified**: `PrefabBlockEntity.java` (rate calculation in `calculateRatesAndTransition()`)
+  - **Technical**: Storage delta from room-wide scans distributed proportionally to UUIDs based on their relative flow
+  - **Edge Cases**: Zero flow delta splits storage equally; passthrough still detected when both deltas sum to zero
+  - Completed: 2026-05-24
 
 ### Fixed
 - **Documentation Clarity**: Fixed widespread misconception about Simulation Wrench usage
@@ -271,7 +274,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Room-based filtering system
 - Basic registry tracking
 
-[Unreleased]: https://github.com/mukulramesh/fpscompress/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mukulramesh/fpscompress/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mukulramesh/fpscompress/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mukulramesh/fpscompress/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mukulramesh/fpscompress/compare/v0.1.0-alpha...v0.2.0
 [0.1.0-alpha]: https://github.com/mukulramesh/fpscompress/releases/tag/v0.1.0-alpha

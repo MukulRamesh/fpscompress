@@ -50,67 +50,79 @@ import net.minecraft.world.phys.AABB;
 public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
 
     // Room linkage
+    // Package-private for service access
     @Nullable
-    private String roomCode;
+    String roomCode;
 
     @Nullable
-    private BlockPos roomCenter;
+    BlockPos roomCenter;
 
     // Room dimensions (internal size - can be non-cubic, e.g., 5x3x7)
     @Nullable
-    private Integer roomSizeX;
+    Integer roomSizeX;
     @Nullable
-    private Integer roomSizeY;
+    Integer roomSizeY;
     @Nullable
-    private Integer roomSizeZ;
+    Integer roomSizeZ;
 
     // Machine state
-    private MachineState currentState = MachineState.BUILDING;
+    MachineState currentState = MachineState.BUILDING;
 
     // Face configurations (Phase 1)
-    private final Map<Direction, FaceConfig> faceConfigs = new EnumMap<>(Direction.class);
+    final Map<Direction, FaceConfig> faceConfigs = new EnumMap<>(Direction.class);
 
     // Cached production rates: resource ID → rate per tick (positive = output, negative = input)
-    private final Map<String, Double> cachedRates = new HashMap<>();
+    final Map<String, Double> cachedRates = new HashMap<>();
 
     // Phase 6: Per-UUID rate storage for multi-output routing
     // Maps equipment UUID → (resource ID → rate per tick)
     // Example: {ExporterUUID-A: {iron: +5.0}, ExporterUUID-B: {copper: +3.0}}
-    private final Map<UUID, Map<String, Double>> importerExporterRates = new HashMap<>();
+    final Map<UUID, Map<String, Double>> importerExporterRates = new HashMap<>();
 
     // Phase 4: Rate measurement during SIMULATING state
-    private ResourceDeltaTracker deltaTracker = new ResourceDeltaTracker();
-    private long simulationStartTick = 0;
-    private long simulationEndTick = 0;
-    private long cachedStateStartTick = 0; // When CACHED state started
-    private final Map<String, Long> cachedProduction = new HashMap<>(); // Accumulated during CACHED
-    private String lastSimulationResult = ""; // Result of last simulation (for GUI display)
+    ResourceDeltaTracker deltaTracker = new ResourceDeltaTracker();
+    long simulationStartTick = 0;
+    long simulationEndTick = 0;
+    long cachedStateStartTick = 0; // When CACHED state started
+    final Map<String, Long> cachedProduction = new HashMap<>(); // Accumulated during CACHED
+    String lastSimulationResult = ""; // Result of last simulation (for GUI display)
 
     // Minimum simulation time enforcement (Phase 2)
-    private long simulationElapsedTicks = 0; // Ticks elapsed in SIMULATING state
-    private long simulationRequiredTicks = 0; // Snapshot of config at simulation start
+    long simulationElapsedTicks = 0; // Ticks elapsed in SIMULATING state
+    long simulationRequiredTicks = 0; // Snapshot of config at simulation start
 
     // Phase 5: Fractional accumulators for cached production
-    private final Map<String, Double> itemAccumulators = new HashMap<>(); // Resource ID → fractional accumulator
+    final Map<String, Double> itemAccumulators = new HashMap<>(); // Resource ID → fractional accumulator
 
     // HALTED state exponential backoff (performance optimization)
-    private int haltedRetryInterval = 1; // Current retry interval (ticks)
-    private int ticksSinceLastRetry = 0; // Ticks since last retry attempt
+    int haltedRetryInterval = 1; // Current retry interval (ticks)
+    int ticksSinceLastRetry = 0; // Ticks since last retry attempt
 
     // UUID lookup caching (O(1) fast path for repeated lookups)
-    private final Map<UUID, BlockPos> importerCache = new HashMap<>();
-    private final Map<UUID, BlockPos> exporterCache = new HashMap<>();
+    final Map<UUID, BlockPos> importerCache = new HashMap<>();
+    final Map<UUID, BlockPos> exporterCache = new HashMap<>();
 
     // Display preferences (persist in NBT, synced to clients)
-    private com.mukulramesh.fpscompress.gui.RateDisplayMode currentDisplayMode =
+    // Package-private for service access
+    com.mukulramesh.fpscompress.gui.RateDisplayMode currentDisplayMode =
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
     @Nullable
-    private String focusedResourceId = null; // null = no focus
-    private int autoNormalizedTicks = 1; // LCM result (1 = no normalization)
-    private boolean useAutoNormalize = true; // true = use auto-normalized display (default)
-    private com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode =
+    String focusedResourceId = null; // null = no focus
+    int autoNormalizedTicks = 1; // LCM result (1 = no normalization)
+    boolean useAutoNormalize = true; // true = use auto-normalized display (default)
+    com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode =
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK; // Original mode from auto-normalize
 
+    // Delegated services (all 7 services)
+    private final DisplayPreferenceManager displayManager;
+    private final InventoryScanningService scanningService;
+    private final CachedProductionHandler cachedHandler;
+    private final RateCalculationEngine rateEngine;
+    private final TransportTickHandler transportHandler;
+    private final StateTransitionManager stateManager;
+    private final PrefabNBTSerializer nbtSerializer;
+
+    @SuppressWarnings("this-escape")
     public PrefabBlockEntity(BlockPos pos, BlockState state) {
         super(FPSCompress.PREFAB_BE.get(), pos, state);
 
@@ -118,6 +130,45 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         for (Direction dir : Direction.values()) {
             faceConfigs.put(dir, new FaceConfig());
         }
+
+        // Initialize service delegates (safe to pass 'this' as services only store reference)
+        this.displayManager = new DisplayPreferenceManager(this);
+        this.scanningService = new InventoryScanningService(this);
+        this.cachedHandler = new CachedProductionHandler(this);
+        this.rateEngine = new RateCalculationEngine(this);
+        this.transportHandler = new TransportTickHandler(this);
+        this.stateManager = new StateTransitionManager(this);
+        this.nbtSerializer = new PrefabNBTSerializer(this);
+    }
+
+    // ===== Service Getters (Package-private for inter-service communication) =====
+
+    RateCalculationEngine getRateEngine() {
+        return rateEngine;
+    }
+
+    CachedProductionHandler getCachedHandler() {
+        return cachedHandler;
+    }
+
+    InventoryScanningService getScanningService() {
+        return scanningService;
+    }
+
+    StateTransitionManager getStateManager() {
+        return stateManager;
+    }
+
+    TransportTickHandler getTransportHandler() {
+        return transportHandler;
+    }
+
+    DisplayPreferenceManager getDisplayManager() {
+        return displayManager;
+    }
+
+    PrefabNBTSerializer getNBTSerializer() {
+        return nbtSerializer;
     }
 
     // ===== Room Linkage Accessors =====
@@ -397,7 +448,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         return lastSimulationResult;
     }
 
-    // ===== Display Preference Accessors =====
+    // ===== Display Preference Accessors (Delegated to DisplayPreferenceManager) =====
 
     /**
      * Get current display mode for rate visualization.
@@ -405,7 +456,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @return Display mode (PER_TICK, PER_SECOND, etc.)
      */
     public com.mukulramesh.fpscompress.gui.RateDisplayMode getCurrentDisplayMode() {
-        return currentDisplayMode;
+        return displayManager.getCurrentDisplayMode();
     }
 
     /**
@@ -414,8 +465,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param mode New display mode
      */
     public void setCurrentDisplayMode(com.mukulramesh.fpscompress.gui.RateDisplayMode mode) {
-        this.currentDisplayMode = mode;
-        setChanged();
+        displayManager.setCurrentDisplayMode(mode);
     }
 
     /**
@@ -425,7 +475,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      */
     @Nullable
     public String getFocusedResourceId() {
-        return focusedResourceId;
+        return displayManager.getFocusedResourceId();
     }
 
     /**
@@ -434,8 +484,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param id Resource ID to focus on (null to clear focus)
      */
     public void setFocusedResourceId(@Nullable String id) {
-        this.focusedResourceId = id;
-        setChanged();
+        displayManager.setFocusedResourceId(id);
     }
 
     /**
@@ -444,7 +493,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @return Normalized ticks (1 = no normalization)
      */
     public int getAutoNormalizedTicks() {
-        return autoNormalizedTicks;
+        return displayManager.getAutoNormalizedTicks();
     }
 
     /**
@@ -453,8 +502,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param ticks Normalized ticks (minimum 1)
      */
     public void setAutoNormalizedTicks(int ticks) {
-        this.autoNormalizedTicks = Math.max(1, ticks);
-        setChanged();
+        displayManager.setAutoNormalizedTicks(ticks);
     }
 
     /**
@@ -463,7 +511,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @return true if using auto-normalize, false for manual time scale
      */
     public boolean getUseAutoNormalize() {
-        return useAutoNormalize;
+        return displayManager.getUseAutoNormalize();
     }
 
     /**
@@ -472,8 +520,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param use true to use auto-normalize, false for manual time scale
      */
     public void setUseAutoNormalize(boolean use) {
-        this.useAutoNormalize = use;
-        setChanged();
+        displayManager.setUseAutoNormalize(use);
     }
 
     /**
@@ -482,7 +529,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @return Display mode suggested by auto-normalize
      */
     public com.mukulramesh.fpscompress.gui.RateDisplayMode getAutoNormalizedDisplayMode() {
-        return autoNormalizedDisplayMode;
+        return displayManager.getAutoNormalizedDisplayMode();
     }
 
     /**
@@ -491,8 +538,7 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      * @param mode Display mode from auto-normalize
      */
     public void setAutoNormalizedDisplayMode(com.mukulramesh.fpscompress.gui.RateDisplayMode mode) {
-        this.autoNormalizedDisplayMode = mode;
-        setChanged();
+        displayManager.setAutoNormalizedDisplayMode(mode);
     }
 
     /**
