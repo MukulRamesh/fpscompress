@@ -25,76 +25,6 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 
 ### Core System Improvements
 
-#### Customizable Rate Units (Status GUI Enhancement)
-**Status**: ✅ **COMPLETE** (2026-05-24)
-**Goal**: Allow players to view rates in different time scales and normalize to specific items
-
-**Implementation Summary**:
-- [x] **Time Scale Toggle**: Button cycles through 5 modes (Auto → Per Tick → Per Second → Per Minute → Per Hour)
-  - Converts rates: Per Second (×20), Per Minute (×1200), Per Hour (×72000)
-  - Always displays 2 decimal places for consistency
-  - Button label shows current mode: "⏱ Per Second" or "⏱ 2 Ticks" (auto mode)
-  - Restores original auto-normalized mode when cycling back from PER_HOUR
-  
-- [x] **Item-Focused Normalization**: Click any resource to normalize all rates to "per 1 unit of that item"
-  - Example: Click iron (0.5/tick) → Shows "1 iron, 8 coal per 2 ticks"
-  - Visual highlight: Green background + border on focused item
-  - Click again to unfocus and return to auto-normalize
-  
-- [x] **Auto-Normalization (LCM Algorithm)**: Finds smallest time window for whole-number display
-  - Cascading time scales: Try ticks (100 max) → seconds (100s max) → minutes (10min max) → hours
-  - Example: 0.5 iron, 4 coal → Auto-normalize to "1 iron, 8 coal per 2 ticks"
-  - Prevents awkward displays like "50,000 iron per 10,000 ticks"
-  - Default mode when PreFab enters CACHED state or test PreFab created
-  
-- [x] **Preference Persistence**: All settings stored server-side in NBT
-  - Survives GUI close/reopen, world reload, block break/place
-  - Multiple players see identical normalized view
-  - Fields: `displayMode`, `focusedResourceId`, `autoNormalizedTicks`, `useAutoNormalize`, `autoNormalizedDisplayMode`
-  
-- [x] **Smart Tooltips**: Show appropriate units based on mode
-  - Item-focused: "per 1 Iron Ingot" (localized item name)
-  - Auto-normalized: "per 2 ticks" or "per 5 seconds"
-  - Manual modes: "per tick/second/minute/hour"
-
-**Files Created**:
-- [x] `RateDisplayMode.java` - Enum with 4 time scale modes (PER_TICK, PER_SECOND, PER_MINUTE, PER_HOUR)
-  - Methods: `getMultiplier()`, `getDisplayName()`, `formatRate()`, `next()`
-- [x] `RateNormalizer.java` - Pure math utility for LCM calculation and rate normalization
-  - Methods: `autoNormalize()` (cascading LCM), `normalizeToItem()`, `toFraction()`, `calculateLCM()`
-  - Records: `NormalizationResult`, `Fraction`
-- [x] `RateDisplayPreferencePacket.java` - Client → Server preference sync (5 parameters)
-
-**Files Modified**:
-- [x] `PrefabBlockEntity.java` - Added 5 preference fields + NBT persistence
-  - Fields: `currentDisplayMode`, `focusedResourceId`, `autoNormalizedTicks`, `useAutoNormalize`, `autoNormalizedDisplayMode`
-  - Auto-normalize triggered in `finishSimulation()` (after rates cached)
-  - Preferences cleared in `resetToBuilding()`
-- [x] `StatusGuiSyncPacket.java` - Extended to 16 parameters (added 5 display preference fields)
-- [x] `PreFabStatusScreen.java` - Major GUI changes
-  - Added time scale cycle button (top-right)
-  - Added click detection on resource items
-  - Implemented `transformRatesForDisplay()` (5 parameters)
-  - Updated tooltips to show appropriate units
-  - Removed star icon, removed reset button (not needed)
-- [x] `PreFabStatusMenu.java` - Pass 5 new parameters to sync packet
-- [x] `Dev2TestCommands.java` - Test PreFabs auto-normalize on creation
-
-**Test Cases Completed**:
-- [x] Simple rates (0.5 iron, 4 coal) → Auto-normalize to 2 ticks
-- [x] Click item → All rates scale to "per 1 unit of clicked item"
-- [x] Cycle time scale → Rates convert correctly (×20, ×1200, ×72000)
-- [x] Cycle back to auto → Restores original auto-normalized mode (not default PER_HOUR)
-- [x] Preferences persist across GUI close/reopen, world reload
-- [x] Test PreFabs auto-normalize on creation
-- [x] Tooltips show correct units based on mode
-
-**Code Quality**:
-- ✅ Compilation: SUCCESS
-- ✅ All linters passing (checkstyle, spotbugs, compileJava)
-
-**Result**: ✅ Players can now view rates in multiple time scales, focus on specific items, and see auto-normalized whole numbers. All preferences persist server-side and sync to all clients viewing the same PreFab.
-
 #### Crafting Recipes
 - [x] Add crafting recipe for PreFab Upgrade Template
 - [x] Add crafting recipe for Simulation Wrench
@@ -1071,6 +1001,78 @@ This TODO list is organized with **uncompleted items at the top** for quick refe
 - Modified: `ImporterExporterRegistry.java` (instant frequency sync)
 
 **Result**: ✅ Multi-output factories now support sorted routing via internal layout design. Face reconfiguration preserves routing without re-simulation.
+
+---
+
+### Customizable Rate Display Units (Status GUI Enhancement)
+**Status**: ✅ **COMPLETE** (2026-05-24)
+**Goal**: Allow players to view rates in different time scales and normalize to specific items
+
+**Implementation Summary**:
+- [x] **Time Scale Toggle**: Button cycles through 5 modes (Auto → Per Tick → Per Second → Per Minute → Per Hour)
+  - Converts rates: Per Second (×20), Per Minute (×1200), Per Hour (×72000)
+  - Always displays 2 decimal places for consistency
+  - Button label shows current mode: "⏱ Per Second" or "⏱ 2 Ticks" (auto mode)
+  - Restores original auto-normalized mode when cycling back from PER_HOUR
+  
+- [x] **Item-Focused Normalization**: Click any resource to normalize all rates to "per 1 unit of that item"
+  - Example: Click iron (0.5/tick) → Shows "1 iron, 8 coal per 2 ticks"
+  - Visual highlight: Green background + border on focused item
+  - Click again to unfocus and return to auto-normalize
+  
+- [x] **Auto-Normalization (LCM Algorithm)**: Finds smallest time window for whole-number display
+  - Cascading time scales: Try ticks (100 max) → seconds (100s max) → minutes (10min max) → hours
+  - Example: 0.5 iron, 4 coal → Auto-normalize to "1 iron, 8 coal per 2 ticks"
+  - Prevents awkward displays like "50,000 iron per 10,000 ticks"
+  - Default mode when PreFab enters CACHED state or test PreFab created
+  
+- [x] **Preference Persistence**: All settings stored server-side in NBT
+  - Survives GUI close/reopen, world reload, block break/place
+  - Multiple players see identical normalized view
+  - Fields: `displayMode`, `focusedResourceId`, `autoNormalizedTicks`, `useAutoNormalize`, `autoNormalizedDisplayMode`
+  
+- [x] **Smart Tooltips**: Show appropriate units based on mode
+  - Item-focused: "per 1 Iron Ingot" (localized item name)
+  - Auto-normalized: "per 2 ticks" or "per 5 seconds"
+  - Manual modes: "per tick/second/minute/hour"
+
+**Files Created**:
+- [x] `RateDisplayMode.java` - Enum with 4 time scale modes (PER_TICK, PER_SECOND, PER_MINUTE, PER_HOUR)
+  - Methods: `getMultiplier()`, `getDisplayName()`, `formatRate()`, `next()`
+- [x] `RateNormalizer.java` - Pure math utility for LCM calculation and rate normalization
+  - Methods: `autoNormalize()` (cascading LCM), `normalizeToItem()`, `toFraction()`, `calculateLCM()`
+  - Records: `NormalizationResult`, `Fraction`
+- [x] `RateDisplayPreferencePacket.java` - Client → Server preference sync (5 parameters)
+
+**Files Modified**:
+- [x] `PrefabBlockEntity.java` - Added 5 preference fields + NBT persistence
+  - Fields: `currentDisplayMode`, `focusedResourceId`, `autoNormalizedTicks`, `useAutoNormalize`, `autoNormalizedDisplayMode`
+  - Auto-normalize triggered in `finishSimulation()` (after rates cached)
+  - Preferences cleared in `resetToBuilding()`
+- [x] `StatusGuiSyncPacket.java` - Extended to 16 parameters (added 5 display preference fields)
+- [x] `PreFabStatusScreen.java` - Major GUI changes
+  - Added time scale cycle button (top-right)
+  - Added click detection on resource items
+  - Implemented `transformRatesForDisplay()` (5 parameters)
+  - Updated tooltips to show appropriate units
+  - Removed star icon, removed reset button (not needed)
+- [x] `PreFabStatusMenu.java` - Pass 5 new parameters to sync packet
+- [x] `Dev2TestCommands.java` - Test PreFabs auto-normalize on creation
+
+**Test Cases Completed**:
+- [x] Simple rates (0.5 iron, 4 coal) → Auto-normalize to 2 ticks
+- [x] Click item → All rates scale to "per 1 unit of clicked item"
+- [x] Cycle time scale → Rates convert correctly (×20, ×1200, ×72000)
+- [x] Cycle back to auto → Restores original auto-normalized mode (not default PER_HOUR)
+- [x] Preferences persist across GUI close/reopen, world reload
+- [x] Test PreFabs auto-normalize on creation
+- [x] Tooltips show correct units based on mode
+
+**Code Quality**:
+- ✅ Compilation: SUCCESS
+- ✅ All linters passing (checkstyle, spotbugs, compileJava)
+
+**Result**: ✅ Players can now view rates in multiple time scales, focus on specific items, and see auto-normalized whole numbers. All preferences persist server-side and sync to all clients viewing the same PreFab.
 
 ---
 
