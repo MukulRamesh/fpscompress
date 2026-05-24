@@ -72,3 +72,6 @@ Thumbs.db
 
 # Exclude local Claude plans (optional - remove if you want to commit them)
 .claude/plans/
+
+# Wiki folder (GitHub wiki clone)
+fpscompress.wiki/
