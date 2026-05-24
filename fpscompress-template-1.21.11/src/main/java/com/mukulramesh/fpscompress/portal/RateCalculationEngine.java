@@ -1,5 +1,7 @@
 package com.mukulramesh.fpscompress.portal;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import com.mukulramesh.fpscompress.FPSCompress;
 import com.mukulramesh.fpscompress.gui.RateNormalizer;
 
@@ -15,6 +17,8 @@ import java.util.UUID;
 public class RateCalculationEngine {
     private final PrefabBlockEntity entity;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+        justification = "Service class intentionally holds reference to entity for delegation pattern")
     public RateCalculationEngine(PrefabBlockEntity entity) {
         this.entity = entity;
     }

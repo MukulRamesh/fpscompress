@@ -1,5 +1,7 @@
 package com.mukulramesh.fpscompress.portal;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import com.mukulramesh.fpscompress.FPSCompress;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -20,6 +22,8 @@ import java.util.UUID;
 public class PrefabNBTSerializer {
     private final PrefabBlockEntity entity;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+        justification = "Service class intentionally holds reference to entity for delegation pattern")
     public PrefabNBTSerializer(PrefabBlockEntity entity) {
         this.entity = entity;
     }

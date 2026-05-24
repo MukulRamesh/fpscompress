@@ -1,5 +1,7 @@
 package com.mukulramesh.fpscompress.portal;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import com.mukulramesh.fpscompress.gui.RateDisplayMode;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,6 +12,8 @@ import org.jetbrains.annotations.Nullable;
 public class DisplayPreferenceManager {
     private final PrefabBlockEntity entity;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+        justification = "Service class intentionally holds reference to entity for delegation pattern")
     public DisplayPreferenceManager(PrefabBlockEntity entity) {
         this.entity = entity;
     }
