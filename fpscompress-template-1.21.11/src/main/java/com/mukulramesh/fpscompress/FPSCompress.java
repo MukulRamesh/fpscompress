@@ -271,6 +271,13 @@ public final class FPSCompress {
             com.mukulramesh.fpscompress.network.StatusGuiSyncPacket::handle
         );
         LOGGER.info("Registered network packet: StatusGuiSyncPacket");
+
+        registrar.playToServer(
+            com.mukulramesh.fpscompress.network.RateDisplayPreferencePacket.TYPE,
+            com.mukulramesh.fpscompress.network.RateDisplayPreferencePacket.STREAM_CODEC,
+            com.mukulramesh.fpscompress.network.RateDisplayPreferencePacket::handle
+        );
+        LOGGER.info("Registered network packet: RateDisplayPreferencePacket");
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call

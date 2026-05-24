@@ -1,6 +1,7 @@
 package com.mukulramesh.fpscompress.network;
 
 import com.mukulramesh.fpscompress.FPSCompress;
+import com.mukulramesh.fpscompress.gui.RateDisplayMode;
 import com.mukulramesh.fpscompress.portal.MachineState;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -8,9 +9,11 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Server → Client packet to sync PreFab status GUI data.
@@ -27,7 +30,12 @@ public record StatusGuiSyncPacket(
     Map<String, Long> cachedProduction, // resourceId → total produced during CACHED
     String lastSimulationResult, // Result message (e.g., "Passthrough detected", "Success")
     long simulationElapsedTicks, // Elapsed ticks in SIMULATING state (for minimum time enforcement)
-    long simulationRequiredTicks // Required ticks from config snapshot (for minimum time enforcement)
+    long simulationRequiredTicks, // Required ticks from config snapshot (for minimum time enforcement)
+    RateDisplayMode displayMode, // Display mode for rate visualization (PER_TICK, PER_SECOND, etc.)
+    @Nullable String focusedResourceId, // Focused resource ID (null if no focus)
+    int autoNormalizedTicks, // Auto-normalized ticks (LCM result, 1 = no normalization)
+    boolean useAutoNormalize, // true = use auto-normalized display, false = manual time scale
+    RateDisplayMode autoNormalizedDisplayMode // Original mode from LCM calculation
 ) implements CustomPacketPayload {
 
     public static final Type<StatusGuiSyncPacket> TYPE =
@@ -98,6 +106,18 @@ public record StatusGuiSyncPacket(
             }
         );
 
+    private static final StreamCodec<ByteBuf, RateDisplayMode> DISPLAY_MODE_CODEC =
+        StreamCodec.of(
+            (buf, mode) -> ByteBufCodecs.STRING_UTF8.encode(buf, mode.name()),
+            buf -> {
+                try {
+                    return RateDisplayMode.valueOf(ByteBufCodecs.STRING_UTF8.decode(buf));
+                } catch (IllegalArgumentException e) {
+                    return RateDisplayMode.PER_TICK; // Fallback
+                }
+            }
+        );
+
     public static final StreamCodec<ByteBuf, StatusGuiSyncPacket> STREAM_CODEC = StreamCodec.of(
         (buf, packet) -> {
             com.mukulramesh.fpscompress.portal.MachineState.STREAM_CODEC.encode(buf, packet.state);
@@ -111,6 +131,12 @@ public record StatusGuiSyncPacket(
             ByteBufCodecs.STRING_UTF8.encode(buf, packet.lastSimulationResult);
             ByteBufCodecs.VAR_LONG.encode(buf, packet.simulationElapsedTicks);
             ByteBufCodecs.VAR_LONG.encode(buf, packet.simulationRequiredTicks);
+            DISPLAY_MODE_CODEC.encode(buf, packet.displayMode);
+            ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8).encode(buf,
+                Optional.ofNullable(packet.focusedResourceId));
+            ByteBufCodecs.VAR_INT.encode(buf, packet.autoNormalizedTicks);
+            ByteBufCodecs.BOOL.encode(buf, packet.useAutoNormalize);
+            DISPLAY_MODE_CODEC.encode(buf, packet.autoNormalizedDisplayMode);
         },
         buf -> {
             MachineState state = com.mukulramesh.fpscompress.portal.MachineState.STREAM_CODEC.decode(buf);
@@ -124,9 +150,17 @@ public record StatusGuiSyncPacket(
             String lastSimulationResult = ByteBufCodecs.STRING_UTF8.decode(buf);
             long simulationElapsedTicks = ByteBufCodecs.VAR_LONG.decode(buf);
             long simulationRequiredTicks = ByteBufCodecs.VAR_LONG.decode(buf);
+            RateDisplayMode displayMode = DISPLAY_MODE_CODEC.decode(buf);
+            String focusedResourceId = ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8)
+                .decode(buf).orElse(null);
+            int autoNormalizedTicks = ByteBufCodecs.VAR_INT.decode(buf);
+            boolean useAutoNormalize = ByteBufCodecs.BOOL.decode(buf);
+            RateDisplayMode autoNormalizedDisplayMode = DISPLAY_MODE_CODEC.decode(buf);
             return new StatusGuiSyncPacket(state, simulationStartTick, simulationEndTick,
                 cachedStateStartTick, currentTick, liveStats, cachedRates, cachedProduction,
-                lastSimulationResult, simulationElapsedTicks, simulationRequiredTicks);
+                lastSimulationResult, simulationElapsedTicks, simulationRequiredTicks,
+                displayMode, focusedResourceId, autoNormalizedTicks, useAutoNormalize,
+                autoNormalizedDisplayMode);
         }
     );
 
@@ -155,7 +189,12 @@ public record StatusGuiSyncPacket(
                     packet.cachedProduction,
                     packet.lastSimulationResult,
                     packet.simulationElapsedTicks,
-                    packet.simulationRequiredTicks
+                    packet.simulationRequiredTicks,
+                    packet.displayMode,
+                    packet.focusedResourceId,
+                    packet.autoNormalizedTicks,
+                    packet.useAutoNormalize,
+                    packet.autoNormalizedDisplayMode
                 );
             }
         });

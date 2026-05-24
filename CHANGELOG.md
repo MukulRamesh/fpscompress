@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Customizable Rate Display Units**: Enhanced PreFab status GUI with flexible rate visualization
+  - **Time Scale Toggle**: Button cycles through 5 display modes (Auto → Per Tick → Per Second → Per Minute → Per Hour)
+    - Per Second: rate × 20 (e.g., 0.5/tick → 10.00/sec)
+    - Per Minute: rate × 1200 (e.g., 0.5/tick → 600.00/min)
+    - Per Hour: rate × 72000 (e.g., 0.5/tick → 36,000.00/hr)
+    - All rates show 2 decimal places for consistency
+  - **Auto-Normalization Mode**: Finds smallest time window for whole-number display
+    - Uses LCM (Least Common Multiple) algorithm with cascading time scales
+    - Example: 0.5 iron, 4 coal → Auto-normalize to "1 iron, 8 coal per 2 ticks"
+    - Cascading: Try per-tick (100 ticks max) → per-second (100s max) → per-minute (10min max) → per-hour
+    - Prevents awkward displays like "50,000 iron per 10,000 ticks" by using "2,500 iron per 8.33 minutes"
+    - Button shows normalized value: "⏱ 2 Ticks" when in auto mode
+  - **Item-Focused Normalization**: Click any resource in grid to normalize all rates to "per 1 unit of that item"
+    - Example: Click iron (0.5/tick) → All rates scale to "1 iron, 8 coal per 2 ticks"
+    - Visual highlight: Green background + border on focused item
+    - Click again to unfocus and return to auto-normalize
+  - **Preference Persistence**: All display settings stored server-side in NBT
+    - Survives GUI close/reopen, world reload, block break/place
+    - Multiple players viewing same PreFab see identical normalized view
+    - Original auto-normalized mode restored when cycling through all manual modes
+  - **Smart Tooltips**: Show appropriate rate units based on current mode
+    - Item-focused: "per 1 Iron Ingot" (shows actual item name)
+    - Auto-normalized: "per 2 ticks" or "per 5 seconds" (shows normalized timeframe)
+    - Manual modes: "per tick", "per second", "per minute", "per hour"
+  - **Test PreFab Support**: Command-created test PreFabs auto-normalize rates on creation
+  - **Network Synchronization**: Real-time updates via `StatusGuiSyncPacket` (16 parameters)
+    - Server → Client sync includes: `displayMode`, `focusedResourceId`, `autoNormalizedTicks`, `useAutoNormalize`, `autoNormalizedDisplayMode`
+    - Client → Server preferences via `RateDisplayPreferencePacket` (5 parameters)
+  - Files added: `RateDisplayMode.java` (enum with 4 modes), `RateNormalizer.java` (LCM algorithm)
+  - Files modified: `PrefabBlockEntity.java` (5 new fields + NBT), `StatusGuiSyncPacket.java` (5 new fields), `PreFabStatusScreen.java` (button + transformation logic), `PreFabStatusMenu.java` (sync), `Dev2TestCommands.java` (auto-normalize), `RateDisplayPreferencePacket.java` (preferences sync)
+  - Completed: 2026-05-24
+
 ### Changed
 - **Rate Calculation Formula**: Upgraded from MVP formula to full delta accounting formula
   - **Old (MVP)**: `Net = Exported - Imported` (flow-only tracking)

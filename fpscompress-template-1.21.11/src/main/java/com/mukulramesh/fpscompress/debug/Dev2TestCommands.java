@@ -771,6 +771,24 @@ public final class Dev2TestCommands {
         nbt.put("importerRegistry", buildImporterRegistry(importers, fakeRoomCode));
         nbt.put("exporterRegistry", buildExporterRegistry(exporters, fakeRoomCode));
 
+        // Auto-normalize rates for display
+        java.util.Map<String, Double> allRates = new java.util.HashMap<>();
+        for (int i = 0; i < importers.size(); i++) {
+            CompoundTag importer = importers.getCompound(i);
+            allRates.put(importer.getString("resource"), -importer.getDouble("rate")); // Negative for consumed
+        }
+        for (int i = 0; i < exporters.size(); i++) {
+            CompoundTag exporter = exporters.getCompound(i);
+            allRates.put(exporter.getString("resource"), exporter.getDouble("rate")); // Positive for produced
+        }
+
+        com.mukulramesh.fpscompress.gui.RateNormalizer.NormalizationResult autoResult =
+            com.mukulramesh.fpscompress.gui.RateNormalizer.autoNormalize(allRates);
+
+        nbt.putString("displayMode", autoResult.suggestedMode().name());
+        nbt.putInt("autoNormalizedTicks", autoResult.normalizedTicks());
+        // focusedResourceId intentionally not set (null by default)
+
         // Block entity ID
         nbt.putString("id", "fpscompress:prefab_machine");
 

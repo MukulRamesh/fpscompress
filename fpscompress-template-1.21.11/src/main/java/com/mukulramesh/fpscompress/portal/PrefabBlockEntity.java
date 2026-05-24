@@ -101,6 +101,16 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     private final Map<UUID, BlockPos> importerCache = new HashMap<>();
     private final Map<UUID, BlockPos> exporterCache = new HashMap<>();
 
+    // Display preferences (persist in NBT, synced to clients)
+    private com.mukulramesh.fpscompress.gui.RateDisplayMode currentDisplayMode =
+        com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+    @Nullable
+    private String focusedResourceId = null; // null = no focus
+    private int autoNormalizedTicks = 1; // LCM result (1 = no normalization)
+    private boolean useAutoNormalize = true; // true = use auto-normalized display (default)
+    private com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode =
+        com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK; // Original mode from auto-normalize
+
     public PrefabBlockEntity(BlockPos pos, BlockState state) {
         super(FPSCompress.PREFAB_BE.get(), pos, state);
 
@@ -387,6 +397,104 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         return lastSimulationResult;
     }
 
+    // ===== Display Preference Accessors =====
+
+    /**
+     * Get current display mode for rate visualization.
+     *
+     * @return Display mode (PER_TICK, PER_SECOND, etc.)
+     */
+    public com.mukulramesh.fpscompress.gui.RateDisplayMode getCurrentDisplayMode() {
+        return currentDisplayMode;
+    }
+
+    /**
+     * Set display mode for rate visualization.
+     *
+     * @param mode New display mode
+     */
+    public void setCurrentDisplayMode(com.mukulramesh.fpscompress.gui.RateDisplayMode mode) {
+        this.currentDisplayMode = mode;
+        setChanged();
+    }
+
+    /**
+     * Get focused resource ID (null if no focus).
+     *
+     * @return Resource ID or null
+     */
+    @Nullable
+    public String getFocusedResourceId() {
+        return focusedResourceId;
+    }
+
+    /**
+     * Set focused resource ID for normalization.
+     *
+     * @param id Resource ID to focus on (null to clear focus)
+     */
+    public void setFocusedResourceId(@Nullable String id) {
+        this.focusedResourceId = id;
+        setChanged();
+    }
+
+    /**
+     * Get auto-normalized ticks (LCM result).
+     *
+     * @return Normalized ticks (1 = no normalization)
+     */
+    public int getAutoNormalizedTicks() {
+        return autoNormalizedTicks;
+    }
+
+    /**
+     * Set auto-normalized ticks (LCM result).
+     *
+     * @param ticks Normalized ticks (minimum 1)
+     */
+    public void setAutoNormalizedTicks(int ticks) {
+        this.autoNormalizedTicks = Math.max(1, ticks);
+        setChanged();
+    }
+
+    /**
+     * Get whether to use auto-normalized display.
+     *
+     * @return true if using auto-normalize, false for manual time scale
+     */
+    public boolean getUseAutoNormalize() {
+        return useAutoNormalize;
+    }
+
+    /**
+     * Set whether to use auto-normalized display.
+     *
+     * @param use true to use auto-normalize, false for manual time scale
+     */
+    public void setUseAutoNormalize(boolean use) {
+        this.useAutoNormalize = use;
+        setChanged();
+    }
+
+    /**
+     * Get the original auto-normalized display mode (from LCM calculation).
+     *
+     * @return Display mode suggested by auto-normalize
+     */
+    public com.mukulramesh.fpscompress.gui.RateDisplayMode getAutoNormalizedDisplayMode() {
+        return autoNormalizedDisplayMode;
+    }
+
+    /**
+     * Set the original auto-normalized display mode.
+     *
+     * @param mode Display mode from auto-normalize
+     */
+    public void setAutoNormalizedDisplayMode(com.mukulramesh.fpscompress.gui.RateDisplayMode mode) {
+        this.autoNormalizedDisplayMode = mode;
+        setChanged();
+    }
+
     /**
      * Get localized item name from resource ID.
      * Used for user-friendly error messages.
@@ -606,6 +714,14 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
                 }
             }
         }
+
+        // Edge Case 5: Focused resource ID validation
+        // Validate focused resource ID exists in cached rates
+        if (focusedResourceId != null && !cachedRates.containsKey(focusedResourceId)) {
+            FPSCompress.LOGGER.warn("Focused resource '{}' not in cached rates, clearing focus",
+                focusedResourceId);
+            focusedResourceId = null;
+        }
     }
 
     /**
@@ -729,6 +845,15 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
             tag.putLong("simulationRequiredTicks", simulationRequiredTicks);
         }
 
+        // Save display preferences (always persist)
+        tag.putString("displayMode", currentDisplayMode.name());
+        if (focusedResourceId != null) {
+            tag.putString("focusedResourceId", focusedResourceId);
+        }
+        tag.putInt("autoNormalizedTicks", autoNormalizedTicks);
+        tag.putBoolean("useAutoNormalize", useAutoNormalize);
+        tag.putString("autoNormalizedDisplayMode", autoNormalizedDisplayMode.name());
+
         // TRANSIENT FIELDS (not saved for PreFab-as-Item portability):
         // - deltaTracker (only valid during active simulation)
         // - simulationStartTick (recalculate on simulation start)
@@ -823,6 +948,45 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
         if (tag.contains("simulationRequiredTicks")) {
             simulationRequiredTicks = tag.getLong("simulationRequiredTicks");
+        }
+
+        // Load display preferences with validation
+        if (tag.contains("displayMode")) {
+            try {
+                currentDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.valueOf(
+                    tag.getString("displayMode"));
+            } catch (IllegalArgumentException e) {
+                FPSCompress.LOGGER.warn("Invalid displayMode '{}', resetting to PER_TICK",
+                    tag.getString("displayMode"));
+                currentDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+            }
+        }
+
+        if (tag.contains("focusedResourceId")) {
+            String focusedId = tag.getString("focusedResourceId");
+            // Validation: Ensure focused item actually exists in cached rates
+            // (will be validated later in validateLoadedData() after rates are loaded)
+            focusedResourceId = focusedId;
+        }
+
+        if (tag.contains("autoNormalizedTicks")) {
+            int ticks = tag.getInt("autoNormalizedTicks");
+            autoNormalizedTicks = Math.max(1, ticks); // Must be >= 1
+        }
+
+        if (tag.contains("useAutoNormalize")) {
+            useAutoNormalize = tag.getBoolean("useAutoNormalize");
+        }
+
+        if (tag.contains("autoNormalizedDisplayMode")) {
+            try {
+                autoNormalizedDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.valueOf(
+                    tag.getString("autoNormalizedDisplayMode"));
+            } catch (IllegalArgumentException e) {
+                FPSCompress.LOGGER.warn("Invalid autoNormalizedDisplayMode '{}', resetting to PER_TICK",
+                    tag.getString("autoNormalizedDisplayMode"));
+                autoNormalizedDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+            }
         }
 
         // TRANSIENT FIELDS (not loaded - will be initialized/rebuilt):
@@ -1890,6 +2054,19 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
         FPSCompress.LOGGER.info("▶ Aggregate rates (for GUI): {} resources", cachedRates.size());
 
+        // Auto-normalize rates for better display
+        if (!cachedRates.isEmpty()) {
+            com.mukulramesh.fpscompress.gui.RateNormalizer.NormalizationResult autoResult =
+                com.mukulramesh.fpscompress.gui.RateNormalizer.autoNormalize(cachedRates);
+            this.autoNormalizedTicks = autoResult.normalizedTicks();
+            this.currentDisplayMode = autoResult.suggestedMode();
+            this.autoNormalizedDisplayMode = autoResult.suggestedMode(); // Store original mode
+            this.focusedResourceId = null; // Clear focus on new simulation
+            this.useAutoNormalize = true; // Enable auto-normalize by default
+            FPSCompress.LOGGER.info("Auto-normalized: {} ticks, mode {}",
+                autoNormalizedTicks, currentDisplayMode.name());
+        }
+
         // Detect passthrough (activity occurred but net production is zero)
         if (cachedRates.isEmpty()) {
             // Passthrough detected - items moved but net production is zero
@@ -1948,6 +2125,13 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         deltaTracker = new ResourceDeltaTracker();
         itemAccumulators.clear(); // Phase 5: Clear fractional accumulators
         cachedProduction.clear();
+
+        // Clear display preferences
+        currentDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+        focusedResourceId = null;
+        autoNormalizedTicks = 1;
+        useAutoNormalize = true;
+        autoNormalizedDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
 
         // Transition state
         setCurrentState(MachineState.BUILDING);
