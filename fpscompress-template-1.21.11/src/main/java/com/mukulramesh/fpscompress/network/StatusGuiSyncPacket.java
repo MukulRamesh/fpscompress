@@ -35,7 +35,8 @@ public record StatusGuiSyncPacket(
     @Nullable String focusedResourceId, // Focused resource ID (null if no focus)
     int autoNormalizedTicks, // Auto-normalized ticks (LCM result, 1 = no normalization)
     boolean useAutoNormalize, // true = use auto-normalized display, false = manual time scale
-    RateDisplayMode autoNormalizedDisplayMode // Original mode from LCM calculation
+    RateDisplayMode autoNormalizedDisplayMode, // Original mode from LCM calculation
+    @Nullable String prefabName // Custom name set by player (null = no name)
 ) implements CustomPacketPayload {
 
     public static final Type<StatusGuiSyncPacket> TYPE =
@@ -137,6 +138,8 @@ public record StatusGuiSyncPacket(
             ByteBufCodecs.VAR_INT.encode(buf, packet.autoNormalizedTicks);
             ByteBufCodecs.BOOL.encode(buf, packet.useAutoNormalize);
             DISPLAY_MODE_CODEC.encode(buf, packet.autoNormalizedDisplayMode);
+            ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8).encode(buf,
+                Optional.ofNullable(packet.prefabName));
         },
         buf -> {
             MachineState state = com.mukulramesh.fpscompress.portal.MachineState.STREAM_CODEC.decode(buf);
@@ -156,11 +159,13 @@ public record StatusGuiSyncPacket(
             int autoNormalizedTicks = ByteBufCodecs.VAR_INT.decode(buf);
             boolean useAutoNormalize = ByteBufCodecs.BOOL.decode(buf);
             RateDisplayMode autoNormalizedDisplayMode = DISPLAY_MODE_CODEC.decode(buf);
+            String prefabName = ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8)
+                .decode(buf).orElse(null);
             return new StatusGuiSyncPacket(state, simulationStartTick, simulationEndTick,
                 cachedStateStartTick, currentTick, liveStats, cachedRates, cachedProduction,
                 lastSimulationResult, simulationElapsedTicks, simulationRequiredTicks,
                 displayMode, focusedResourceId, autoNormalizedTicks, useAutoNormalize,
-                autoNormalizedDisplayMode);
+                autoNormalizedDisplayMode, prefabName);
         }
     );
 
@@ -194,7 +199,8 @@ public record StatusGuiSyncPacket(
                     packet.focusedResourceId,
                     packet.autoNormalizedTicks,
                     packet.useAutoNormalize,
-                    packet.autoNormalizedDisplayMode
+                    packet.autoNormalizedDisplayMode,
+                    packet.prefabName
                 );
             }
         });

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PreFab Naming System**: Players can assign custom names to PreFab blocks
+  - **Name Input**: EditBox + save button (✓) at top of Status GUI
+    - 32 character maximum length with automatic trimming/sanitization
+    - Hint text: "Unnamed PreFab" when empty
+    - Auto-saves on GUI close (no need to click save button)
+  - **Display Name Override**: Custom name replaces "PreFab Machine" in inventory
+    - Works like vanilla anvil-renamed items
+    - Shows custom name as item display name (not in tooltip)
+    - Falls back to "PreFab Machine" when no name is set
+  - **GUI Integration**: Name shown in bold white at top of Control tab
+    - Only displays when name is set (doesn't clutter default view)
+    - Positioned above state information for prominence
+  - **Persistence**: Names stored in block entity NBT and item NBT
+    - Survives block break/place cycles
+    - Portable in inventory (Shulker boxes, Ender chests, etc.)
+    - No schema version bump needed (new optional field)
+  - **Network Synchronization**: 
+    - `PrefabNamePacket`: Client → Server (sent on save button click or GUI close)
+    - `StatusGuiSyncPacket`: Server → Client (added `prefabName` field, now 17 parameters)
+    - Smart sync: Only updates EditBox when not focused (prevents overwriting while typing)
+  - **Localization**: Added 4 translation keys to `en_us.json`
+  - **Files Added**: `PrefabNamePacket.java` (Client→Server name updates)
+  - **Files Modified**: 
+    - `PrefabBlockEntity.java`: Added `prefabName` field + getter/setter with sanitization
+    - `PrefabNBTSerializer.java`: Save/load `prefabName` in NBT
+    - `StatusGuiSyncPacket.java`: Added `prefabName` field to sync packet
+    - `PreFabStatusMenu.java`: Pass `prefabName` to sync packet
+    - `PreFabStatusScreen.java`: EditBox + save button, auto-save on close, display in header
+    - `PrefabBlockItem.java`: Override `getName()` to use custom name as item display name
+    - `FPSCompress.java`: Register `PrefabNamePacket`
+    - `en_us.json`: Added localization strings
+  - **Use Cases**: 
+    - Identify multiple PreFabs ("Iron Smelter", "Ore Processing", etc.)
+    - Prerequisite for Blueprint system ("CC of Iron Smelter" naming)
+    - Better inventory organization (tooltips show custom names)
+  - Completed: 2026-05-24
+
 ---
 
 ## [0.4.0] - 2026-05-24

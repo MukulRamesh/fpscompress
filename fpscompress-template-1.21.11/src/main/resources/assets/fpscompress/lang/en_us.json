@@ -55,6 +55,11 @@
   "fpscompress.importer.frequency": "Frequency",
   "fpscompress.exporter.frequency": "Frequency",
 
+  "fpscompress.gui.prefab_name": "PreFab Name",
+  "fpscompress.gui.prefab_name.hint": "Unnamed PreFab",
+  "fpscompress.gui.prefab_name.save": "Save Name",
+  "fpscompress.tooltip.prefab_name": "Name: %s",
+
   "patchouli.book.fpscompress.name": "FPSCompress Guide",
   "patchouli.book.fpscompress.landing_text": "A comprehensive guide to factory compression and virtual production. Learn how to build efficient factories inside Compact Machines and run them without chunk loading!"
 }

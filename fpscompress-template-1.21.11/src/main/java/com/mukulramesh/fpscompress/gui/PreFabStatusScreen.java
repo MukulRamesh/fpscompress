@@ -30,6 +30,10 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     private MachineState lastKnownState = MachineState.BUILDING;
     private boolean haltedConfirmationPending = false; // Two-click confirmation for HALTED resume
 
+    // Name input components
+    private net.minecraft.client.gui.components.EditBox nameBox;
+    private Button saveNameButton;
+
     // Tab system
     private static final int TAB_CONTROL = 0;
     private static final int TAB_RESOURCES = 1;
@@ -63,6 +67,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     private boolean syncedUseAutoNormalize = true;
     private com.mukulramesh.fpscompress.gui.RateDisplayMode syncedAutoNormalizedDisplayMode =
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+    private String syncedPrefabName = null;
 
     // Tooltip hover areas (set during rendering)
     private int stateY = 0;
@@ -80,11 +85,30 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         this.imageHeight = GUI_HEIGHT;
     }
 
+    @Override
+    public void onClose() {
+        // Auto-save name if text exists in the box
+        if (nameBox != null && !nameBox.getValue().isBlank()) {
+            String newName = nameBox.getValue();
+            String currentName = syncedPrefabName != null ? syncedPrefabName : "";
+            // Only send packet if name actually changed
+            if (!newName.equals(currentName)) {
+                PacketDistributor.sendToServer(
+                    new com.mukulramesh.fpscompress.network.PrefabNamePacket(
+                        menu.getPrefabPos(),
+                        newName
+                    )
+                );
+            }
+        }
+        super.onClose();
+    }
+
     /**
      * Update screen with fresh data from server.
      * Called by StatusGuiSyncPacket handler.
      */
-    // CHECKSTYLE.OFF: ParameterNumber - Packet data unpacking requires 16 parameters
+    // CHECKSTYLE.OFF: ParameterNumber - Packet data unpacking requires 17 parameters
     public void updateFromServer(MachineState state, long simulationStartTick, long simulationEndTick,
                                  long cachedStateStartTick, long currentTick,
                                  java.util.Map<String, long[]> liveStats,
@@ -97,7 +121,8 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                                  String focusedResourceId,
                                  int autoNormalizedTicks,
                                  boolean useAutoNormalize,
-                                 com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode) {
+                                 com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode,
+                                 String prefabName) {
     // CHECKSTYLE.ON: ParameterNumber
         this.syncedState = state;
         this.syncedSimulationStartTick = simulationStartTick;
@@ -115,6 +140,17 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         this.syncedAutoNormalizedTicks = autoNormalizedTicks;
         this.syncedUseAutoNormalize = useAutoNormalize;
         this.syncedAutoNormalizedDisplayMode = autoNormalizedDisplayMode;
+
+        // Only update name box if value changed AND box doesn't have focus
+        // (prevents overwriting text while user is typing)
+        if (nameBox != null && !nameBox.isFocused()) {
+            String currentValue = nameBox.getValue();
+            String newValue = prefabName != null ? prefabName : "";
+            if (!currentValue.equals(newValue)) {
+                nameBox.setValue(newValue);
+            }
+        }
+        this.syncedPrefabName = prefabName;
 
         // Update button labels to reflect new preferences
         updateTabButtons();
@@ -240,10 +276,49 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         lastKnownState = menu.getCurrentState();
         syncedState = lastKnownState;
 
-        // Add tab buttons at the top
+        // Add name input box at the top (centered)
+        int nameBoxWidth = 150;
+        int nameBoxX = leftPos + (imageWidth - nameBoxWidth) / 2;
+        int nameBoxY = topPos + 10;
+
+        nameBox = new net.minecraft.client.gui.components.EditBox(
+            this.font,
+            nameBoxX,
+            nameBoxY,
+            nameBoxWidth,
+            20,
+            Component.literal("PreFab Name")
+        );
+        nameBox.setMaxLength(32); // Match max length from setter
+        nameBox.setValue(syncedPrefabName != null ? syncedPrefabName : "");
+        nameBox.setHint(Component.literal("Unnamed PreFab").withStyle(net.minecraft.ChatFormatting.GRAY));
+        addRenderableWidget(nameBox);
+
+        // Add "Rename" button (checkmark icon next to name box)
+        saveNameButton = Button.builder(
+            Component.literal("✓"), // Checkmark icon
+            btn -> {
+                String newName = nameBox.getValue();
+                // Send packet to server
+                PacketDistributor.sendToServer(
+                    new com.mukulramesh.fpscompress.network.PrefabNamePacket(
+                        menu.getPrefabPos(),
+                        newName.isBlank() ? null : newName
+                    )
+                );
+            }
+        )
+        .bounds(nameBoxX + nameBoxWidth + 5, nameBoxY, 20, 20)
+        .tooltip(net.minecraft.client.gui.components.Tooltip.create(
+            Component.literal("Save name")
+        ))
+        .build();
+        addRenderableWidget(saveNameButton);
+
+        // Add tab buttons below the name box
         int tabWidth = 80;
         int tabHeight = 20;
-        int tabY = topPos + 5;
+        int tabY = topPos + 35; // Move down to make room for name box
 
         tabControlButton = Button.builder(
             Component.literal("Control"),
@@ -279,7 +354,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
 
         // Add rate display buttons (Resources tab only)
         int utilityX = leftPos + imageWidth - 75;
-        int utilityY = topPos + 30;
+        int utilityY = topPos + 60; // Below name box and tabs
         int utilityWidth = 65;
         int utilityHeight = 20;
 
@@ -486,7 +561,15 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
      * Render Control tab (state info, simulation stats, control button).
      */
     private void renderControlTab(GuiGraphics graphics) {
-        int yOffset = 35; // Below tabs
+        int yOffset = 60; // Below tabs (tabs are at 35, need space for name box + tabs)
+
+        // Display custom name if set (prominent header)
+        if (syncedPrefabName != null && !syncedPrefabName.isBlank()) {
+            Component nameText = Component.literal(syncedPrefabName)
+                .withStyle(net.minecraft.ChatFormatting.WHITE, net.minecraft.ChatFormatting.BOLD);
+            graphics.drawString(font, nameText, 10, yOffset, 0xFFFFFF, false);
+            yOffset += 15;
+        }
 
         // Current State
         String stateColor = switch (syncedState) {
@@ -645,7 +728,7 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
      * Render Resources tab (inventory-style item grid).
      */
     private void renderResourcesTab(GuiGraphics graphics, int mouseX, int mouseY) {
-        int startY = 35; // Below tabs
+        int startY = 60; // Below tabs (tabs are at 35, need space for name box + tabs)
 
         // Show which state we're displaying
         String stateColor = switch (syncedState) {

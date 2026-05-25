@@ -108,6 +108,10 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode =
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK; // Original mode from auto-normalize
 
+    // Custom name assigned by player (null = no name, show default)
+    @Nullable
+    String prefabName = null;
+
     // CHECKSTYLE:ON VisibilityModifier
 
     // Delegated services (all 7 services)
@@ -230,6 +234,34 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     public void setCurrentState(MachineState state) {
         this.currentState = state;
         setChanged();
+    }
+
+    // ===== PreFab Name =====
+
+    /**
+     * Get custom name assigned by player.
+     *
+     * @return Custom name (null if not set)
+     */
+    @Nullable
+    public String getPrefabName() {
+        return prefabName;
+    }
+
+    /**
+     * Set custom name for this PreFab.
+     * Sanitizes input: trims whitespace, enforces max length, null if empty.
+     *
+     * @param name Custom name (null or empty to clear)
+     */
+    public void setPrefabName(@Nullable String name) {
+        // Sanitize: trim whitespace, null if empty
+        String sanitized = (name == null || name.isBlank()) ? null : name.trim();
+        if (sanitized != null && sanitized.length() > 32) {
+            sanitized = sanitized.substring(0, 32); // Enforce max length
+        }
+        this.prefabName = sanitized;
+        setChanged(); // Trigger NBT save
     }
 
     /**

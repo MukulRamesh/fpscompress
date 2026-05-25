@@ -65,6 +65,11 @@ public class PrefabNBTSerializer {
         }
         tag.put("faceConfigs", facesTag);
 
+        // Save custom name (optional field)
+        if (entity.prefabName != null) {
+            tag.putString("prefabName", entity.prefabName);
+        }
+
         // Phase 6: Save per-UUID rates (only if CACHED or HALTED state - portable data)
         if ((entity.currentState == MachineState.CACHED || entity.currentState == MachineState.HALTED)
                 && !entity.importerExporterRates.isEmpty()) {
@@ -198,6 +203,11 @@ public class PrefabNBTSerializer {
         // Phase 6: Load per-UUID rates (schema version 2+)
         int schemaVersion = tag.contains("schemaVersion") ? tag.getInt("schemaVersion") : 1;
         loadRatesFromNBT(tag, schemaVersion);
+
+        // Load custom name (optional field, default null)
+        if (tag.contains("prefabName")) {
+            entity.prefabName = tag.getString("prefabName");
+        }
 
         // Load fractional accumulators (only if CACHED state)
         if (tag.contains("itemAccumulators")) {

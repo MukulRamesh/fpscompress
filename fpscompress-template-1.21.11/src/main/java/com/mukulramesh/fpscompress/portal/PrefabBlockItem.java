@@ -33,6 +33,21 @@ public class PrefabBlockItem extends BlockItem {
     }
 
     @Override
+    public Component getName(ItemStack stack) {
+        // Check for custom name in NBT
+        CustomData customData = stack.get(DataComponents.BLOCK_ENTITY_DATA);
+        if (customData != null) {
+            CompoundTag blockEntityTag = customData.copyTag();
+            if (blockEntityTag.contains("prefabName")) {
+                String customName = blockEntityTag.getString("prefabName");
+                return Component.literal(customName);
+            }
+        }
+        // Default to standard item name
+        return super.getName(stack);
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, TooltipContext context,
                                List<Component> tooltipComponents, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltipComponents, flag);
