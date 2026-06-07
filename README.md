@@ -1,6 +1,6 @@
 # FPSCompress
 
-A NeoForge 1.21.11 Minecraft mod that enables **factory compression** through intelligent rate caching. Run your factories without chunk loading overhead by caching production rates and simulating them mathematically.
+A NeoForge 1.21.1 Minecraft mod that enables **factory compression** through intelligent rate caching. Run your factories without chunk loading overhead by caching production rates and simulating them mathematically.
 
 ## What Does It Do?
 
