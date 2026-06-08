@@ -608,16 +608,16 @@ interceptor.setRoomChunkState(roomCode, false);
 
 ## Documentation Conversion
 
-### WIKI to Patchouli In-Game Documentation
+### Wiki to Patchouli In-Game Documentation
 
-The repository contains a Python script that converts the markdown files in `WIKI/` to Patchouli JSON format for in-game documentation.
+The repository contains a Python script that converts the markdown files in `fpscompress.wiki/` (the GitHub wiki repository) to Patchouli JSON format for in-game documentation.
 
 **Script**: `wiki_to_patchouli.py` (in repository root)
 
-**Purpose**: Automatically generate Patchouli in-game guide books from WIKI markdown files
+**Purpose**: Automatically generate Patchouli in-game guide books from wiki markdown files
 
 **How it works**:
-- Parses all `.md` files in `WIKI/` directory (except README.md and Developer-API.md)
+- Parses all `.md` files in `fpscompress.wiki/` directory (except README.md and Developer-API.md)
 - Converts markdown formatting to Patchouli format codes:
   - Bold (`**text**`) → `$(bold)text$()`
   - Italic (`*text*`) → `$(italic)text$()`
@@ -626,7 +626,7 @@ The repository contains a Python script that converts the markdown files in `WIK
   - Tables → Formatted bulleted lists
   - Code blocks → Plain text (preserves spacing)
 - Maps structure:
-  - WIKI .md files → Patchouli categories
+  - Wiki .md files → Patchouli categories
   - H2 headers (##) → Patchouli entries/chapters
   - H3 headers (###) → Pages within entries
 - Generates 9 categories, 90 entries, 227 pages with 99 cross-references
@@ -638,9 +638,9 @@ fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/patchouli_boo
 └── entries/     (90 JSON files organized by category)
 ```
 
-**Usage** (when updating WIKI content):
+**Usage** (when updating wiki content):
 ```bash
-# 1. Edit WIKI markdown files (e.g., WIKI/Getting-Started.md)
+# 1. Edit wiki markdown files (e.g., fpscompress.wiki/Getting-Started.md)
 # 2. Re-run the conversion script
 python wiki_to_patchouli.py
 
@@ -648,7 +648,7 @@ python wiki_to_patchouli.py
 ./gradlew runClient
 ```
 
-**Source of Truth**: The `WIKI/` markdown files are the source of truth. Edit these files, then regenerate Patchouli JSON files using the script. Do not manually edit the generated JSON files directly.
+**Source of Truth**: The `fpscompress.wiki/` markdown files are the source of truth. Edit these files, then regenerate Patchouli JSON files using the script. Do not manually edit the generated JSON files directly.
 
 ---
 
@@ -673,8 +673,8 @@ python wiki_to_patchouli.py
 - **CLEANUP_SUMMARY.md** - What was deleted and why (old code in git history)
 
 **User Documentation**:
-- **WIKI/** - External user-facing documentation (markdown)
-- **wiki_to_patchouli.py** - Script to convert WIKI to in-game Patchouli format
+- **fpscompress.wiki/** - External user-facing documentation (markdown, GitHub wiki repository)
+- **wiki_to_patchouli.py** - Script to convert wiki markdown to in-game Patchouli format
 
 ---
 

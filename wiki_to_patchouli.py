@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert WIKI markdown files to Patchouli in-game documentation format.
+Convert fpscompress.wiki markdown files to Patchouli in-game documentation format.
 """
 
 import os
@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
 # Configuration
-WIKI_DIR = Path("WIKI")
+WIKI_DIR = Path("fpscompress.wiki")
 OUTPUT_BASE = Path("fpscompress-template-1.21.11/src/main/resources/assets/fpscompress/patchouli_books/fpscompress_guide/en_us")
 CATEGORIES_DIR = OUTPUT_BASE / "categories"
 ENTRIES_DIR = OUTPUT_BASE / "entries"
