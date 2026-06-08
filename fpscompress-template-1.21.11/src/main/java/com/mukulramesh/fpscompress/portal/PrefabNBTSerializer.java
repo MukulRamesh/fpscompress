@@ -154,6 +154,11 @@ public class PrefabNBTSerializer {
 
         // Save display preferences (always persist)
         tag.putString("displayMode", entity.currentDisplayMode.name());
+
+        // Save blueprint scan data cache (if present)
+        if (entity.blueprintScanData != null) {
+            tag.put("blueprintScanData", entity.blueprintScanData);
+        }
         if (entity.focusedResourceId != null) {
             tag.putString("focusedResourceId", entity.focusedResourceId);
         }
@@ -309,15 +314,14 @@ public class PrefabNBTSerializer {
             }
         }
 
-        // TRANSIENT FIELDS (not loaded - will be initialized/rebuilt):
-        // - deltaTracker (already initialized in constructor)
-        // - simulationStartTick (will be set when simulation starts)
-        // - cachedStateStartTick (recalculated by applyItemNBTMigration)
-        // - haltedRetryInterval/ticksSinceLastRetry (reset to defaults)
-        // - importerCache/exporterCache (empty - rebuilt on first lookup)
-        // - lastSimulationResult (empty - no error message on load)
-
-        // Validate loaded data for edge cases
+        // Load blueprint scan data cache (if present)
+        if (tag.contains("blueprintScanData")) {
+            entity.blueprintScanData = tag.getCompound("blueprintScanData");
+        }
+        // TRANSIENT FIELDS (not loaded):
+        // - deltaTracker, simulationStartTick, cachedStateStartTick
+        // - haltedRetryInterval/ticksSinceLastRetry, importerCache/exporterCache
+        // - lastSimulationResult
         validateLoadedData();
     }
 
@@ -410,7 +414,10 @@ public class PrefabNBTSerializer {
         // Edge Case 3: Room linkage incomplete
         // roomCode without roomCenter is invalid for REAL rooms (can't locate room).
         // EXCEPTION: Fake rooms (prefix "fake_") don't need roomCenter - they're for testing.
-        if (entity.roomCode != null && entity.roomCenter == null && !entity.roomCode.startsWith("fake_")) {
+        // EXCEPTION: Carbon copies (prefix "cc_") don't need roomCenter - no physical room.
+        if (entity.roomCode != null && entity.roomCenter == null
+                && !entity.roomCode.startsWith("fake_")
+                && !entity.roomCode.startsWith("cc_")) {
             FPSCompress.LOGGER.warn("PreFab has roomCode '{}' but no roomCenter - clearing roomCode",
                 entity.roomCode);
             entity.roomCode = null;
@@ -436,6 +443,31 @@ public class PrefabNBTSerializer {
             FPSCompress.LOGGER.warn("Focused resource '{}' not in cached rates, clearing focus",
                 entity.focusedResourceId);
             entity.focusedResourceId = null;
+        }
+
+        // Edge Case 6: Blueprint scan data with BUILDING state
+        // BlueprintScanData should only exist alongside CACHED/HALTED rates.
+        // BUILDING state means the factory was reset — scan data is stale.
+        if (entity.currentState == MachineState.BUILDING && entity.blueprintScanData != null) {
+            FPSCompress.LOGGER.info("PreFab loaded with blueprint scan data but in BUILDING state "
+                + "- clearing stale scan cache");
+            entity.blueprintScanData = null;
+        }
+
+        // Edge Case 7: Carbon copy validation
+        // Carbon copies ("cc_*" roomCode) must be in CACHED state and have no roomCenter.
+        if (entity.roomCode != null && entity.roomCode.startsWith("cc_")) {
+            // Carbon copies must be CACHED (they exist only to simulate cached rates)
+            if (entity.currentState != MachineState.CACHED && entity.currentState != MachineState.HALTED) {
+                FPSCompress.LOGGER.warn("Carbon copy loaded with state {} — resetting to CACHED",
+                    entity.currentState);
+                entity.currentState = MachineState.CACHED;
+            }
+            // Carbon copies have no physical room — clear any stale roomCenter
+            if (entity.roomCenter != null) {
+                FPSCompress.LOGGER.warn("Carbon copy had roomCenter — clearing (no physical room)");
+                entity.roomCenter = null;
+            }
         }
     }
 

@@ -436,6 +436,38 @@ Overworld:
 - **Data Components**: Use `Codec` and `StreamCodec` for custom data on items
 - **Capabilities**: Registered via `RegisterCapabilitiesEvent`, not `@CapabilityInject`
 - **Config**: Use `ModConfigSpec` with `ModConfig.Type.COMMON` or `.SERVER`
+- **Config Migration**: NeoForge never overwrites existing TOML files. When changing Java defaults, you **must** bump `CURRENT_CONFIG_VERSION` in [Config.java](fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/Config.java) and add a migration step in [FPSCompress.java](fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/FPSCompress.java) `migrateConfigFile()`. See below for details.
+
+### Config Migration System
+
+NeoForge preserves user-edited TOML config files — it never overwrites them. When you change a Java default value, existing users would be stuck with the old default. The migration system fixes this automatically on server start.
+
+**How it works** (in [FPSCompress.java](fpscompress-template-1.21.11/src/main/java/com/mukulramesh/fpscompress/FPSCompress.java)):
+1. `migrateConfigIfNeeded()` fires on `ServerStartingEvent`
+2. Compares the file's `configVersion` against `Config.CURRENT_CONFIG_VERSION`
+3. If stale, calls `migrateConfigFile()` which uses regex search-and-replace to update old default values in the TOML text
+4. Bumps the version field so the migration only runs once
+
+**When changing a Java default** (3-step checklist):
+1. Change the `.define()` call in `Config.java`
+2. Bump `CURRENT_CONFIG_VERSION` and add a migration history comment
+3. Add a new migration block in `migrateConfigFile()`:
+```java
+// Version N-1 → N: <what changed>
+if (fromVersion < N) {
+    content = content.replaceFirst(
+        "oldKey = oldValue(\\r?\\n)",
+        "oldKey = newValue$1");
+}
+```
+
+**Migration history**:
+- `0 → 1`: `blueprintPrintTicks` default changed from 1 to 20
+- `1 → 2`: `prefabConsumedOnScan` default changed from true to false
+
+**Config file locations** (checked in order):
+- Per-world: `<world>/serverconfig/fpscompress-server.toml`
+- Default template: `config/fpscompress-server.toml`
 
 ---
 

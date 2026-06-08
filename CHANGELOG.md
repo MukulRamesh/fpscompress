@@ -8,17 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **PreFab Consumed on Scan Config**: Server-side config option to control whether PreFab items
-  are consumed when scanned in the Fabricator
-  - `prefabConsumedOnScan` config option (default: `false`, PreFab stays in input slot)
-  - When `true`: PreFab consumed after scanning (one scan per PreFab, legacy behavior)
-  - When `false`: PreFab stays in input slot after scanning (can be reused)
-  - Config version bumped 1→2 for auto-migration of stale TOML files
-  - `hasScannedCurrentPrefab` flag prevents accidental re-scan without re-insertion
-  - Files modified: `Config.java`, `FabricatorBlockEntity.java`
+- **Blueprint Scan Data Caching**: Scan results are now cached in the PreFab item's NBT,
+  enabling instant re-scans without running the expensive async room scan again
+  - First scan runs the full async block+item scan and caches results in the PreFab's
+    `BLOCK_ENTITY_DATA` as `blueprintScanData` (block + item resource requirements)
+  - Subsequent scans (same session or re-inserted PreFab) use the cached data instantly —
+    no async scan needed, enabling multiple Blueprints per session
+  - Cache is automatically invalidated when the PreFab enters BUILDING state
+    (`StateTransitionManager.resetToBuilding()` clears the cache)
+  - Removed `hasScannedCurrentPrefab` flag — cache presence determines scan path
+  - Scan ID and cache control via `/fps_dev2 give-test-blueprint` debug command
+  - Config migration v1→v2 auto-updates `prefabConsumedOnScan` default from true to false
+  - New files: `BlueprintScanCache.java` (static utility for read/write operations)
+  - Files modified: `FabricatorBlockEntity.java`, `PrefabBlockEntity.java`,
+    `PrefabNBTSerializer.java`, `StateTransitionManager.java`, `Config.java`, `FPSCompress.java`
 
 ### Changed
-- **Fabricator Resource Check Optimization**: Replaced fixed 20-tick periodic re-check with
+- **`prefabConsumedOnScan` default changed to `false`**: PreFab items now stay in the
+  Fabricator input slot after scanning by default, allowing multiple Blueprints to be
+  created from a single PreFab without re-insertion
   exponential backoff + inventory fingerprinting
   - **Exponential Backoff**: Check interval starts at 20 ticks (1s), doubles on no-change
     up to max 100 ticks (5s) — avoids constant NBT scanning on idle Fabricators

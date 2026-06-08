@@ -101,6 +101,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     // UUID is removed on successful transfer, so failures log again after recovery
     final Map<UUID, Boolean> loggedFailures = new HashMap<>();
 
+    // Blueprint scan data cache (persist in NBT)
+    // Stores scanned block/item resource requirements to avoid expensive re-scans.
+    // Cleared when PreFab enters BUILDING state (factory may be reconfigured).
+    @Nullable
+    CompoundTag blueprintScanData = null;
+
     // Display preferences (persist in NBT, synced to clients)
     // Package-private for service access
     com.mukulramesh.fpscompress.gui.RateDisplayMode currentDisplayMode =
@@ -271,6 +277,45 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         }
         this.prefabName = sanitized;
         setChanged(); // Trigger NBT save
+    }
+
+    // ===== Blueprint Scan Data Cache =====
+
+    /**
+     * Check whether this PreFab has cached blueprint scan data.
+     *
+     * @return true if cached scan data exists (not null and not empty)
+     */
+    public boolean hasBlueprintScanData() {
+        return blueprintScanData != null && !blueprintScanData.isEmpty();
+    }
+
+    /**
+     * Get the cached blueprint scan data.
+     *
+     * @return Cached scan data CompoundTag (may be null)
+     */
+    @Nullable
+    public CompoundTag getBlueprintScanData() {
+        return blueprintScanData != null ? blueprintScanData.copy() : null;
+    }
+
+    /**
+     * Store cached blueprint scan data (writes to PreFab NBT).
+     *
+     * @param data CompoundTag containing blockResources and itemResources list tags
+     */
+    public void setBlueprintScanData(CompoundTag data) {
+        this.blueprintScanData = data != null ? data.copy() : null;
+        setChanged();
+    }
+
+    /**
+     * Clear cached blueprint scan data (called when entering BUILDING state).
+     */
+    public void clearBlueprintScanData() {
+        this.blueprintScanData = null;
+        setChanged();
     }
 
     /**

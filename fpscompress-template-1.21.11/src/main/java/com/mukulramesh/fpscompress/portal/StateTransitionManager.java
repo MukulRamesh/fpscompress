@@ -267,6 +267,7 @@ public class StateTransitionManager {
         // Clear cached rates and accumulators
         entity.clearCachedRates();
         entity.clearImporterExporterRates(); // Phase 6: Clear per-UUID rates
+        entity.clearBlueprintScanData(); // Clear blueprint scan cache (factory may be reconfigured)
         entity.deltaTracker = new ResourceDeltaTracker();
         entity.itemAccumulators.clear(); // Phase 5: Clear fractional accumulators
         entity.cachedProduction.clear();

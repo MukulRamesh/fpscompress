@@ -62,6 +62,9 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.concurrent.CompletableFuture;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(FPSCompress.MODID)
@@ -351,6 +354,84 @@ public final class FPSCompress {
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
         LOGGER.info("HELLO from server starting");
+
+        // Migrate stale config files when Java defaults change
+        migrateConfigIfNeeded(event);
+    }
+
+    /**
+     * Check the config file version and auto-update changed defaults
+     * so players don't need to manually delete stale TOML files.
+     *
+     * <p>NeoForge never overwrites existing TOML files, so when we change
+     * a Java default (e.g., blueprintPrintTicks from 1 → 20), the old value
+     * persists in the file. This method detects that and fixes it.
+     */
+    private void migrateConfigIfNeeded(ServerStartingEvent event) {
+        int loadedVersion = Config.SERVER.getConfigVersion();
+        if (loadedVersion >= Config.CURRENT_CONFIG_VERSION) {
+            return; // Already up to date
+        }
+
+        LOGGER.warn("Config version is {} (expected {}) — migrating stale TOML...",
+            loadedVersion, Config.CURRENT_CONFIG_VERSION);
+
+        // Per-world config takes precedence; also fix the default template
+        Path worldConfig = event.getServer().getServerDirectory()
+            .resolve("serverconfig").resolve("fpscompress-server.toml");
+        Path defaultConfig = Path.of("config", "fpscompress-server.toml");
+
+        for (Path configPath : new Path[]{worldConfig, defaultConfig}) {
+            try {
+                if (Files.exists(configPath)) {
+                    migrateConfigFile(configPath, loadedVersion);
+                }
+            } catch (IOException e) {
+                LOGGER.error("Failed to migrate config file: {}", configPath, e);
+            }
+        }
+    }
+
+    /**
+     * Apply migrations to a single TOML config file.
+     */
+    private void migrateConfigFile(Path configPath, int fromVersion) throws IOException {
+        String content = Files.readString(configPath);
+        String original = content;
+
+        // Version 0 → 1: blueprintPrintTicks default changed from 1 to 20
+        if (fromVersion < 1) {
+            // Only fix if it's still at the old default — don't touch user-customized values
+            content = content.replaceFirst(
+                "blueprintPrintTicks = 1(\\r?\\n)",
+                "blueprintPrintTicks = 20$1");
+            fromVersion = 1;
+        }
+
+        // Version 1 → 2: prefabConsumedOnScan default changed from true to false
+        if (fromVersion < 2) {
+            content = content.replaceFirst(
+                "prefabConsumedOnScan = true(\\r?\\n)",
+                "prefabConsumedOnScan = false$1");
+        }
+
+        // Bump the config version in the file
+        if (content.contains("configVersion = ")) {
+            content = content.replaceFirst(
+                "configVersion = \\d+",
+                "configVersion = " + Config.CURRENT_CONFIG_VERSION);
+        } else {
+            // Old file without version field — insert it after blueprintPrintTicks line
+            content = content.replaceFirst(
+                "(blueprintPrintTicks = \\d+)(\\r?\\n)",
+                "$1$2\tconfigVersion = " + Config.CURRENT_CONFIG_VERSION + "$2");
+        }
+
+        if (!content.equals(original)) {
+            Files.writeString(configPath, content);
+            LOGGER.info("Migrated config file {} to v{}",
+                configPath, Config.CURRENT_CONFIG_VERSION);
+        }
     }
 
     // Register debug commands
