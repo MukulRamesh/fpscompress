@@ -723,7 +723,7 @@ This TODO list is organized with **pending tasks at the top** for quick referenc
   - Custom buffer writer for network sync (`buf.writeBlockPos()`, `buf.writeByte()`)
 - [x] Register client-side screen in `FPSCompressClient.java`
 - [x] Register network packet in `FPSCompress.java`
-- [x] Add `"id": "fpscompress:prefab"` to BlockEntity NBT for item serialization
+- [x] Add `"id": "fpscompress:prefab_machine"` to BlockEntity NBT for item serialization
 - [x] Test: Configure faces, close/reopen GUI → Configs persist ✓
 - [x] Test: Break PreFab → Drops with NBT data ✓
 - [x] Test: Quit to menu → No crashes ✓

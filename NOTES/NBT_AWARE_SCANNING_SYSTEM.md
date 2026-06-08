@@ -29,7 +29,7 @@ The NBT-Aware Scanning System extends the blueprint scanner to capture and valid
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 2: Registry & Requirement Classes                    │
 │  NbtRequirementRegistry (singleton, datapack reload)        │
-│  NbtRequirement (record: resourceId, nbtFields, matchMode)  │
+│  NbtRequirement (record: resourceId, rules: Map<path, MatchRule>)  │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -49,24 +49,26 @@ The NBT-Aware Scanning System extends the blueprint scanner to capture and valid
 3. If yes:
    a. Get NbtRequirement from registry
    b. Extract full NBT from BlockEntity or ItemStack
-   c. Filter NBT using nbtFields list (e.g., ["BlockEntityTag.roomCode"])
-   d. Create ResourceRequirement with filtered NBT
+   c. Get tracked field names via req.getTrackedFields() (first segment of each match path)
+   d. Filter NBT using NbtRequirement.extractNbt(fullNbt, trackedFields)
+   e. Create ResourceRequirement with filtered NBT (schema v2)
 4. If no:
-   a. Create ResourceRequirement with null NBT (any item accepted)
+   a. Create ResourceRequirement with null NBT (any item of correct type accepted)
 5. Store in blueprint as schema v2
 ```
 
-**Printing Phase** (Phase 6, future):
+**Printing Phase** (Phase 6):
 ```
-1. Read blueprint ResourceRequirement
-2. Check player's resources in Fabricator slots
-3. If requirement has NBT:
-   a. Extract NBT from player's item using same nbtFields
-   b. Compare using matchMode (SUBSET or EXACT)
-   c. Only accept if NBT matches
-4. If requirement has null NBT:
+1. Read blueprint ResourceRequirement (has id, count, nbt)
+2. Player inserts resources into Fabricator slots
+3. If requirement.nbt != null:
+   a. Get NbtRequirement from registry for this resourceId
+   b. Extract NBT from player's item using same tracked fields
+   c. Call nbtRequirement.matches(requiredNbt, availableNbt) — uses declared strategies recursively
+   d. Only accept if NBT matches per the strategy rules (subset/list_subset/exact/range)
+   e. Mismatches: item returned to player inventory or dropped
+4. If requirement.nbt == null:
    a. Accept any item of correct type
-```
 
 ---
 
@@ -90,36 +92,88 @@ src/main/resources/data/<namespace>/nbt_requirements/
 ```json
 {
   "resource_id": "modid:item_name",
-  "nbt_fields": [
-    "path.to.field1",
-    "path.to.field2"
-  ],
-  "match_mode": "subset",
-  "description": "Human-readable explanation"
+  "match": {
+    "path.to.field": "strategy",
+    "path.to.nested.field": {
+      "strategy": "strategy_name",
+      "ignore": ["transient_key"],
+      "min": 0.0,
+      "max": 100.0
+    }
+  }
 }
 ```
 
 **Fields**:
-- `resource_id` (string, required): Namespaced ID from registry
-- `nbt_fields` (array, required): Dot-notation paths to NBT fields
-- `match_mode` (string, optional, default "subset"): "subset" or "exact"
-- `description` (string, optional): For debugging/documentation
+- `resource_id` (string, required): Namespaced ID from registry (e.g., `"fpscompress:prefab_machine"`)
+- `match` (object, required): Map of NBT path → matching rule. Each rule can be a **string shorthand** or an **object** with options.
+
+**Match Rule — String Shorthand** (simple cases):
+```json
+"path.to.field": "exact"
+```
+
+**Match Rule — Object Form** (with options):
+```json
+"path.to.field": {
+  "strategy": "list_subset",
+  "ignore": ["uuid", "timestamp"],
+  "min": 0.0,
+  "max": 100.0
+}
+```
+- `strategy` (string, required): `"exact"`, `"subset"`, `"list_subset"`, or `"range"`
+- `ignore` (array of strings, optional): Sub-keys to skip during comparison (transient fields like UUIDs)
+- `min` / `max` (numbers, optional): Bounds for `range` strategy only
 
 ### NBT Field Paths (Dot Notation)
 
+Paths are used as **keys in the `match` map**. Wildcard `*` represents list elements. The matching engine in `matchNode()` resolves paths recursively, applying the declared strategy at each path level.
+
 **Examples**:
-```json
-"BlockEntityTag.roomCode"           → nbt.getCompound("BlockEntityTag").getString("roomCode")
+```
+"roomCode"                           → nbt.getString("roomCode")
+"BlockEntityTag.roomCode"            → nbt.getCompound("BlockEntityTag").getString("roomCode")
 "BlockEntityTag.importerExporterRates" → nbt.getCompound("BlockEntityTag").get("importerExporterRates")
-"StoredEnchantments"                → nbt.get("StoredEnchantments")
-"Upgrades.SpeedTier"                → nbt.getCompound("Upgrades").getInt("SpeedTier")
+"StoredEnchantments"                 → nbt.get("StoredEnchantments")
+"Config.Upgrades.SpeedTier"          → nbt.getCompound("Config").getCompound("Upgrades").getInt("SpeedTier")
+"importerExporterRates.*.rates"      → each list element's "rates" sub-list (via matchListSubset)
 ```
 
-**Path Resolution** (see `NbtRequirement.getNestedTag()`):
+**Path Resolution** (see `NbtRequirement.matchNode()` and `getNestedTag()`):
 1. Split path by `.` delimiter
 2. Navigate through nested CompoundTags
-3. Return final Tag (can be any type: IntTag, StringTag, ListTag, etc.)
-4. If path broken, return null
+3. `*` in path triggers list-element iteration via `matchListSubset()`
+4. Return final Tag (can be any type: IntTag, StringTag, ListTag, etc.)
+5. If path broken, return null
+
+### Match Strategies (Enum: `Strategy`)
+
+| Strategy | Method | Description |
+|----------|--------|-------------|
+| `exact` | `Tag.equals()` | Values must match exactly |
+| `subset` | `matchSubset()` | Required keys must exist in available; extra keys in available are OK |
+| `list_subset` | `matchListSubset()` | Every element in required list must find a match in available (order-independent); supports `ignore` to strip volatile fields per-element |
+| `range` | `matchRange()` | Numeric value must fall within [`min`, `max`] |
+
+**Default strategies** (applied when no explicit rule exists for a path):
+- CompoundTag children → `SUBSET` (via `MatchRule.DEFAULT_COMPOUND`)
+- Primitive tag children → `EXACT` (via `MatchRule.DEFAULT_PRIMITIVE`)
+
+### The `ignore` Field
+
+Used with `list_subset` or `subset` to skip transient keys during comparison. Inside `matchListSubset()`, elements are copied with ignored keys stripped via `stripKeys()` before comparison.
+
+```json
+"importerExporterRates": {
+  "strategy": "list_subset",
+  "ignore": ["uuid"]
+}
+```
+
+Each element in the required list must match an element in the available list — but `uuid` is removed from both sides before comparing. This allows carbon-copy PreFabs (which get new UUIDs for their Importers/Exporters) to match the original blueprint.
+
+**Common candidates for `ignore`**: `uuid`, `timestamp`, `x`, `y`, `z` (block positions).
 
 ---
 
@@ -128,24 +182,32 @@ src/main/resources/data/<namespace>/nbt_requirements/
 ### Phase 1: JSON Schema System ✅ Complete
 
 **Files Created**:
-1. `NbtRequirement.java` (168 lines)
-   - Record class: `resourceId`, `nbtFields`, `matchMode`, `description`
-   - `fromJson(JsonObject)`: Deserialize from JSON
-   - `extractNbt(CompoundTag, List<String>)`: Filter NBT by field paths
-   - `matches(CompoundTag, CompoundTag)`: Compare NBT (SUBSET or EXACT)
-   - Pattern matching: SUBSET checks all required fields exist, EXACT checks full equality
+1. `NbtRequirement.java` (329 lines)
+   - Record class: `resourceId`, `rules` (`Map<String, MatchRule>`)
+   - Inner record `MatchRule`: `strategy`, `ignore`, `min`, `max`
+   - `fromJson(JsonObject)`: Deserialize JSON with string shorthand or object form
+   - `extractNbt(CompoundTag, List<String>)`: Filter NBT by field paths (top-level field names from `getTrackedFields()`)
+   - `matches(CompoundTag, CompoundTag)`: Recursively compare NBT using declared strategies
+   - `matchNode(Tag, Tag, String)`: Dispatch to `matchSubset()`, `matchListSubset()`, `matchRange()`, or `equals()` based on strategy
+   - `matchSubset()`: Check all required keys exist in available (recursive)
+   - `matchListSubset()`: Every required list element finds a match in available (order-independent, strips ignored keys)
+   - `matchRange()`: Numeric bounds check
+   - `stripKeys()`: Create copy of CompoundTag with specified keys removed
+   - `getTrackedFields()`: Derive top-level field names from match paths for scanning extraction
+   - Strategies: `EXACT`, `SUBSET`, `LIST_SUBSET`, `RANGE`
 
-2. `NbtRequirementRegistry.java` (161 lines)
+2. `NbtRequirementRegistry.java` (159 lines)
    - Singleton pattern: `getInstance()`
    - Extends `SimplePreparableReloadListener<Map<String, NbtRequirement>>`
    - Loads during datapack reload: `prepare()` → `apply()`
+   - Scans `nbt_requirements/blocks/` and `nbt_requirements/items/` across all namespaces
    - Query API: `hasRequirement(String)`, `getRequirement(String)`
    - Logs: "Loaded X NBT requirements from datapacks"
 
-3. `prefab.json` (9 lines)
+3. `prefab.json` (7 lines)
    - Example schema for PreFab blocks
-   - Tracks: `roomCode`, `importerExporterRates`, `prefabName`
-   - Mode: `subset` (only these fields must match)
+   - Uses `match` map with `list_subset` strategy and `ignore: ["uuid"]`
+   - Tracks: `importerExporterRates` (list subset, ignoring UUIDs), inner `rates` sub-lists
 
 4. `README.md` (200+ lines)
    - Documentation for modpack developers
@@ -162,7 +224,7 @@ public void onAddReloadListener(AddReloadListenerEvent event) {
 ```
 
 **SpotBugs Exclusions**:
-- `EI_EXPOSE_REP` for `NbtRequirement.nbtFields()` - List.copyOf() in canonical constructor
+- `EI_EXPOSE_REP` for `NbtRequirement.rules()` - Collections.unmodifiableMap() in canonical constructor
 - `BC_VACUOUS_INSTANCEOF` for `getNestedTag()` - Defensive programming
 - `RCN_REDUNDANT_NULLCHECK` for `getNestedTag()` - Validates empty tag case
 - `REC_CATCH_EXCEPTION` for registry - Resilient datapack loading
@@ -259,7 +321,8 @@ for (BlockPos pos : roomBounds) {
             CompoundTag fullNbt = be.saveWithoutMetadata(level.registryAccess());
             NbtRequirement req = NbtRequirementRegistry.getInstance()
                 .getRequirement(blockId).orElseThrow();
-            CompoundTag filteredNbt = NbtRequirement.extractNbt(fullNbt, req.nbtFields());
+            CompoundTag filteredNbt = NbtRequirement.extractNbt(fullNbt,
+                req.getTrackedFields());
             
             scannedResources.add(new ScannedResource(blockId, filteredNbt));
         }
@@ -279,7 +342,8 @@ if (NbtRequirementRegistry.getInstance().hasRequirement(itemId)) {
     CompoundTag fullNbt = stack.getOrCreateTag();
     NbtRequirement req = NbtRequirementRegistry.getInstance()
         .getRequirement(itemId).orElseThrow();
-    CompoundTag filteredNbt = NbtRequirement.extractNbt(fullNbt, req.nbtFields());
+    CompoundTag filteredNbt = NbtRequirement.extractNbt(fullNbt,
+        req.getTrackedFields());
     
     scannedResources.add(new ScannedResource(itemId, filteredNbt));
 } else {
@@ -341,24 +405,34 @@ for (Map.Entry<String, ScannedResource> entry : scannedBlocks.entrySet()) {
 - ❌ Not extensible
 - ❌ Couples schema to code
 
-**Chosen**: Dot notation paths (e.g., `"BlockEntityTag.roomCode"`)
-- ✅ Self-documenting
-- ✅ Flexible for nested structures
+**Chosen**: Dot notation paths as keys in a `match` map (e.g., `"BlockEntityTag.roomCode"`)
+- ✅ Self-documenting — path IS the key
+- ✅ Flexible for nested structures — dot notation mirrors NBT nesting
+- ✅ Strategy per path — different strategies at different nesting levels
+- ✅ Wildcard `*` for list elements — `"list.*.subfield"` targets every element
 - ✅ Similar to JSON path or XPath
 
-### 3. Why SUBSET Match Mode by Default?
+### 3. Why Per-Path Strategies (Instead of One Global Mode)?
 
-**SUBSET**: Only specified fields must match (default)
-- ✅ Stable - insensitive to other NBT changes
-- ✅ Focused - only validates essential fields
-- ❌ Could miss important differences
+The old design had a single `match_mode` (`subset` or `exact`) applied uniformly to all `nbt_fields`. The current design declares a **strategy per path** in the `match` map.
 
-**EXACT**: Full NBT must match
-- ✅ Strictest validation
-- ❌ Fragile - breaks on unrelated NBT changes (timestamps, UUIDs)
-- ❌ Rarely needed
+**Advantages of per-path strategies**:
+- ✅ Fine-grained control — `list_subset` on the outer list, `range` on a numeric sub-field
+- ✅ `ignore` per path — skip UUIDs in one list but not in another
+- ✅ Self-documenting — the strategy is declared right next to the path it applies to
+- ✅ Extensible — new strategies can be added without changing the JSON structure
 
-**Decision**: Default to SUBSET, allow EXACT for rare cases (e.g., exact enchantment books)
+**Default strategies** (when a path has no explicit rule):
+- CompoundTag children → `SUBSET` (stable: only specified sub-fields must match)
+- Primitive tag children → `EXACT` (simple values must match)
+
+**Strategy summary**:
+| Strategy | Use case |
+|----------|----------|
+| `subset` | Compound tags — only care about specific sub-fields |
+| `exact` | Simple values (strings, numbers) — must match precisely |
+| `list_subset` | Lists — every required element needs a match, order-independent |
+| `range` | Numeric values — must fall within [min, max] |
 
 ### 4. Why Schema Versioning in BlueprintData?
 
@@ -409,13 +483,13 @@ public record ResourceRequirement(String id, long count, CompoundTag nbt) {
 ```
 1. Start game
 2. Check logs: "Loaded 1 NBT requirements from datapacks"
-3. Expected: NbtRequirementRegistry has "fpscompress:prefab_block"
+3. Expected: NbtRequirementRegistry has "fpscompress:prefab_machine"
 ```
 
 **Test Case 2**: Override with datapack
 ```
 1. Create datapack: `datapacks/test/data/fpscompress/nbt_requirements/blocks/prefab.json`
-2. Change nbt_fields to ["BlockEntityTag.roomCode"]
+2. Change `match` to only track `"BlockEntityTag.roomCode": "exact"`
 3. Run /reload
 4. Expected: Only roomCode tracked (not rates)
 ```
@@ -492,11 +566,9 @@ assert original.equals(loaded); // Record automatic equals
 // data/minecraft/nbt_requirements/items/enchanted_book.json
 {
   "resource_id": "minecraft:enchanted_book",
-  "nbt_fields": [
-    "StoredEnchantments"
-  ],
-  "match_mode": "subset",
-  "description": "Enchanted books must have matching enchantments"
+  "match": {
+    "StoredEnchantments": "list_subset"
+  }
 }
 ```
 
@@ -535,17 +607,20 @@ if (value == null) {
 
 ### Handling Complex NBT
 
-**Example**: Track nested structure
+**Example**: Track nested structure with per-path strategies
 
 ```json
 {
   "resource_id": "examplemod:complex_machine",
-  "nbt_fields": [
-    "BlockEntityTag.Config.Tier",
-    "BlockEntityTag.Config.Upgrades",
-    "BlockEntityTag.EnergyStored"
-  ],
-  "match_mode": "subset"
+  "match": {
+    "BlockEntityTag.Config.Tier": "exact",
+    "BlockEntityTag.Config.Upgrades": "list_subset",
+    "BlockEntityTag.EnergyStored": {
+      "strategy": "range",
+      "min": 0.0,
+      "max": 1000000.0
+    }
+  }
 }
 ```
 
@@ -562,7 +637,7 @@ if (value == null) {
 }
 ```
 
-**Extracted NBT** (stored in blueprint):
+**Extracted NBT** (stored in blueprint — `getTrackedFields()` returns `["BlockEntityTag"]`):
 ```
 {
   BlockEntityTag: {
@@ -574,6 +649,11 @@ if (value == null) {
   }
 }
 ```
+
+**Matching behavior**:
+- `Tier`: `exact` — must be exactly 3
+- `Upgrades`: `list_subset` — every required upgrade must have a match in available
+- `EnergyStored`: `range` — any value 0–1,000,000 is acceptable
 
 ---
 
@@ -643,34 +723,32 @@ protected void apply(Map<String, NbtRequirement> prepared, ...) {
 
 ## Future Enhancements
 
-### Phase 5: Printing Validation (Not Yet Implemented)
+### Phase 5: Printing Validation ✅ Implemented
 
 **Goal**: Check NBT matches during printing
 
-**Pseudocode**:
+**Implementation** (see `FabricatorBlockEntity.checkRequiredResources()` and `validateAndEjectNbtMismatches()`):
 ```java
-boolean validateResources(Blueprint blueprint, Fabricator fabricator) {
-    for (ResourceRequirement req : blueprint.getItemResources()) {
-        ItemStack available = findInFabricator(req.id());
-        
-        if (req.nbt() != null) {
-            // NBT required - extract and compare
-            NbtRequirement nbtReq = NbtRequirementRegistry.getInstance()
-                .getRequirement(req.id()).orElseThrow();
-            
-            CompoundTag availableNbt = NbtRequirement.extractNbt(
-                available.getOrCreateTag(),
-                nbtReq.nbtFields()
-            );
-            
-            if (!nbtReq.matches(req.nbt(), availableNbt)) {
-                return false; // NBT mismatch
-            }
-        }
+boolean validateNbt(BlueprintData.ResourceRequirement req, ItemStack available) {
+    if (req.nbt() == null) {
+        return true; // No NBT requirement — any item of correct type accepted
     }
-    return true;
+    
+    NbtRequirement nbtReq = NbtRequirementRegistry.getInstance()
+        .getRequirement(req.id()).orElseThrow();
+    
+    // Extract NBT from player's item using same tracked fields
+    CompoundTag availableNbt = NbtRequirement.extractNbt(
+        available.getOrCreateTag(),
+        nbtReq.getTrackedFields()
+    );
+    
+    // Match using declared strategies (subset/list_subset/exact/range)
+    return nbtReq.matches(req.nbt(), availableNbt);
 }
 ```
+
+**Ejection behavior**: Items with wrong/missing NBT are returned to the player's inventory (merge into partial stacks → first empty slot), or dropped in-world if inventory is full. Ejections are deferred to the next tick via `pendingEjections` queue to avoid race conditions with `quickMoveStack`.
 
 ### GUI Display (Phase 5+)
 
@@ -733,7 +811,7 @@ public enum MatchMode {
 **Debug Command** (add in Phase 5):
 ```
 /fps_dev2 nbt-requirements list
-/fps_dev2 nbt-requirements get fpscompress:prefab_block
+/fps_dev2 nbt-requirements get fpscompress:prefab_machine
 ```
 
 ### Issue: "NBT field not found during scanning"
@@ -755,7 +833,8 @@ LOGGER.debug("Scanning {}: {}", itemId, fullNbt);
 NbtRequirement req = NbtRequirementRegistry.getInstance()
     .getRequirement(itemId).orElse(null);
 if (req != null) {
-    CompoundTag filtered = NbtRequirement.extractNbt(fullNbt, req.nbtFields());
+    CompoundTag filtered = NbtRequirement.extractNbt(fullNbt,
+        req.getTrackedFields());
     LOGGER.debug("Filtered NBT: {}", filtered);
 }
 ```
@@ -769,10 +848,10 @@ if (req != null) {
 **Fix**: Update JSON to only track essential fields
 ```json
 // Bad: Tracks everything
-"nbt_fields": ["BlockEntityTag"]
+"BlockEntityTag": "subset"
 
 // Good: Tracks only rates
-"nbt_fields": ["BlockEntityTag.importerExporterRates"]
+"BlockEntityTag.importerExporterRates": "list_subset"
 ```
 
 ---

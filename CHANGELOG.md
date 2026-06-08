@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- **Blueprint System Wiki**: Added comprehensive `WIKI/Blueprint-System.md` covering the Fabricator block,
+  Blueprint scanning/printing cycle, NBT-aware scanning system, and data pack-driven NBT requirement
+  configuration — including JSON schema format, match strategies (`exact`/`subset`/`list_subset`/`range`),
+  the `ignore` field, and a modpack developer guide
+- **WIKI Updates**: Added Blueprint System link under Core Features and updated implemented features list
+  in [Home.md](WIKI/Home.md); added entry to contents in [README.md](WIKI/README.md)
+- **NBT-Aware Scanning Docs Updated**: Fixed `NOTES/NBT_AWARE_SCANNING_SYSTEM.md` and
+  `data/fpscompress/nbt_requirements/README.md` to reflect the actual `match` map + per-path strategy
+  JSON format (previously documented the earlier `nbt_fields`/`match_mode` design)
+- **Resource ID Fixes**: Corrected `fpscompress:prefab_block` → `fpscompress:prefab_machine` in
+  `NOTES/QUICK_TEST_PHASE1.md` and `NOTES/TODO.md`
+
 ## [0.5.0] - 2026-06-08
 
 ### Changed

@@ -127,7 +127,7 @@ Search for "prefab" or "fpscompress" in creative search
 
 **Option 3**: Use command (if registered)
 ```
-/give @p fpscompress:prefab_block
+/give @p fpscompress:prefab_machine
 ```
 
 ---

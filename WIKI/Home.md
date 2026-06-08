@@ -19,6 +19,7 @@ FPSCompress allows you to build factories inside [Compact Machines](https://www.
 - [Face Configuration](Face-Configuration) - Configuring PreFab faces step-by-step
 - [State Machine Guide](State-Machine-Guide) - Understanding BUILDING/SIMULATING/CACHED/HALTED states
 - [Cached Production](Cached-Production) - How virtual production works
+- [Blueprint System](Blueprint-System) - Scanning factories, printing copies, and NBT-aware configuration
 
 ### Advanced Topics
 - [Advanced Setup](Advanced-Setup) - Multi-PreFab factories and organization
@@ -97,6 +98,8 @@ Core systems implemented:
 - ✅ Enhanced GUI with live status and resource display
 - ✅ HALTED state recovery with preserved rates
 - ✅ Vanilla block support (chests, furnaces, hoppers)
+- ✅ Blueprint/Fabricator system with NBT-aware scanning
+- ✅ Data pack-driven NBT requirement configuration
 
 In progress:
 - 🔨 AE2/Refined Storage integration

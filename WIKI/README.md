@@ -13,7 +13,8 @@ This folder contains markdown files for the FPSCompress GitHub wiki.
 7. **[State-Machine-Guide.md](State-Machine-Guide.md)** - Understanding BUILDING/SIMULATING/CACHED/HALTED states
 8. **[Troubleshooting.md](Troubleshooting.md)** - Common issues and solutions
 9. **[Advanced-Setup.md](Advanced-Setup.md)** - Multi-PreFab setups and advanced techniques
-10. **[Developer-API.md](Developer-API.md)** - API documentation for mod developers
+10. **[Blueprint-System.md](Blueprint-System.md)** - Blueprint scanning, Fabricator block, and data pack-driven NBT configuration
+11. **[Developer-API.md](Developer-API.md)** - API documentation for mod developers
 
 ## Publishing to GitHub Wiki
 
