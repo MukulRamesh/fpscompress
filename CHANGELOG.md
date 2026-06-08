@@ -8,12 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Documentation
-- **Blueprint System Wiki**: Added comprehensive `WIKI/Blueprint-System.md` covering the Fabricator block,
-  Blueprint scanning/printing cycle, NBT-aware scanning system, and data pack-driven NBT requirement
-  configuration — including JSON schema format, match strategies (`exact`/`subset`/`list_subset`/`range`),
-  the `ignore` field, and a modpack developer guide
-- **WIKI Updates**: Added Blueprint System link under Core Features and updated implemented features list
-  in [Home.md](WIKI/Home.md); added entry to contents in [README.md](WIKI/README.md)
+- **Blueprint System Wiki**: Added [Blueprint-System.md](fpscompress.wiki/Blueprint-System.md) covering
+  the Fabricator block, Blueprint scanning/printing cycle, NBT-aware scanning system, and data pack-driven
+  NBT requirement configuration — including JSON schema format, match strategies
+  (`exact`/`subset`/`list_subset`/`range`), the `ignore` field, and a modpack developer guide
+- **Wiki Migration**: Moved wiki source files from `WIKI/` into `fpscompress.wiki/` (GitHub wiki repository);
+  updated `wiki_to_patchouli.py` and `CLAUDE.md` to reference the new location; updated Home.md with
+  Blueprint System link and README.md with new contents entry
+- **Patchouli Regeneration**: Regenerated all in-game Patchouli JSON files with new Blueprint System category
+  (10 categories, 100 entries, 261 pages, 110 cross-references); added `Blueprint-System.md` mapping to
+  `wiki_to_patchouli.py` category config
 - **NBT-Aware Scanning Docs Updated**: Fixed `NOTES/NBT_AWARE_SCANNING_SYSTEM.md` and
   `data/fpscompress/nbt_requirements/README.md` to reflect the actual `match` map + per-path strategy
   JSON format (previously documented the earlier `nbt_fields`/`match_mode` design)
