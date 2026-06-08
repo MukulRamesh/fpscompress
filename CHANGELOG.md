@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PreFab Room Block Blacklist**: Prevents players from placing blacklisted blocks inside PreFab rooms
+  - **Config-driven**: New `prefabRoomBlacklistedBlocks` config option (TOML list) — server owners
+    define which blocks are forbidden inside PreFab rooms, with glob pattern support
+    (`mekanism:*` matches all Mekanism blocks, `*entangloporter*` matches any entangloporter)
+  - **Default**: `["minecraft:bedrock"]` — prevents players from escaping rooms by placing bedrock
+  - **Placement Prevention**: Players inside PreFab rooms cannot place blacklisted blocks —
+    placement is cancelled with an action bar warning message
+  - **Simulation Abort**: `startSimulation()` and `finishSimulation()` both scan the room for
+    blacklisted blocks and abort with a chat message listing violations if any are found
+  - **PreFab Room Tracking**: `PlayerRoomContext` now tracks which room codes belong to PreFab
+    rooms (vs regular CM rooms), populated automatically on room entry via `DimensionTeleportListener`
+  - **Cleanup**: PreFab room marker cleared on block break (`PrefabBlock.onRemove()`) and on
+    state reset (`StateTransitionManager.resetToBuilding()`)
+  - **Config migration**: v3→v4 auto-updates empty blacklist defaults to include `minecraft:bedrock`
+  - New files: `PrefabRoomBlockListener.java` (block placement event handler)
+  - Files modified: `Config.java`, `FPSCompress.java`, `PlayerRoomContext.java`,
+    `DimensionTeleportListener.java`, `StateTransitionManager.java`, `PrefabBlock.java`
+
+### Added
 - **Blueprint Scan Data Caching**: Scan results are now cached in the PreFab item's NBT,
   enabling instant re-scans without running the expensive async room scan again
   - First scan runs the full async block+item scan and caches results in the PreFab's

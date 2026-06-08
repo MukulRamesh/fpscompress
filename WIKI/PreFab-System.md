@@ -308,6 +308,31 @@ Future versions will support:
 - Farms with entity spawning (can't simulate mob drops accurately)
 - Multi-Purpose Machines (once cached, only 1 "recipe" is used)
 
+## Block Blacklist
+
+### Preventing Unwanted Blocks
+
+Server owners can blacklist specific blocks from being placed inside PreFab rooms. This is useful for preventing blocks that could bypass or break the factory system (e.g., teleporters, dimensional storage).
+
+**Config option**: `prefabRoomBlacklistedBlocks` in `fpscompress-server.toml`
+
+```toml
+[prefab]
+    # Default: prevents bedrock placement (stops players escaping rooms)
+    prefabRoomBlacklistedBlocks = ["minecraft:bedrock"]
+```
+
+**Glob pattern support**:
+- `"mekanism:*"` — blocks all blocks from the Mekanism mod
+- `"*entangloporter*"` — blocks any entangloporter from any mod
+- `"enderchests:*"` — blocks all blocks from the EnderChests mod
+- `"minecraft:bedrock"` — blocks specific blocks
+
+**Behavior**:
+- Players cannot place blacklisted blocks while inside a PreFab room (action bar warning shown)
+- Simulation will abort if blacklisted blocks are detected during scanning (chat message lists violations)
+- Only applies to PreFab rooms — regular Compact Machine rooms are not affected
+
 ## Limitations
 
 ### Limitations (Current Version)

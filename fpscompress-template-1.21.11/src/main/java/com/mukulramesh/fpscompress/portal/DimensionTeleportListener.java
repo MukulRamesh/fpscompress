@@ -193,6 +193,12 @@ public class DimensionTeleportListener {
             RoomCoordinateCache cache = RoomCoordinateCache.get(event.getServer());
             cache.setRoomCenter(sourceBlockPos, roomCode, roomCenter);
 
+            // Mark as PreFab room if the source block is a PreFab (vs regular CM)
+            BlockEntity sourceBE = overworldLevel.getBlockEntity(sourceBlockPos);
+            if (sourceBE instanceof PrefabBlockEntity) {
+                PlayerRoomContext.markAsPrefabRoom(roomCode);
+            }
+
             // Push room context for player
             PlayerRoomContext.enterRoom(playerId, roomCode);
 

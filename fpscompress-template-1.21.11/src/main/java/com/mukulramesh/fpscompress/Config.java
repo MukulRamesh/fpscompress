@@ -3,6 +3,7 @@ package com.mukulramesh.fpscompress;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Configuration for FPSCompress mod.
@@ -22,9 +23,11 @@ public final class Config {
      * <ul>
      *   <li>0 → 1: blueprintPrintTicks default changed from 1 to 20</li>
      *   <li>1 → 2: prefabConsumedOnScan default changed from true to false</li>
+     *   <li>2 → 3: prefabRoomBlacklistedBlocks added (new field, no value migration)</li>
+     *   <li>3 → 4: prefabRoomBlacklistedBlocks default changed from empty to ["minecraft:bedrock"]</li>
      * </ul>
      */
-    public static final int CURRENT_CONFIG_VERSION = 2;
+    public static final int CURRENT_CONFIG_VERSION = 4;
 
     private Config() {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
@@ -43,6 +46,7 @@ public final class Config {
         private final ModConfigSpec.BooleanValue prefabConsumedOnScan;
         private final ModConfigSpec.IntValue blueprintPrintTicks;
         private final ModConfigSpec.IntValue configVersion;
+        private final ModConfigSpec.ConfigValue<List<? extends String>> prefabRoomBlacklistedBlocks;
 
         @SuppressWarnings("deprecation") // defineListAllowEmpty is the correct API for NeoForge 21.1
         public ServerConfig(ModConfigSpec.Builder builder) {
@@ -120,6 +124,23 @@ public final class Config {
                 .defineInRange("configVersion", 0, 0, Integer.MAX_VALUE);
 
             builder.pop();
+
+            builder.push("prefab");
+
+            prefabRoomBlacklistedBlocks = builder
+                .comment("Blocks blacklisted from being placed inside PreFab rooms",
+                         "Supports glob patterns: 'mekanism:*' matches all Mekanism blocks,",
+                         " '*entangloporter*' matches entangloporters from any mod.",
+                         "Players cannot place these blocks while inside a PreFab room.",
+                         "Simulation will abort if any of these blocks are detected during scanning.",
+                         "Default: [\"minecraft:bedrock\"] (prevents players from escaping rooms)")
+                .defineListAllowEmpty(
+                    "prefabRoomBlacklistedBlocks",
+                    List.of("minecraft:bedrock"),
+                    obj -> obj instanceof String
+                );
+
+            builder.pop();
         }
 
         /**
@@ -180,11 +201,64 @@ public final class Config {
         }
 
         /**
+         * Get list of block patterns blacklisted from PreFab rooms.
+         * Supports glob syntax: {@code *} matches any sequence, {@code ?} matches any single char.
+         * @return List of block ID patterns (e.g., "mekanism:*", "*entangloporter*")
+         */
+        public List<? extends String> getPrefabRoomBlacklistedBlocks() {
+            return prefabRoomBlacklistedBlocks.get();
+        }
+
+        /**
          * Get the config file version (used for auto-migration).
          * @return Config version from TOML file, 0 if old file without version field
          */
         public int getConfigVersion() {
             return configVersion.get();
         }
+    }
+
+    /**
+     * Check if a block ID matches any pattern in the given blacklist.
+     * Patterns support glob syntax: {@code *} matches any sequence, {@code ?} matches any single char.
+     *
+     * @param blockId Namespaced block ID (e.g., "mekanism:entangloporter")
+     * @param patterns List of glob patterns from config
+     * @return true if the block ID matches any pattern
+     */
+    public static boolean matchesBlockBlacklist(String blockId, List<? extends String> patterns) {
+        if (patterns.isEmpty()) {
+            return false;
+        }
+        for (String pattern : patterns) {
+            if (globToRegex(pattern).matcher(blockId).matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Convert a glob pattern to a compiled regex Pattern.
+     * {@code *} → {@code .*}, {@code ?} → {@code .}, all other regex special chars are escaped.
+     *
+     * @param pattern Glob pattern string (e.g., "mekanism:*")
+     * @return Compiled regex Pattern for efficient repeated matching
+     */
+    private static Pattern globToRegex(String pattern) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c == '*') {
+                sb.append(".*");
+            } else if (c == '?') {
+                sb.append('.');
+            } else if ("\\.[]{}()+-^$|".indexOf(c) >= 0) {
+                sb.append('\\').append(c);
+            } else {
+                sb.append(c);
+            }
+        }
+        return Pattern.compile(sb.toString());
     }
 }

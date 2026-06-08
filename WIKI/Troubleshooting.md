@@ -197,6 +197,34 @@ If still showing UUID only:
 
 ---
 
+---
+## Blacklist Issues
+
+### Problem: "Can't place a block inside a PreFab room"
+
+**Cause**: The block is on the `prefabRoomBlacklistedBlocks` config list.
+
+**Solution**:
+- Check `fpscompress-server.toml` → `[prefab]` → `prefabRoomBlacklistedBlocks`
+- Remove the block from the list, or use a different block
+- Glob patterns like `mekanism:*` block all blocks from a mod — narrow the pattern if needed
+
+### Problem: "Simulation aborts with 'blacklisted block(s) found'"
+
+**Cause**: A blacklisted block exists inside the PreFab room.
+
+**Solution**:
+1. Enter the PreFab room (BUILDING state)
+2. Find and remove the blacklisted block(s) listed in the chat message
+3. Alternatively, remove the block from the config blacklist
+4. Restart the simulation
+
+### Problem: "Block is blacklisted in PreFab but I can place it in a regular CM room"
+
+**This is intentional.** The blacklist only applies to PreFab rooms, not regular Compact Machine rooms. If you want to restrict blocks in all CM rooms, configure the Compact Machines mod separately.
+
+---
+
 ## Performance Issues
 
 ### Problem: "Chunks not unloading in CACHED mode"

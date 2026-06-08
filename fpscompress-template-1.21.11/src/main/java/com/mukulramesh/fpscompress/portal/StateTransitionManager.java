@@ -7,11 +7,16 @@ import com.mukulramesh.fpscompress.FPSCompress;
 import com.mukulramesh.fpscompress.scanner.InventoryScanner;
 import com.mukulramesh.fpscompress.spatial.CMInterceptorImpl;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -87,6 +92,11 @@ public class StateTransitionManager {
 
                             // Debug: Send scan results to player chat
                             entity.getScanningService().sendInventoryScanToChat(player, inventory, "Initial");
+
+                            // Phase 3c: Check for blacklisted blocks before starting simulation
+                            if (checkAndAbortBlacklistedBlocks(cmLevel, roomBounds, player, interceptor)) {
+                                return; // Abort — stays in BUILDING, chunks unloaded
+                            }
 
                             // Phase 4: Unload chunks (return to deterministic state)
                             interceptor.setRoomChunkState(cmLevel, entity.roomCode, false);
@@ -221,6 +231,11 @@ public class StateTransitionManager {
                             // Debug: Send scan results to player chat
                             entity.getScanningService().sendInventoryScanToChat(player, finalInventory, "Final");
 
+                            // Phase 4c: Check for blacklisted blocks before finalizing
+                            if (checkAndAbortBlacklistedBlocks(cmLevel, roomBounds, player, interceptor)) {
+                                return; // Abort — stays in BUILDING, chunks unloaded
+                            }
+
                             // Phase 5: Unload chunks (return to unloaded state)
                             interceptor.setRoomChunkState(cmLevel, entity.roomCode, false);
 
@@ -275,9 +290,11 @@ public class StateTransitionManager {
         // Clear display preferences
         entity.currentDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
         entity.focusedResourceId = null;
-        entity.autoNormalizedTicks = 1;
-        entity.useAutoNormalize = true;
-        entity.autoNormalizedDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+
+        // Clear PreFab room marker (room is no longer a PreFab)
+        if (entity.roomCode != null) {
+            PlayerRoomContext.clearPrefabRoom(entity.roomCode);
+        }
 
         // Transition state
         entity.setCurrentState(MachineState.BUILDING);
@@ -329,5 +346,51 @@ public class StateTransitionManager {
                 net.minecraft.resources.ResourceLocation.parse("compactmachines:compact_world")
             )
         );
+    }
+
+    /**
+     * Scan the room for blacklisted blocks and abort simulation if any are found.
+     *
+     * @param cmLevel CM dimension level
+     * @param roomBounds AABB bounds of the room interior
+     * @param player The player who started the simulation (for chat message)
+     * @param interceptor Chunk loading interceptor for cleanup
+     * @return true if simulation should abort (blacklisted blocks found), false if clean
+     */
+    private boolean checkAndAbortBlacklistedBlocks(ServerLevel cmLevel, AABB roomBounds,
+                                                    @Nullable Player player,
+                                                    CMInterceptorImpl interceptor) {
+        List<? extends String> blacklist = Config.SERVER.getPrefabRoomBlacklistedBlocks();
+        if (blacklist.isEmpty()) {
+            return false;
+        }
+
+        List<String> found = new ArrayList<>();
+        for (BlockPos pos : BlockPos.betweenClosed(
+                (int) roomBounds.minX, (int) roomBounds.minY, (int) roomBounds.minZ,
+                (int) roomBounds.maxX, (int) roomBounds.maxY, (int) roomBounds.maxZ
+        )) {
+            BlockState state = cmLevel.getBlockState(pos);
+            if (state.isAir()) {
+                continue;
+            }
+            String blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+            if (Config.matchesBlockBlacklist(blockId, blacklist)) {
+                found.add(blockId);
+            }
+        }
+
+        if (!found.isEmpty()) {
+            interceptor.setRoomChunkState(cmLevel, entity.roomCode, false);
+            String msg = "Simulation aborted: blacklisted block(s) found — "
+                + String.join(", ", found);
+            FPSCompress.LOGGER.warn("PreFab at {}: {}", entity.getBlockPos(), msg);
+            entity.lastSimulationResult = "Blacklisted blocks found";
+            if (player != null) {
+                player.displayClientMessage(Component.literal("§c" + msg), false);
+            }
+            return true;
+        }
+        return false;
     }
 }

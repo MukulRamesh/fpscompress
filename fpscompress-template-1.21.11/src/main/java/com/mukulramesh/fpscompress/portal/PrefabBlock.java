@@ -328,6 +328,14 @@ public class PrefabBlock extends Block implements EntityBlock {
                 level.getServer()
             );
             cache.clearCache(pos);
+
+            // Clear PreFab room marker (room no longer a PreFab)
+            if (level.getBlockEntity(pos) instanceof PrefabBlockEntity prefab) {
+                String roomCode = prefab.getRoomCode();
+                if (roomCode != null) {
+                    PlayerRoomContext.clearPrefabRoom(roomCode);
+                }
+            }
         }
 
         super.onRemove(state, level, pos, newState, movedByPiston);

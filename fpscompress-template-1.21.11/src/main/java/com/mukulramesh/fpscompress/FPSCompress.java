@@ -14,6 +14,7 @@ import com.mukulramesh.fpscompress.portal.ImporterBlockEntity;
 import com.mukulramesh.fpscompress.portal.PrefabBlock;
 import com.mukulramesh.fpscompress.portal.PrefabBlockEntity;
 import com.mukulramesh.fpscompress.portal.PrefabBlockItem;
+import com.mukulramesh.fpscompress.portal.PrefabRoomBlockListener;
 import com.mukulramesh.fpscompress.portal.PSDExitListener;
 import com.mukulramesh.fpscompress.portal.SimulationWrenchItem;
 import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
@@ -270,6 +271,9 @@ public final class FPSCompress {
         // Register PSD exit listener for PreFab room exit
         NeoForge.EVENT_BUS.register(new PSDExitListener());
 
+        // Register PreFab room block blacklist listener
+        NeoForge.EVENT_BUS.register(new PrefabRoomBlockListener());
+
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (FPSCompress) to respond
         // directly to events. Do not add this line if there are no @SubscribeEvent-annotated
@@ -413,6 +417,20 @@ public final class FPSCompress {
             content = content.replaceFirst(
                 "prefabConsumedOnScan = true(\\r?\\n)",
                 "prefabConsumedOnScan = false$1");
+            fromVersion = 2;
+        }
+
+        // Version 2 → 3: Added prefabRoomBlacklistedBlocks (new field, no value migration)
+        if (fromVersion < 3) {
+            fromVersion = 3;
+        }
+
+        // Version 3 → 4: prefabRoomBlacklistedBlocks default changed from [] to ["minecraft:bedrock"]
+        if (fromVersion < 4) {
+            content = content.replaceFirst(
+                "prefabRoomBlacklistedBlocks = \\[\\](\\r?\\n)",
+                "prefabRoomBlacklistedBlocks = [\"minecraft:bedrock\"]$1");
+            fromVersion = 4;
         }
 
         // Bump the config version in the file
