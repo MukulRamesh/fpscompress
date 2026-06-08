@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **PreFab name field closes screen on 'E' key**: Fixed `PreFabStatusScreen` so pressing
+  the inventory keybinding (default 'E') while typing in the name field no longer closes
+  the screen. The `keyPressed` override gives the focused `EditBox` priority and blocks
+  the inventory keybinding from propagating to `AbstractContainerScreen`.
+
 ### Added
 - **PreFab Naming System**: Players can assign custom names to PreFab blocks
   - **Name Input**: EditBox + save button (✓) at top of Status GUI
@@ -104,9 +110,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Fix**: Converted for-each loop to indexed for-loop so `reqIndex` increments unconditionally (even after `continue`)
   - **Result**: Satisfied NBT slots now correctly show green; unsatisfied slots correctly show yellow/red
 - **Fabricator NBT Item Rejection**: Items with wrong/missing NBT are now rejected from resource slots
-  - **Rejection Priority**: Tries to return item to player's inventory first; falls back to world drop if inventory is full
+  - **Rejection Priority**: Tries to return item to player's inventory first (merge into partial stacks → first empty slot); falls back to world drop if inventory is full
+  - **Deferred Ejection**: `pendingEjections` queue processes ejections in `tick()` to avoid race condition with `quickMoveStack` `setByPlayer(EMPTY)` overwriting the return slot
   - **Guard Flag**: `rejectingNbtMismatch` prevents infinite recursion from ejection → `onContentsChanged` → re-check → ejection
-  - **Validation Method**: `validateAndEjectNbtMismatches()` extracted from `checkRequiredResources()` for maintainability
+  - **Validation Method**: `validateAndEjectNbtMismatches()` extracted from `checkRequiredResources()` for maintainability; queues mismatches instead of ejecting inline
   - **Files Modified**: `FabricatorBlockEntity.java`
 
 ### Localization

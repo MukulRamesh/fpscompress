@@ -1019,6 +1019,27 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     }
 
     @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // When the name EditBox is focused, prevent AbstractContainerScreen from
+        // intercepting the inventory keybinding (default 'E') and closing the screen.
+        // EditBox.keyPressed() only handles control keys (arrows, backspace, etc.),
+        // not character keys — character input arrives via the separate GLFW
+        // charTyped callback, which fires independently and is handled correctly.
+        if (nameBox != null && nameBox.isFocused()) {
+            // Give EditBox first chance for control keys (arrows, backspace, etc.)
+            if (nameBox.keyPressed(keyCode, scanCode, modifiers)) {
+                return true;
+            }
+            // Block the inventory keybinding to prevent screen close while typing.
+            // The charTyped callback still fires so the letter 'e' is typed normally.
+            if (this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+                return true;
+            }
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         // Scroll up = positive, scroll down = negative
         int scrollAmount = (int) (scrollY * 10); // 10 pixels per scroll notch
