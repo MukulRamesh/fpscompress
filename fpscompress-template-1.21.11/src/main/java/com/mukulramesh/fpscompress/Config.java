@@ -2,6 +2,8 @@ package com.mukulramesh.fpscompress;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.List;
+
 /**
  * Configuration for FPSCompress mod.
  */
@@ -22,7 +24,9 @@ public final class Config {
      */
     public static class ServerConfig {
         private final ModConfigSpec.IntValue minimumSimulationTicks;
+        private final ModConfigSpec.ConfigValue<List<? extends String>> blueprintExcludedBlocks;
 
+        @SuppressWarnings("deprecation") // defineListAllowEmpty is the correct API for NeoForge 21.1
         public ServerConfig(ModConfigSpec.Builder builder) {
             builder.comment("=== FPSCompress Server Configuration ===");
             builder.push("simulation");
@@ -36,6 +40,26 @@ public final class Config {
                 .defineInRange("minimumSimulationTicks", 2400, 0, 72000);
 
             builder.pop();
+
+            builder.push("blueprints");
+
+            blueprintExcludedBlocks = builder
+                .comment("Block IDs to exclude from blueprint scanning",
+                         "These blocks will not be counted as resources when scanning a PreFab",
+                         "Default: Compact Machines wall blocks (should not be part of resource costs)",
+                         "Format: List of namespaced block IDs (e.g., \"minecraft:bedrock\")",
+                         "Modpack developers: Add custom dimension wall blocks here")
+                .defineListAllowEmpty(
+                    "blueprintExcludedBlocks",
+                    List.of(
+                        "compactmachines:solid_wall",
+                        "compactmachines:wall",
+                        "compactmachines:machine_wall"
+                    ),
+                    obj -> obj instanceof String
+                );
+
+            builder.pop();
         }
 
         /**
@@ -44,6 +68,14 @@ public final class Config {
          */
         public int getMinimumSimulationTicks() {
             return minimumSimulationTicks.get();
+        }
+
+        /**
+         * Get list of block IDs to exclude from blueprint scanning.
+         * @return List of namespaced block IDs (e.g., "compactmachines:solid_wall")
+         */
+        public List<? extends String> getBlueprintExcludedBlocks() {
+            return blueprintExcludedBlocks.get();
         }
     }
 }

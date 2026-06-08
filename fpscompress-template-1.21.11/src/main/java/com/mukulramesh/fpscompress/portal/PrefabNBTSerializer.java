@@ -55,6 +55,14 @@ public class PrefabNBTSerializer {
             tag.putInt("roomSizeZ", entity.roomSizeZ);
         }
 
+        // Debug logging for NBT persistence timing
+        boolean hasRoomDims = entity.roomSizeX != null
+            || entity.roomSizeY != null || entity.roomSizeZ != null;
+        if (entity.getLevel() != null && hasRoomDims) {
+            FPSCompress.LOGGER.debug("[SAVE NBT] Persisting room dimensions: {}x{}x{} at tick {}",
+                entity.roomSizeX, entity.roomSizeY, entity.roomSizeZ, entity.getLevel().getGameTime());
+        }
+
         // Save machine state (always persist - migration handled on load)
         tag.putString("state", entity.currentState.name());
 
@@ -186,6 +194,14 @@ public class PrefabNBTSerializer {
         }
         if (tag.contains("roomSizeZ")) {
             entity.roomSizeZ = tag.getInt("roomSizeZ");
+        }
+
+        // Debug logging for NBT load timing
+        boolean hasRoomDims = entity.roomSizeX != null
+            || entity.roomSizeY != null || entity.roomSizeZ != null;
+        if (entity.getLevel() != null && hasRoomDims) {
+            FPSCompress.LOGGER.debug("[LOAD NBT] Restored room dimensions: {}x{}x{} at tick {}",
+                entity.roomSizeX, entity.roomSizeY, entity.roomSizeZ, entity.getLevel().getGameTime());
         }
 
         // Machine state already loaded by applyItemNBTMigration() with migration rules applied

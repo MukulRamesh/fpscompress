@@ -83,16 +83,39 @@ public class TpsCacheUpgradeItem extends Item {
         FPSCompress.LOGGER.info("Got room code: {}", roomCode);
 
         // Get room size (internal dimensions - can be non-cubic)
+        // Try reflection first (fast), fallback to wall scanning (works always)
         int[] roomDimensions = getRoomDimensionsFromCM(cmBE);
         if (roomDimensions == null) {
-            FPSCompress.LOGGER.warn("Failed to get room dimensions from CM - defaulting to null");
-            // Non-fatal: We can still upgrade, but validation will be limited
+            FPSCompress.LOGGER.info("Reflection failed, falling back to wall scanning for room dimensions");
+            roomDimensions = getRoomDimensionsViaWallScanning(level, context.getClickedPos(), roomCode);
+            if (roomDimensions == null) {
+                FPSCompress.LOGGER.warn("Wall scanning also failed - PreFab will have no dimensions");
+            } else {
+                FPSCompress.LOGGER.info("Wall scanning succeeded: {}x{}x{}",
+                    roomDimensions[0], roomDimensions[1], roomDimensions[2]);
+            }
         } else {
-            FPSCompress.LOGGER.info("Got room dimensions: {}x{}x{}",
+            FPSCompress.LOGGER.info("Got room dimensions via reflection: {}x{}x{}",
                 roomDimensions[0], roomDimensions[1], roomDimensions[2]);
         }
 
-        // Replace block: CM → PreFab
+        // Replace block: CM → PreFab and initialize
+        return replaceAndInitializePreFab(context, level, player, roomCode, roomDimensions);
+    }
+
+    /**
+     * Replace CM block with PreFab block and initialize the BlockEntity.
+     *
+     * @param context The use context
+     * @param level The level
+     * @param player The player
+     * @param roomCode The room code
+     * @param roomDimensions Room dimensions [x, y, z] or null
+     * @return InteractionResult indicating success or failure
+     */
+    private InteractionResult replaceAndInitializePreFab(UseOnContext context, Level level,
+                                                        Player player, String roomCode,
+                                                        int[] roomDimensions) {
         BlockPos pos = context.getClickedPos();
         FPSCompress.LOGGER.info("Replacing block at {} with PreFab", pos);
 
@@ -101,7 +124,8 @@ public class TpsCacheUpgradeItem extends Item {
             level.removeBlockEntity(pos);
 
             // Use flag 3: notify neighbors + send to clients
-            boolean success = level.setBlock(pos, FPSCompress.PREFAB_BLOCK.get().defaultBlockState(), 3);
+            boolean success = level.setBlock(pos,
+                FPSCompress.PREFAB_BLOCK.get().defaultBlockState(), 3);
             if (!success) {
                 FPSCompress.LOGGER.error("setBlock returned false");
                 player.displayClientMessage(
@@ -124,64 +148,56 @@ public class TpsCacheUpgradeItem extends Item {
         // Initialize PreFab BlockEntity (force chunk to refresh)
         level.getChunkAt(pos).setUnsaved(true);
         BlockEntity newBE = level.getBlockEntity(pos);
-        FPSCompress.LOGGER.info("New BlockEntity: {}", newBE != null ? newBE.getClass().getName() : "null");
 
-        if (newBE instanceof PrefabBlockEntity prefabBE) {
-            FPSCompress.LOGGER.info("Initializing PreFab BlockEntity");
-            prefabBE.setRoomCode(roomCode);
-            prefabBE.setCurrentState(MachineState.BUILDING);
-
-            // Set room dimensions if available
-            if (roomDimensions != null) {
-                prefabBE.setRoomSize(roomDimensions[0], roomDimensions[1], roomDimensions[2]);
-                FPSCompress.LOGGER.info("Set room dimensions to {}x{}x{}",
-                    roomDimensions[0], roomDimensions[1], roomDimensions[2]);
-            }
-
-            // Try to get cached coordinates (with null checks)
-            try {
-                if (level.getServer() != null) {
-                    RoomCoordinateCache cache = RoomCoordinateCache.get(level.getServer());
-                    BlockPos roomCenter = cache.getRoomCenter(pos);
-                    if (roomCenter != null) {
-                        prefabBE.setRoomCenter(roomCenter);
-                        FPSCompress.LOGGER.info("PreFab initialized with cached room center: {}", roomCenter);
-                    } else {
-                        FPSCompress.LOGGER.info("No cached coordinates available");
-                    }
-                } else {
-                    FPSCompress.LOGGER.warn("Server is null, skipping coordinate cache");
-                }
-            } catch (Exception e) {
-                FPSCompress.LOGGER.error("Failed to get cached coordinates (non-fatal)", e);
-                // Continue anyway
-            }
-
-            prefabBE.setChanged();
-            FPSCompress.LOGGER.info("PreFab BlockEntity initialized successfully");
-
-            // Success message
+        if (!(newBE instanceof PrefabBlockEntity prefabBE)) {
             player.displayClientMessage(
-                Component.literal("§aCompact Machine upgraded to PreFab!"),
+                Component.literal("§cFailed to create PreFab BlockEntity"),
                 true
             );
-
-            // Consume item (unless creative mode)
-            if (!player.isCreative()) {
-                context.getItemInHand().shrink(1);
-            }
-
-            FPSCompress.LOGGER.info("CM at {} upgraded to PreFab by player {}",
-                                   pos, player.getName().getString());
-
-            return InteractionResult.SUCCESS;
+            return InteractionResult.FAIL;
         }
 
+        prefabBE.setRoomCode(roomCode);
+        prefabBE.setCurrentState(MachineState.BUILDING);
+
+        // Set room dimensions if available
+        if (roomDimensions != null) {
+            prefabBE.setRoomSize(roomDimensions[0], roomDimensions[1], roomDimensions[2]);
+            FPSCompress.LOGGER.debug("[UPGRADE] Set room dimensions: {}x{}x{} at tick {}",
+                roomDimensions[0], roomDimensions[1], roomDimensions[2], level.getGameTime());
+        }
+
+        // Try to get cached coordinates
+        try {
+            if (level.getServer() != null) {
+                RoomCoordinateCache cache = RoomCoordinateCache.get(level.getServer());
+                BlockPos roomCenter = cache.getRoomCenter(pos);
+                if (roomCenter != null) {
+                    prefabBE.setRoomCenter(roomCenter);
+                }
+            }
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Failed to get cached coordinates (non-fatal)", e);
+        }
+
+        prefabBE.setChanged();
+
+        // Force immediate NBT save and verify
+        net.minecraft.nbt.CompoundTag nbt = new net.minecraft.nbt.CompoundTag();
+        prefabBE.saveAdditional(nbt, level.registryAccess());
+        level.getChunkAt(pos).setUnsaved(true);
+
         player.displayClientMessage(
-            Component.literal("§cFailed to create PreFab BlockEntity"),
+            Component.literal("§aCompact Machine upgraded to PreFab!"),
             true
         );
-        return InteractionResult.FAIL;
+
+        if (!player.isCreative()) {
+            context.getItemInHand().shrink(1);
+        }
+
+        FPSCompress.LOGGER.info("CM at {} upgraded to PreFab", pos);
+        return InteractionResult.SUCCESS;
     }
 
     /**
@@ -350,5 +366,126 @@ public class TpsCacheUpgradeItem extends Item {
 
         FPSCompress.LOGGER.warn("=== DEBUG: Could not determine room dimensions ===");
         return null;
+    }
+
+    /**
+     * Get room dimensions by scanning for CM wall blocks (fallback method).
+     * Uses the same wall-scanning logic as FabricatorBlockEntity.
+     *
+     * @param level Server level
+     * @param cmPos Position of the CM block in Overworld
+     * @param roomCode Room code to look up center coordinates
+     * @return Array of [sizeX, sizeY, sizeZ], or null if scanning failed
+     */
+    @Nullable
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
+        value = "PZLA_PREFER_ZERO_LENGTH_ARRAYS",
+        justification = "Null indicates failure (no room found), zero-length array would be ambiguous"
+    )
+    private int[] getRoomDimensionsViaWallScanning(Level level, BlockPos cmPos, String roomCode) {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) {
+            return null;
+        }
+
+        try {
+            // Get CM dimension
+            net.minecraft.server.MinecraftServer server = serverLevel.getServer();
+            net.minecraft.server.level.ServerLevel cmLevel = server.getLevel(
+                net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION,
+                    net.minecraft.resources.ResourceLocation.parse("compactmachines:compact_world")
+                )
+            );
+
+            if (cmLevel == null) {
+                FPSCompress.LOGGER.error("Cannot access CM dimension for wall scanning");
+                return null;
+            }
+
+            // Get room center from cache
+            RoomCoordinateCache cache = RoomCoordinateCache.get(server);
+            BlockPos roomCenter = cache.getRoomCenterByRoomCode(roomCode);
+            if (roomCenter == null) {
+                FPSCompress.LOGGER.error("Room center not found for roomCode: {}", roomCode);
+                return null;
+            }
+
+            // Find wall blocks
+            String[] wallBlockIds = {
+                "compactmachines:solid_wall",
+                "compactmachines:wall",
+                "compactmachines:machine_wall"
+            };
+
+            net.minecraft.world.level.block.Block wallBlock = null;
+            for (String blockId : wallBlockIds) {
+                net.minecraft.world.level.block.Block candidate =
+                    net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(
+                        net.minecraft.resources.ResourceLocation.parse(blockId));
+                if (!candidate.equals(net.minecraft.world.level.block.Blocks.AIR)) {
+                    wallBlock = candidate;
+                    break;
+                }
+            }
+
+            if (wallBlock == null) {
+                FPSCompress.LOGGER.error("No valid CM wall block found in registry");
+                return null;
+            }
+
+            // Scan for walls in each direction
+            int minX = scanForWall(cmLevel, roomCenter, net.minecraft.core.Direction.WEST, wallBlock);
+            int maxX = scanForWall(cmLevel, roomCenter, net.minecraft.core.Direction.EAST, wallBlock);
+            int minY = scanForWall(cmLevel, roomCenter, net.minecraft.core.Direction.DOWN, wallBlock);
+            int maxY = scanForWall(cmLevel, roomCenter, net.minecraft.core.Direction.UP, wallBlock);
+            int minZ = scanForWall(cmLevel, roomCenter, net.minecraft.core.Direction.NORTH, wallBlock);
+            int maxZ = scanForWall(cmLevel, roomCenter, net.minecraft.core.Direction.SOUTH, wallBlock);
+
+            // Calculate interior dimensions (exclude walls)
+            int sizeX = maxX - minX - 1; // -1 to exclude both walls
+            int sizeY = maxY - minY - 1;
+            int sizeZ = maxZ - minZ - 1;
+
+            return new int[]{sizeX, sizeY, sizeZ};
+
+        } catch (Exception e) {
+            FPSCompress.LOGGER.error("Wall scanning failed", e);
+            return null;
+        }
+    }
+
+    /**
+     * Scan outward from center until CM wall found.
+     *
+     * @param cmLevel CM dimension level
+     * @param center Center position
+     * @param dir Direction to scan
+     * @param wallBlock Wall block to search for
+     * @return Coordinate of wall in direction's axis
+     * @throws IllegalStateException if wall not found
+     */
+    private int scanForWall(net.minecraft.server.level.ServerLevel cmLevel, BlockPos center,
+                           net.minecraft.core.Direction dir,
+                           net.minecraft.world.level.block.Block wallBlock) {
+        BlockPos.MutableBlockPos pos = center.mutable();
+        int maxDistance = 20;
+
+        for (int i = 0; i < maxDistance; i++) {
+            pos.move(dir);
+            net.minecraft.world.level.block.state.BlockState state = cmLevel.getBlockState(pos);
+
+            if (state.is(wallBlock)) {
+                net.minecraft.core.Direction.Axis axis = dir.getAxis();
+                if (axis == net.minecraft.core.Direction.Axis.X) {
+                    return pos.getX();
+                } else if (axis == net.minecraft.core.Direction.Axis.Y) {
+                    return pos.getY();
+                } else {
+                    return pos.getZ();
+                }
+            }
+        }
+
+        throw new IllegalStateException("Wall not found in direction " + dir + " within " + maxDistance + " blocks");
     }
 }

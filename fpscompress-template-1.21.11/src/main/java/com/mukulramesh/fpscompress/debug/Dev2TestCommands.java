@@ -3,9 +3,12 @@ package com.mukulramesh.fpscompress.debug;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mukulramesh.fpscompress.FPSCompress;
+import com.mukulramesh.fpscompress.blueprint.BlueprintData;
+import com.mukulramesh.fpscompress.component.FPSDataComponents;
 import com.mukulramesh.fpscompress.spatial.CMInterceptorImpl;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,6 +23,10 @@ import net.minecraft.world.item.component.CustomData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -86,6 +93,28 @@ public final class Dev2TestCommands {
                         .then(Commands.literal("debug-reflection")
                                 .then(Commands.argument("roomCode", StringArgumentType.string())
                                         .executes(Dev2TestCommands::debugReflection)
+                                )
+                        )
+                        .then(Commands.literal("give-test-blueprint")
+                                .executes(Dev2TestCommands::giveTestBlueprint)
+                                .then(Commands.argument("inputItem", StringArgumentType.string())
+                                    .then(Commands.argument("inputRate",
+                                            DoubleArgumentType.doubleArg(0.0))
+                                        .then(Commands.argument("outputItem",
+                                                StringArgumentType.string())
+                                            .then(Commands.argument("outputRate",
+                                                    DoubleArgumentType.doubleArg(0.0))
+                                                .then(Commands.argument("costItem",
+                                                        StringArgumentType.string())
+                                                    .then(Commands.argument("costCount",
+                                                            LongArgumentType.longArg(1))
+                                                        .executes(Dev2TestCommands
+                                                            ::giveTestBlueprintCustom)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
                                 )
                         )
                         .then(Commands.literal("cleanup")
@@ -992,5 +1021,97 @@ public final class Dev2TestCommands {
 
         LOGGER.info("Test PreFab given to player {} with {} Importers and {} Exporters",
             player.getName().getString(), importers.size(), exporters.size());
+    }
+
+    /**
+     * Give the player a test Blueprint with canned cached rates and resource costs.
+     *
+     * <p>Command: /fps_dev2 give-test-blueprint
+     *
+     * <p>Blueprint data:
+     * <ul>
+     *   <li>Cached rates: 1 dirt consumed/tick, 1 diamond produced/tick</li>
+     *   <li>Resource cost: 1 grass block</li>
+     *   <li>Room size: 5×5×5</li>
+     *   <li>Name: "Test Blueprint"</li>
+     * </ul>
+     */
+    private static int giveTestBlueprint(CommandContext<CommandSourceStack> context) {
+        return giveTestBlueprintInternal(context,
+            "minecraft:dirt", 1.0, "minecraft:diamond", 1.0,
+            "minecraft:grass_block", 1);
+    }
+
+    /**
+     * Give the player a test Blueprint with custom rates and costs.
+     *
+     * <p>Command: /fps_dev2 give-test-blueprint &lt;inputItem&gt; &lt;inputRate&gt;
+     *     &lt;outputItem&gt; &lt;outputRate&gt; &lt;costItem&gt; &lt;costCount&gt;
+     */
+    private static int giveTestBlueprintCustom(CommandContext<CommandSourceStack> context) {
+        String inputItem = StringArgumentType.getString(context, "inputItem");
+        double inputRate = DoubleArgumentType.getDouble(context, "inputRate");
+        String outputItem = StringArgumentType.getString(context, "outputItem");
+        double outputRate = DoubleArgumentType.getDouble(context, "outputRate");
+        String costItem = StringArgumentType.getString(context, "costItem");
+        long costCount = LongArgumentType.getLong(context, "costCount");
+
+        return giveTestBlueprintInternal(context,
+            inputItem, inputRate, outputItem, outputRate, costItem, costCount);
+    }
+
+    private static int giveTestBlueprintInternal(CommandContext<CommandSourceStack> context,
+                                                  String inputItem, double inputRate,
+                                                  String outputItem, double outputRate,
+                                                  String costItem, long costCount) {
+        CommandSourceStack source = context.getSource();
+
+        try {
+            if (!(source.getEntity() instanceof ServerPlayer player)) {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] This command must be run by a player"));
+                return 0;
+            }
+
+            List<BlueprintData.ResourceRequirement> itemReqs = new ArrayList<>();
+            itemReqs.add(new BlueprintData.ResourceRequirement(costItem, costCount, null));
+
+            UUID uuid = UUID.randomUUID();
+            List<BlueprintData.ResourceRate> rates = new ArrayList<>();
+            rates.add(new BlueprintData.ResourceRate(inputItem, -inputRate));
+            rates.add(new BlueprintData.ResourceRate(outputItem, outputRate));
+            Map<UUID, List<BlueprintData.ResourceRate>> cachedRates = new HashMap<>();
+            cachedRates.put(uuid, rates);
+
+            BlueprintData data = new BlueprintData(
+                new ArrayList<>(), itemReqs, cachedRates, 5, 5, 5, "Test Blueprint");
+
+            ItemStack blueprint = new ItemStack(FPSCompress.PREFAB_BLUEPRINT.get());
+            blueprint.set(FPSDataComponents.BLUEPRINT_DATA.get(), data.toNBT());
+
+            if (player.addItem(blueprint)) {
+                source.sendSuccess(() -> Component.literal(
+                    "§a[Dev2 Test] ✓ Test Blueprint given! "
+                        + String.format("%.1f %s→%.1f %s/tick, Cost: %d %s",
+                            inputRate, shortName(inputItem),
+                            outputRate, shortName(outputItem),
+                            costCount, shortName(costItem))), true);
+                return 1;
+            } else {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] Failed to give item (inventory full?)"));
+                return 0;
+            }
+
+        } catch (Exception e) {
+            source.sendFailure(Component.literal(
+                "§c[Dev2 Test] ERROR: " + e.getMessage()));
+            LOGGER.error("give-test-blueprint failed", e);
+            return 0;
+        }
+    }
+
+    private static String shortName(String resourceId) {
+        return resourceId.contains(":") ? resourceId.split(":")[1] : resourceId;
     }
 }

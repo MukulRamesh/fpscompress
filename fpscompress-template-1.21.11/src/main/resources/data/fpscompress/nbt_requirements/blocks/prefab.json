@@ -1,0 +1,7 @@
+{
+  "resource_id": "fpscompress:prefab_machine",
+  "match": {
+    "importerExporterRates": {"strategy": "list_subset", "ignore": ["uuid"]},
+    "importerExporterRates.*.rates": "list_subset"
+  }
+}

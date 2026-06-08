@@ -1,6 +1,7 @@
 package com.mukulramesh.fpscompress;
 
 import com.mukulramesh.fpscompress.client.renderer.FrequencyIndicatorRenderer;
+import com.mukulramesh.fpscompress.gui.FabricatorScreen;
 import com.mukulramesh.fpscompress.gui.PreFabConfigScreen;
 import com.mukulramesh.fpscompress.gui.PreFabStatusScreen;
 import net.minecraft.client.Minecraft;
@@ -45,6 +46,10 @@ public class FPSCompressClient {
         // Register PreFab status/control screen
         event.register(FPSCompress.PREFAB_STATUS_MENU.get(), PreFabStatusScreen::new);
         FPSCompress.LOGGER.info("Registered PreFab status screen");
+
+        // Register Fabricator screen
+        event.register(FPSCompress.FABRICATOR_MENU.get(), FabricatorScreen::new);
+        FPSCompress.LOGGER.info("Registered Fabricator screen");
     }
 
     @SubscribeEvent

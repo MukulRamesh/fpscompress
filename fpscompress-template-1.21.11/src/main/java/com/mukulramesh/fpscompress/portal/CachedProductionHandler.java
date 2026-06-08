@@ -40,7 +40,6 @@ public class CachedProductionHandler {
             }
             // Retry interval reached - reset counter and attempt recovery
             entity.ticksSinceLastRetry = 0;
-            FPSCompress.LOGGER.debug("HALTED retry attempt (interval: {} ticks)", entity.haltedRetryInterval);
         }
 
         boolean hadFailure = false;
@@ -99,11 +98,16 @@ public class CachedProductionHandler {
                                 itemName, -wholeItems, uuidShort);
                         }
 
-                        FPSCompress.LOGGER.debug("Cache transfer failed: {}", failureMessage);
+                        // Only log once per UUID - log again after successful transfer
+                        if (!entity.loggedFailures.containsKey(equipmentUUID)) {
+                            FPSCompress.LOGGER.debug("Cache transfer failed: {}", failureMessage);
+                            entity.loggedFailures.put(equipmentUUID, true);
+                        }
                         // Continue trying other resources instead of returning
                         continue;
                     }
-                    // Success - continue with updated currentAccum (will be stored below)
+                    // Success - clear failure log flag so future failures will log again
+                    entity.loggedFailures.remove(equipmentUUID);
                 }
 
                 // Store updated accumulator (whether we transferred or not)
@@ -126,8 +130,12 @@ public class CachedProductionHandler {
             }
             entity.lastSimulationResult = failureMessage;
         } else {
-            // All transfers succeeded - recover from HALTED if needed
-            if (entity.currentState == MachineState.HALTED) {
+            // All transfers succeeded - recover from HALTED to CACHED if needed.
+            // Guard: Only auto-recover if we actually have cached rates. HALTED can also
+            // be set by finishSimulation() when no activity was detected (no rates at all),
+            // which should NOT auto-recover to CACHED.
+            if (entity.currentState == MachineState.HALTED
+                    && !entity.importerExporterRates.isEmpty()) {
                 FPSCompress.LOGGER.info("Cache recovered at {} (after {} ticks backoff) - returning to CACHED",
                     entity.getBlockPos(), entity.haltedRetryInterval);
                 entity.haltedRetryInterval = 1; // Reset for next failure

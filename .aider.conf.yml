@@ -1,0 +1,5 @@
+read: CLAUDE.md
+auto-test: true
+map-tokens: 2048
+auto-test: true
+test-cmd: cd fpscompress-template-1.21.11; .\gradlew.bat clean compileJava checkstyleMain spotbugsMain

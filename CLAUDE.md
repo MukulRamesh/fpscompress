@@ -288,6 +288,23 @@ Debug commands for testing and development (requires OP level 2):
 /fps_dev2 cleanup                              # Clean up all chunk tickets
 ```
 
+**Give Test Blueprint** — Create Blueprint items with pre-configured cached rates and resource costs:
+
+```bash
+# Default: 1 dirt/tick → 1 diamond/tick, cost 1 grass block
+/fps_dev2 give-test-blueprint
+
+# Custom rates and cost
+/fps_dev2 give-test-blueprint <inputItem> <inputRate> <outputItem> <outputRate> <costItem> <costCount>
+/fps_dev2 give-test-blueprint minecraft:cobblestone 2.0 minecraft:iron_ingot 1.5 minecraft:grass_block 1
+```
+
+**Test Blueprint Behavior**:
+- Blueprints contain real `BlueprintData` with cached production rates and resource requirements
+- Can be placed in a Fabricator input slot to test the printing UI
+- Resource slots will populate with ghost items and status indicators
+- Custom rates allow testing different production scenarios
+
 **Implementation**: `src/main/java/com/mukulramesh/fpscompress/debug/Dev2TestCommands.java`
 
 ---

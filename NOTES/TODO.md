@@ -25,121 +25,6 @@ This TODO list is organized with **pending tasks at the top** for quick referenc
 
 ### Core System Improvements
 
-### Optimize StatusGuiSyncPacket (Network Performance)
-**Status**: Not started
-**Priority**: MEDIUM (performance optimization, not a blocker)
-**Goal**: Reduce network bandwidth by only sending GUI sync packets when data actually changes, instead of every tick
-
-**Current Issue**:
-- `StatusGuiSyncPacket` is sent every tick while GUI is open (~20 packets/second per player)
-- Contains 17 fields, most of which are static (only change on state transitions)
-- With multiple players viewing GUIs simultaneously, creates unnecessary network traffic
-- Example: 5 players = 1,600 field updates per second
-
-**Proposed Solution**:
-- Split into **InitPacket** (sent once on menu open) and **UpdatePacket** (sent on change only)
-- **Static fields** (send once): `cachedRates`, `displayMode`, `prefabName`, `focusedResourceId`, etc.
-- **Derived fields** (client calculates): `simulationElapsedTicks = currentClientTick - simulationStartTick`
-- **Real-time fields** (send on change): `state`, `liveStats`, `cachedProduction`
-- Add dirty-flag tracking to `PrefabBlockEntity` to detect changes
-
-**Expected Impact**:
-- **~95% reduction** in network traffic (from 20 packets/sec to ~0.2 packets/sec during idle)
-- Only send updates during active SIMULATING state or when player clicks buttons
-- Client-side elapsed time calculation (no desync risk - uses local game time)
-
-**Implementation Tasks**:
-- [ ] Add dirty flag system to PrefabBlockEntity for change detection
-- [ ] Create `StatusGuiInitPacket` for static fields (sent on menu open)
-- [ ] Create `StatusGuiUpdatePacket` for dynamic fields (sent on change)
-- [ ] Move `simulationElapsedTicks` calculation to client-side
-- [ ] Update `PreFabStatusMenu.broadcastChanges()` to use dirty flags
-- [ ] Test for desync issues (especially during state transitions)
-- [ ] Measure bandwidth savings in multiplayer environment
-
-**Files to Modify**:
-- `src/main/java/com/mukulramesh/fpscompress/portal/PrefabBlockEntity.java` - Add dirty flags
-- `src/main/java/com/mukulramesh/fpscompress/network/StatusGuiInitPacket.java` - NEW FILE
-- `src/main/java/com/mukulramesh/fpscompress/network/StatusGuiUpdatePacket.java` - NEW FILE
-- `src/main/java/com/mukulramesh/fpscompress/gui/PreFabStatusMenu.java` - Update sync logic
-- `src/main/java/com/mukulramesh/fpscompress/gui/PreFabStatusScreen.java` - Handle both packet types
-
-**Estimated effort**: 2-3 hours
-
----
-
-### PreFab Naming System
-**Status**: ✅ **COMPLETE**
-**Goal**: Allow players to assign custom names to PreFab blocks that persist across block breaks and are used in blueprint printing
-
-**Use Cases**:
-- Identify PreFabs in Factory Controllers ("Iron Smelter", "Ore Processing", etc.)
-- Generate blueprint names automatically ("CC of Iron Smelter")
-- Display meaningful names in Status GUI header instead of "PreFab"
-- Organize multiple PreFabs in player inventory (tooltip shows name)
-
-**Implementation**:
-- [ ] Add naming GUI:
-  - [ ] Add "Rename" button to Status GUI (next to control button)
-  - [ ] Open text input screen (similar to anvil naming)
-  - [ ] Default name: Empty (shows "PreFab" in GUI if no name set)
-  - [ ] Max length: 32 characters (prevents NBT bloat)
-  - [ ] Allowed characters: Letters, numbers, spaces, underscores, hyphens
-  - [ ] Client → Server packet to save name
-- [ ] Data persistence:
-  - [ ] Add `String customName` field to `PrefabBlockEntity`
-  - [ ] Save to NBT with key `CustomName` (matches vanilla conventions)
-  - [ ] Load from item NBT when placed (via `setPlacedBy()`)
-  - [ ] Save to item NBT when broken (via `getDrops()`)
-  - [ ] Schema version: No bump needed (new optional field)
-- [ ] GUI display updates:
-  - [ ] Status GUI header: Show custom name if set (e.g., "Iron Smelter - CACHED")
-  - [ ] Status GUI header: Show "PreFab - CACHED" if no name (default behavior)
-  - [ ] Item tooltip: Show custom name in bold on first line
-  - [ ] Item tooltip: Show "(Unnamed PreFab)" in gray if no name set
-- [ ] Blueprint integration:
-  - [ ] Store original PreFab name in `PreFabBlueprintItem` NBT
-  - [ ] Blueprint tooltip: Show "Blueprint: [Original Name]"
-  - [ ] When printing from blueprint:
-    - [ ] Printed PreFab name = "CC of [Original Name]"
-    - [ ] If original had no name: "CC of PreFab"
-    - [ ] "CC" prefix clearly marks Carbon Copies
-- [ ] Localization:
-  - [ ] Add GUI title: `"fpscompress.gui.prefab_name"`
-  - [ ] Add default name: `"fpscompress.prefab.unnamed"`
-  - [ ] Add tooltip prefix: `"fpscompress.prefab.name_tooltip"`
-- [ ] Network sync:
-  - [ ] Create `PrefabNamePacket.java` (Client → Server)
-  - [ ] Update `StatusGuiSyncPacket` to include `customName` field
-  - [ ] Sync name to all clients viewing same PreFab (multiplayer support)
-- [ ] Validation:
-  - [ ] Sanitize input: Remove invalid characters (prevent NBT injection)
-  - [ ] Trim whitespace from start/end
-  - [ ] Empty string after trim → Set to null (no name)
-  - [ ] Update name display immediately in GUI (no restart needed)
-- [ ] Test cases:
-  - [ ] Set name → Break PreFab → Place elsewhere → Name preserved ✓
-  - [ ] Name shows in Status GUI header ✓
-  - [ ] Name shows in item tooltip ✓
-  - [ ] Blueprint stores original name ✓
-  - [ ] Printed PreFab has "CC of X" name ✓
-  - [ ] Empty name → Shows default "PreFab" ✓
-  - [ ] Invalid characters stripped ✓
-  - [ ] Multiplayer: Name syncs to all clients ✓
-
-**Design Rationale**:
-- **Why optional naming**: Not all players want names, defaults work fine
-- **Why 32 char limit**: Prevents GUI overflow and NBT bloat
-- **Why "CC of X" prefix**: Clearly distinguishes Carbon Copies from originals
-- **Why persist in item NBT**: Matches PreFab-as-item architecture (portable data)
-- **Why Status GUI integration**: Most natural place to rename (already open when managing PreFab)
-
-**Estimated effort**: 3-4 days
-**Priority**: MEDIUM-HIGH (prerequisite for Blueprint system, good QoL feature)
-
-**Dependencies**: None (standalone feature)
-**Blocks**: PreFab Blueprint System (uses names for "CC of X" generation)
-
 ### PreFab Blueprint System (Scanner & Printer)
 **Status**: Not started
 **Goal**: Scan PreFab factories to create blueprints, then print copies with resource costs
@@ -612,6 +497,123 @@ This TODO list is organized with **pending tasks at the top** for quick referenc
 
 **Estimated effort**: 1 week
 **Priority**: LOW (QoL feature, not gameplay-critical)
+
+---
+
+### PreFab Naming System
+**Status**: ✅ **COMPLETE**
+**Goal**: Allow players to assign custom names to PreFab blocks that persist across block breaks and are used in blueprint printing
+
+**Use Cases**:
+- Identify PreFabs in Factory Controllers ("Iron Smelter", "Ore Processing", etc.)
+- Generate blueprint names automatically ("CC of Iron Smelter")
+- Display meaningful names in Status GUI header instead of "PreFab"
+- Organize multiple PreFabs in player inventory (tooltip shows name)
+
+**Implementation**:
+- [ ] Add naming GUI:
+  - [ ] Add "Rename" button to Status GUI (next to control button)
+  - [ ] Open text input screen (similar to anvil naming)
+  - [ ] Default name: Empty (shows "PreFab" in GUI if no name set)
+  - [ ] Max length: 32 characters (prevents NBT bloat)
+  - [ ] Allowed characters: Letters, numbers, spaces, underscores, hyphens
+  - [ ] Client → Server packet to save name
+- [ ] Data persistence:
+  - [ ] Add `String customName` field to `PrefabBlockEntity`
+  - [ ] Save to NBT with key `CustomName` (matches vanilla conventions)
+  - [ ] Load from item NBT when placed (via `setPlacedBy()`)
+  - [ ] Save to item NBT when broken (via `getDrops()`)
+  - [ ] Schema version: No bump needed (new optional field)
+- [ ] GUI display updates:
+  - [ ] Status GUI header: Show custom name if set (e.g., "Iron Smelter - CACHED")
+  - [ ] Status GUI header: Show "PreFab - CACHED" if no name (default behavior)
+  - [ ] Item tooltip: Show custom name in bold on first line
+  - [ ] Item tooltip: Show "(Unnamed PreFab)" in gray if no name set
+- [ ] Blueprint integration:
+  - [ ] Store original PreFab name in `PreFabBlueprintItem` NBT
+  - [ ] Blueprint tooltip: Show "Blueprint: [Original Name]"
+  - [ ] When printing from blueprint:
+    - [ ] Printed PreFab name = "CC of [Original Name]"
+    - [ ] If original had no name: "CC of PreFab"
+    - [ ] "CC" prefix clearly marks Carbon Copies
+- [ ] Localization:
+  - [ ] Add GUI title: `"fpscompress.gui.prefab_name"`
+  - [ ] Add default name: `"fpscompress.prefab.unnamed"`
+  - [ ] Add tooltip prefix: `"fpscompress.prefab.name_tooltip"`
+- [ ] Network sync:
+  - [ ] Create `PrefabNamePacket.java` (Client → Server)
+  - [ ] Update `StatusGuiSyncPacket` to include `customName` field
+  - [ ] Sync name to all clients viewing same PreFab (multiplayer support)
+- [ ] Validation:
+  - [ ] Sanitize input: Remove invalid characters (prevent NBT injection)
+  - [ ] Trim whitespace from start/end
+  - [ ] Empty string after trim → Set to null (no name)
+  - [ ] Update name display immediately in GUI (no restart needed)
+- [ ] Test cases:
+  - [ ] Set name → Break PreFab → Place elsewhere → Name preserved ✓
+  - [ ] Name shows in Status GUI header ✓
+  - [ ] Name shows in item tooltip ✓
+  - [ ] Blueprint stores original name ✓
+  - [ ] Printed PreFab has "CC of X" name ✓
+  - [ ] Empty name → Shows default "PreFab" ✓
+  - [ ] Invalid characters stripped ✓
+  - [ ] Multiplayer: Name syncs to all clients ✓
+
+**Design Rationale**:
+- **Why optional naming**: Not all players want names, defaults work fine
+- **Why 32 char limit**: Prevents GUI overflow and NBT bloat
+- **Why "CC of X" prefix**: Clearly distinguishes Carbon Copies from originals
+- **Why persist in item NBT**: Matches PreFab-as-item architecture (portable data)
+- **Why Status GUI integration**: Most natural place to rename (already open when managing PreFab)
+
+**Estimated effort**: 3-4 days
+**Priority**: MEDIUM-HIGH (prerequisite for Blueprint system, good QoL feature)
+
+**Dependencies**: None (standalone feature)
+**Blocks**: PreFab Blueprint System (uses names for "CC of X" generation)
+
+---
+
+### Optimize StatusGuiSyncPacket (Network Performance)
+**Status**: Not started
+**Priority**: MEDIUM (performance optimization, not a blocker)
+**Goal**: Reduce network bandwidth by only sending GUI sync packets when data actually changes, instead of every tick
+
+**Current Issue**:
+- `StatusGuiSyncPacket` is sent every tick while GUI is open (~20 packets/second per player)
+- Contains 17 fields, most of which are static (only change on state transitions)
+- With multiple players viewing GUIs simultaneously, creates unnecessary network traffic
+- Example: 5 players = 1,600 field updates per second
+
+**Proposed Solution**:
+- Split into **InitPacket** (sent once on menu open) and **UpdatePacket** (sent on change only)
+- **Static fields** (send once): `cachedRates`, `displayMode`, `prefabName`, `focusedResourceId`, etc.
+- **Derived fields** (client calculates): `simulationElapsedTicks = currentClientTick - simulationStartTick`
+- **Real-time fields** (send on change): `state`, `liveStats`, `cachedProduction`
+- Add dirty-flag tracking to `PrefabBlockEntity` to detect changes
+
+**Expected Impact**:
+- **~95% reduction** in network traffic (from 20 packets/sec to ~0.2 packets/sec during idle)
+- Only send updates during active SIMULATING state or when player clicks buttons
+- Client-side elapsed time calculation (no desync risk - uses local game time)
+
+**Implementation Tasks**:
+- [ ] Add dirty flag system to PrefabBlockEntity for change detection
+- [ ] Create `StatusGuiInitPacket` for static fields (sent on menu open)
+- [ ] Create `StatusGuiUpdatePacket` for dynamic fields (sent on change)
+- [ ] Move `simulationElapsedTicks` calculation to client-side
+- [ ] Update `PreFabStatusMenu.broadcastChanges()` to use dirty flags
+- [ ] Test for desync issues (especially during state transitions)
+- [ ] Measure bandwidth savings in multiplayer environment
+
+**Files to Modify**:
+- `src/main/java/com/mukulramesh/fpscompress/portal/PrefabBlockEntity.java` - Add dirty flags
+- `src/main/java/com/mukulramesh/fpscompress/network/StatusGuiInitPacket.java` - NEW FILE
+- `src/main/java/com/mukulramesh/fpscompress/network/StatusGuiUpdatePacket.java` - NEW FILE
+- `src/main/java/com/mukulramesh/fpscompress/gui/PreFabStatusMenu.java` - Update sync logic
+- `src/main/java/com/mukulramesh/fpscompress/gui/PreFabStatusScreen.java` - Handle both packet types
+
+**Estimated effort**: 2-3 hours
 
 ---
 

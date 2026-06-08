@@ -416,12 +416,11 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         return switch (state) {
             case BUILDING -> Component.literal("Start Simulation");
             case SIMULATING -> {
-                // Show progress indication in button label
+                // Show "Simulating..." until minimum time, then "End Simulation"
                 if (syncedSimulationRequiredTicks > 0 && syncedSimulationElapsedTicks < syncedSimulationRequiredTicks) {
-                    int percentage = (int) ((syncedSimulationElapsedTicks * 100) / syncedSimulationRequiredTicks);
-                    yield Component.literal("Simulating... " + percentage + "%");
+                    yield Component.literal("Simulating...");
                 } else {
-                    yield Component.literal("Finish Simulation");
+                    yield Component.literal("End Simulation");
                 }
             }
             case CACHED -> Component.literal("Reset to Building");
@@ -605,8 +604,8 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         if (syncedState == MachineState.SIMULATING) {
             // Show minimum time progress if configured
             if (syncedSimulationRequiredTicks > 0) {
-                // Time display: "Simulating: 2m 30s / 5m 00s"
-                String timeText = String.format("Simulating: %s / %s",
+                // Time display: "2m 00s / 2m 00s minimum"
+                String timeText = String.format("Simulating: %s / %s minimum",
                     formatTime(syncedSimulationElapsedTicks), formatTime(syncedSimulationRequiredTicks));
                 graphics.drawString(font, timeText, 10, yOffset, 0xFFFFFF, false);
                 yOffset += 15;
@@ -622,18 +621,23 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                     progressBarX + progressBarWidth, progressBarY + progressBarHeight,
                     0xFF404040); // Dark gray
 
-                // Filled portion (green)
+                // Filled portion (dark green for contrast with white text)
                 float progress = Math.min(1.0f, (float) syncedSimulationElapsedTicks / syncedSimulationRequiredTicks);
                 int filledWidth = (int) (progressBarWidth * progress);
                 graphics.fill(progressBarX, progressBarY,
                     progressBarX + filledWidth, progressBarY + progressBarHeight,
-                    0xFF00FF00); // Bright green
+                    0xFF006400); // Dark green
 
-                // Percentage text (centered on bar)
-                int percentage = (int) (progress * 100);
-                String percentText = percentage + "%";
-                int textWidth = font.width(percentText);
-                graphics.drawString(font, percentText,
+                // Progress text: "FINISHED" when complete, percentage otherwise
+                String barText;
+                if (progress >= 1.0f) {
+                    barText = "FINISHED";
+                } else {
+                    int percentage = (int) (progress * 100);
+                    barText = percentage + "%";
+                }
+                int textWidth = font.width(barText);
+                graphics.drawString(font, barText,
                     progressBarX + (progressBarWidth - textWidth) / 2,
                     progressBarY + 1, // Slight offset for centering
                     0xFFFFFF, false);

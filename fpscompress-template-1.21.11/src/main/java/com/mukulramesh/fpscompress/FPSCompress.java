@@ -17,9 +17,16 @@ import com.mukulramesh.fpscompress.portal.PrefabBlockItem;
 import com.mukulramesh.fpscompress.portal.PSDExitListener;
 import com.mukulramesh.fpscompress.portal.SimulationWrenchItem;
 import com.mukulramesh.fpscompress.portal.TpsCacheUpgradeItem;
+import com.mukulramesh.fpscompress.blueprint.PreFabBlueprintItem;
+import com.mukulramesh.fpscompress.blueprint.FabricatorBlock;
+import com.mukulramesh.fpscompress.blueprint.FabricatorBlockEntity;
+import com.mukulramesh.fpscompress.blueprint.NbtRequirementRegistry;
 
+import com.mukulramesh.fpscompress.gui.FabricatorMenu;
 import com.mukulramesh.fpscompress.gui.PreFabConfigMenu;
 import com.mukulramesh.fpscompress.network.FaceConfigPacket;
+import com.mukulramesh.fpscompress.network.PrintRequestPacket;
+import com.mukulramesh.fpscompress.network.ScanRequestPacket;
 import com.mukulramesh.fpscompress.network.SimulationControlPacket;
 import com.mukulramesh.fpscompress.datagen.ModRecipeProvider;
 
@@ -49,6 +56,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -98,6 +106,12 @@ public final class FPSCompress {
         BLOCKS.register("exporter", ExporterBlock::new);
 
     /**
+     * Fabricator Block - Scans PreFabs to create Blueprints, prints PreFabs from Blueprints.
+     */
+    public static final DeferredBlock<FabricatorBlock> FABRICATOR_BLOCK =
+        BLOCKS.register("fabricator", FabricatorBlock::new);
+
+    /**
      * PreFab Machine BlockEntity type.
      */
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PrefabBlockEntity>> PREFAB_BE =
@@ -118,6 +132,13 @@ public final class FPSCompress {
         BLOCK_ENTITIES.register("exporter", () ->
             BlockEntityType.Builder.of(ExporterBlockEntity::new, EXPORTER_BLOCK.get()).build(null));
 
+    /**
+     * Fabricator BlockEntity type.
+     */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FabricatorBlockEntity>>
+        FABRICATOR_BE = BLOCK_ENTITIES.register("fabricator", () ->
+            BlockEntityType.Builder.of(FabricatorBlockEntity::new, FABRICATOR_BLOCK.get()).build(null));
+
     // ===== Menu Types =====
 
     /**
@@ -133,6 +154,13 @@ public final class FPSCompress {
     public static final DeferredHolder<MenuType<?>, MenuType<com.mukulramesh.fpscompress.gui.PreFabStatusMenu>>
         PREFAB_STATUS_MENU = MENU_TYPES.register("prefab_status", () ->
             IMenuTypeExtension.create(com.mukulramesh.fpscompress.gui.PreFabStatusMenu::new));
+
+    /**
+     * Fabricator Menu - GUI for scanning PreFabs and printing Blueprints.
+     */
+    public static final DeferredHolder<MenuType<?>, MenuType<FabricatorMenu>> FABRICATOR_MENU =
+        MENU_TYPES.register("fabricator", () ->
+            IMenuTypeExtension.create(FabricatorMenu::new));
 
     // ===== Items =====
 
@@ -172,6 +200,21 @@ public final class FPSCompress {
     public static final DeferredItem<SimulationWrenchItem> SIMULATION_WRENCH =
         ITEMS.register("simulation_wrench", () -> new SimulationWrenchItem(new Item.Properties()));
 
+    /**
+     * PreFab Blueprint item - Stores scanned factory configuration.
+     * Stackable to 1, immune to fire/lava to preserve blueprint data.
+     */
+    public static final DeferredItem<PreFabBlueprintItem> PREFAB_BLUEPRINT =
+        ITEMS.register("prefab_blueprint", () -> new PreFabBlueprintItem(
+            new Item.Properties().stacksTo(1).fireResistant()));
+
+    /**
+     * Fabricator Block item.
+     */
+    public static final DeferredItem<BlockItem> FABRICATOR_ITEM =
+        ITEMS.register("fabricator", () -> new BlockItem(FABRICATOR_BLOCK.get(),
+            new Item.Properties()));
+
     // ===== Creative Tab =====
 
     /**
@@ -188,6 +231,8 @@ public final class FPSCompress {
                 output.accept(EXPORTER_ITEM.get());
                 output.accept(TPS_CACHE_UPGRADE.get());
                 output.accept(SIMULATION_WRENCH.get());
+                output.accept(PREFAB_BLUEPRINT.get());
+                output.accept(FABRICATOR_ITEM.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -285,6 +330,20 @@ public final class FPSCompress {
             com.mukulramesh.fpscompress.network.PrefabNamePacket::handle
         );
         LOGGER.info("Registered network packet: PrefabNamePacket");
+
+        registrar.playToServer(
+            ScanRequestPacket.TYPE,
+            ScanRequestPacket.STREAM_CODEC,
+            ScanRequestPacket::handle
+        );
+        LOGGER.info("Registered network packet: ScanRequestPacket");
+
+        registrar.playToServer(
+            PrintRequestPacket.TYPE,
+            PrintRequestPacket.STREAM_CODEC,
+            PrintRequestPacket::handle
+        );
+        LOGGER.info("Registered network packet: PrintRequestPacket");
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
@@ -300,5 +359,12 @@ public final class FPSCompress {
         Dev2TestCommands.register(event.getDispatcher());
         com.mukulramesh.fpscompress.commands.RoomDebugCommands.register(event.getDispatcher());
         LOGGER.info("Registered debug commands: /fps_dev2, /fpscompress room");
+    }
+
+    // Register NBT requirement registry as reload listener
+    @SubscribeEvent
+    public void onAddReloadListener(AddReloadListenerEvent event) {
+        event.addListener(NbtRequirementRegistry.getInstance());
+        LOGGER.info("Registered NBT requirement registry as reload listener");
     }
 }

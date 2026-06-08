@@ -104,7 +104,7 @@ public final class CachedTransferHandler {
 
                 if (!remainder.isEmpty()) {
                     // Partial transfer - output is getting blocked
-                    FPSCompress.LOGGER.warn("Output partially blocked for {} (transferred {}/{})",
+                    FPSCompress.LOGGER.debug("Output partially blocked for {} (transferred {}/{})",
                         resourceId, transferred, toTransfer.getCount());
                 }
 
@@ -113,7 +113,7 @@ public final class CachedTransferHandler {
         }
 
         // No PUSH face could accept the items - output blocked
-        FPSCompress.LOGGER.warn("Output blocked for {} - no PUSH face available", resourceId);
+        // Don't log here - CachedProductionHandler already logs failures
         return false;
     }
 
@@ -208,10 +208,7 @@ public final class CachedTransferHandler {
             }
         }
 
-        if (stillNeeded > 0) {
-            FPSCompress.LOGGER.warn("Input starved for {} - still need {} items", resourceId, stillNeeded);
-        }
-
+        // Don't log here - CachedProductionHandler already logs failures
         return stillNeeded <= 0; // Success if got all items
     }
 }

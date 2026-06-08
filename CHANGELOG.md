@@ -45,7 +45,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Better inventory organization (tooltips show custom names)
   - Completed: 2026-05-24
 
+- **Blueprint System Foundation**: Fabricator block, Blueprint items, and NBT-aware scanning
+  - **Fabricator Block**: New block for scanning PreFabs into Blueprints and printing PreFabs from Blueprints
+    - 29-slot inventory (1 input, 1 output, 27 resource slots) with blueprint-driven slot filtering
+    - Resource slot status indicators: green (satisfied), yellow blink (partial), red blink (empty)
+    - Ghost item rendering for empty/partial slots showing required resources
+    - NBT-aware validation: server-side bitmask syncs to client for per-slot satisfaction status
+    - Blueprint detection in input slot with automatic resource re-checking (every 20 ticks + on change)
+    - Inventory persists when block is broken (NBT preservation)
+  - **PreFab Blueprint Item**: Stores scanned factory production rates as resource requirements
+    - `BlueprintData` record with `ResourceRequirement` (id, count, NBT) and `ResourceRate` (id, rate)
+    - Schema version 2 with UUID-based rate storage
+    - `BLUEPRINT_DATA` data component using CompoundTag codec
+    - `PreFabBlueprintItem`: Tooltip displays resource list with rates, NBT requirements highlighted
+  - **NBT-Aware Scanning System**: Blocks and items are scanned with NBT data for exact matching
+    - `NbtRequirement` engine: EXACT, SUBSET, LIST_SUBSET, RANGE matching strategies
+    - `NbtRequirementRegistry`: Datapack-driven per-resource-type NBT requirement definitions (`data/<ns>/nbt_requirements/`)
+    - `BlockScanner`: Async block scanning with NBT extraction via `NbtRequirement.extractNbt()`
+    - `InventoryScanner`: Async inventory scanning with NBT extraction from `BLOCK_ENTITY_DATA`
+    - Grouping key: `blockId#nbtHashCode` ensures distinct NBT variants create separate requirements
+  - **Network Packets**: `ScanRequestPacket`, `PrintRequestPacket` for client→server actions
+  - **Debug Commands**: `/fps_dev2 give-test-blueprint` for testing with custom rates and costs
+  - **Files Added**: `FabricatorBlock.java`, `FabricatorBlockEntity.java`, `FabricatorMenu.java`, `FabricatorScreen.java`, `PreFabBlueprintItem.java`, `BlueprintData.java`, `NbtRequirement.java`, `NbtRequirementRegistry.java`, `BlockScanner.java`, `ScanRequestPacket.java`, `PrintRequestPacket.java`, `prefab.json` (datapack)
+  - **Files Modified**: `FPSCompress.java`, `FPSCompressClient.java`, `FPSDataComponents.java`, `Dev2TestCommands.java`, `en_us.json`
+
+- **Blueprint Excluded Blocks Config**: Server-side config to exclude blocks from blueprint scanning
+  - `blueprintExcludedBlocks` config option (SERVER type, runtime changes without restart)
+  - Default excludes: `compactmachines:solid_wall`, `compactmachines:wall`, `compactmachines:machine_wall`
+  - Modpack developers can add custom dimension wall blocks
+  - Files modified: `Config.java`
+
+- **Inventory Scanner Refactoring**: Major refactoring for NBT-aware item scanning
+  - Added NBT extraction from `BLOCK_ENTITY_DATA` and full item save data
+  - Improved grouping with NBT hash for distinct item variants
+  - Enhanced async scanning pipeline with configurable excluded blocks
+  - Files modified: `InventoryScanner.java`
+
+- **TpsCacheUpgradeItem Refactoring**: Significant refactoring of PreFab upgrade item
+  - Improved CM→PreFab conversion logic with better NBT handling
+  - Enhanced validation and error messages for upgrade process
+  - Files modified: `TpsCacheUpgradeItem.java`
+
+### Changed
+- **Portal System Updates**: Various improvements across the portal subsystem
+  - `CachedProductionHandler`: Production rate calculation improvements
+  - `CachedTransferHandler`: Transfer logic optimization, reduced redundant checks
+  - `CapabilityRegistration`: Simplified capability registration
+  - `PrefabBlock`: Added blueprint-related block interaction logic
+  - `PrefabBlockEntity`: Added fields for blueprint system integration
+  - `PrefabNBTSerializer`: Extended NBT serialization for new fields
+  - `StateTransitionManager`: Updated state transition logic
+  - `PreFabStatusScreen`: Minor GUI adjustments and refinements
+  - Files modified: `CachedProductionHandler.java`, `CachedTransferHandler.java`, `CapabilityRegistration.java`, `PrefabBlock.java`, `PrefabBlockEntity.java`, `PrefabNBTSerializer.java`, `StateTransitionManager.java`, `PreFabStatusScreen.java`
+
+### Fixed
+- **Fabricator Resource Slot Coloring (NBT Items)**: Fixed slots always showing yellow for NBT-matched items
+  - **Root Cause**: Server-side `reqIndex` in `satisfiedSlotMask` only incremented on satisfied requirements, compacting the bitmask and misaligning with the client's 1:1 index mapping
+  - **Fix**: Converted for-each loop to indexed for-loop so `reqIndex` increments unconditionally (even after `continue`)
+  - **Result**: Satisfied NBT slots now correctly show green; unsatisfied slots correctly show yellow/red
+- **Fabricator NBT Item Rejection**: Items with wrong/missing NBT are now rejected from resource slots
+  - **Rejection Priority**: Tries to return item to player's inventory first; falls back to world drop if inventory is full
+  - **Guard Flag**: `rejectingNbtMismatch` prevents infinite recursion from ejection → `onContentsChanged` → re-check → ejection
+  - **Validation Method**: `validateAndEjectNbtMismatches()` extracted from `checkRequiredResources()` for maintainability
+  - **Files Modified**: `FabricatorBlockEntity.java`
+
+### Localization
+- Added blueprint-related translation keys to `en_us.json`
+  - Fabricator GUI strings, scan/print button labels, blueprint tooltips
+  - Files modified: `en_us.json`
+
 ---
+
 
 ## [0.4.0] - 2026-05-24
 

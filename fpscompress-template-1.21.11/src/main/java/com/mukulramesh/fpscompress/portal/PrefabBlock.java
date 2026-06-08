@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.SoundType;
@@ -275,16 +276,26 @@ public class PrefabBlock extends Block implements EntityBlock {
         }
     }
 
-    public ItemStack getCloneItemStack(Level level, BlockPos pos, BlockState state) {
-        // Preserve all BlockEntity data in item NBT
+    @Override
+    @SuppressWarnings("deprecation") // Method deprecated in NeoForge 1.21.5+, still called by pick-block
+    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
+        // Preserve all BlockEntity data in item NBT (same as getDrops() behavior)
         ItemStack stack = new ItemStack(FPSCompress.PREFAB_ITEM.get());
         BlockEntity be = level.getBlockEntity(pos);
 
         if (be instanceof PrefabBlockEntity prefab) {
-            // Save BlockEntity NBT to item with proper ID
-            CompoundTag nbt = prefab.saveWithoutMetadata(level.registryAccess());
+            // Use saveWithFullMetadata to ensure ALL custom data (including state) is captured.
+            // saveWithoutMetadata may not include saveAdditional data in some contexts.
+            CompoundTag nbt = prefab.saveWithFullMetadata(level.registryAccess());
+            // Remove position data (not needed for items) but preserve everything else
+            nbt.remove("x");
+            nbt.remove("y");
+            nbt.remove("z");
             nbt.putString("id", "fpscompress:prefab");
             stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
+
+            LOGGER.debug("getCloneItemStack: state={}, roomCode={}, nbtContainsState={}",
+                prefab.getCurrentState(), prefab.getRoomCode(), nbt.contains("state"));
         }
 
         return stack;

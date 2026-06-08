@@ -4,6 +4,7 @@
   "block.fpscompress.prefab_machine": "PreFab Machine",
   "block.fpscompress.importer": "Importer",
   "block.fpscompress.exporter": "Exporter",
+  "block.fpscompress.fabricator": "Fabricator",
 
   "item.fpscompress.prefab_upgrade_template": "PreFab Upgrade Template",
   "item.fpscompress.prefab_upgrade_template.tooltip": "Right-click a Compact Machine to convert it to a PreFab",
@@ -17,6 +18,13 @@
 
   "item.fpscompress.simulation_wrench": "Simulation Wrench",
   "item.fpscompress.simulation_wrench.tooltip": "Shift+Right-click PreFab to configure faces",
+
+  "item.fpscompress.prefab_blueprint": "PreFab Blueprint",
+  "item.fpscompress.prefab_blueprint.state.new": "Empty Blueprint",
+  "item.fpscompress.prefab_blueprint.resources": "%s block types, %s item types",
+  "item.fpscompress.prefab_blueprint.room_size": "Room Size: %sx%sx%s",
+  "item.fpscompress.prefab_blueprint.rates_header": "Cached Production Rates:",
+  "item.fpscompress.prefab_blueprint.rates_more": "...and %s more",
 
   "fpscompress.message.upgrade_installed": "PreFab Upgrade installed!",
   "fpscompress.message.already_upgraded": "PreFab upgrade already installed!",

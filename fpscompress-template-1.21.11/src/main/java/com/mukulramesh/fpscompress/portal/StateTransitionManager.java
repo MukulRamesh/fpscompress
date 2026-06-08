@@ -176,6 +176,10 @@ public class StateTransitionManager {
         if (!entity.deltaTracker.hasActivity()) {
             FPSCompress.LOGGER.warn("No activity detected - entering HALTED state");
             entity.lastSimulationResult = "No activity";
+            // Fix garbage time display: set end tick so sim time = 0 (not -367k),
+            // and set cached-start to now so cached time = 0 (not +367k from epoch 0).
+            entity.simulationEndTick = entity.getLevel().getGameTime();
+            entity.cachedStateStartTick = entity.getLevel().getGameTime();
             entity.setCurrentState(MachineState.HALTED);
             return;
         }

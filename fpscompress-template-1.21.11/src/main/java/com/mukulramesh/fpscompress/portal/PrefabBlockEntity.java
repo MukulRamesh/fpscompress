@@ -97,6 +97,10 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
     final Map<UUID, BlockPos> importerCache = new HashMap<>();
     final Map<UUID, BlockPos> exporterCache = new HashMap<>();
 
+    // Log throttling: Track which UUIDs have had failures logged
+    // UUID is removed on successful transfer, so failures log again after recovery
+    final Map<UUID, Boolean> loggedFailures = new HashMap<>();
+
     // Display preferences (persist in NBT, synced to clients)
     // Package-private for service access
     com.mukulramesh.fpscompress.gui.RateDisplayMode currentDisplayMode =
@@ -213,7 +217,12 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         this.roomSizeX = sizeX;
         this.roomSizeY = sizeY;
         this.roomSizeZ = sizeZ;
-        setChanged();
+        setChanged(); // Auto-mark dirty whenever dimensions change
+
+        if (sizeX <= 0 || sizeY <= 0 || sizeZ <= 0) {
+            FPSCompress.LOGGER.warn("Invalid room dimensions set: {}x{}x{} at {}",
+                sizeX, sizeY, sizeZ, this.worldPosition);
+        }
     }
 
     /**
