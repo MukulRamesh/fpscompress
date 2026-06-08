@@ -84,6 +84,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
     private int availableResourceCount = 0;
     private int satisfiedSlotMask = 0; // bitmask: bit N=1 means slot N+2 satisfied
     private boolean rejectingNbtMismatch = false; // guard against recursive ejection
+    private final java.util.Set<Integer> pendingEjections = new java.util.HashSet<>();
     @Nullable
     @SuppressFBWarnings("EI_EXPOSE_REP2")
     private Player lastInteractingPlayer = null; // for returning rejected items to player
@@ -1061,8 +1062,9 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
 
     /**
      * Validate each resource slot's NBT against its blueprint requirement.
-     * Items with wrong/missing NBT are ejected into the world.
-     * Only runs server-side and when not already ejecting (guard flag).
+     * Items with wrong/missing NBT are queued for deferred ejection (processed
+     * next tick) to avoid racing with quickMoveStack which may overwrite the
+     * player inventory slot we return the item to.
      *
      * @param allReqs the combined list of block + item requirements
      */
@@ -1103,8 +1105,8 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
 
             if (!nbtOk) {
                 FPSCompress.LOGGER.info(
-                    "[Fabricator ResCheck]   Ejecting slot {}: NBT mismatch", slot);
-                ejectItemFromSlot(slot, stack);
+                    "[Fabricator ResCheck]   Queuing slot {} for ejection: NBT mismatch", slot);
+                pendingEjections.add(slot);
             }
         }
     }
@@ -1112,6 +1114,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
     /**
      * Eject an item from a resource slot. Tries to return it to the last
      * interacting player's inventory first; any remainder is dropped in the world.
+     * Called from tick() to avoid racing with quickMoveStack (deferred ejection).
      * Uses a guard flag (rejectingNbtMismatch) to prevent recursive calls
      * through onContentsChanged.
      *
@@ -1126,11 +1129,40 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         rejectingNbtMismatch = true;
         inventory.setStackInSlot(slot, ItemStack.EMPTY);
 
-        // Try player inventory first (add() modifies stack in-place, returns
-        // boolean for whether the full stack was inserted)
+        // Try player inventory first: merge into existing partial stacks,
+        // then place into first empty slot. Both are safe because ejection
+        // is now deferred to tick(), after quickMoveStack has finished.
         ItemStack remainder = stack.copy();
         if (lastInteractingPlayer != null && lastInteractingPlayer.isAlive()) {
-            lastInteractingPlayer.getInventory().add(remainder);
+            net.minecraft.world.entity.player.Inventory inv =
+                lastInteractingPlayer.getInventory();
+            // Pass 1: merge into existing partial stacks (main slots 0-35 only;
+            // armor/offhand 36-40 reject arbitrary items)
+            for (int i = 0; i < 36; i++) {
+                ItemStack invStack = inv.getItem(i);
+                if (!invStack.isEmpty()
+                        && ItemStack.isSameItemSameComponents(invStack, remainder)) {
+                    int space = invStack.getMaxStackSize() - invStack.getCount();
+                    int toAdd = Math.min(space, remainder.getCount());
+                    if (toAdd > 0) {
+                        remainder.shrink(toAdd);
+                        invStack.grow(toAdd);
+                    }
+                }
+                if (remainder.isEmpty()) {
+                    break;
+                }
+            }
+            // Pass 2: place into first empty main slot
+            if (!remainder.isEmpty()) {
+                for (int i = 0; i < 36; i++) {
+                    if (inv.getItem(i).isEmpty()) {
+                        inv.setItem(i, remainder.copy());
+                        remainder = ItemStack.EMPTY;
+                        break;
+                    }
+                }
+            }
         }
 
         // Drop any remainder in the world
@@ -1305,6 +1337,21 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
                 fabricator.satisfiedSlotMask = 0;
                 fabricator.inventory.clearAllFilters();
             }
+        }
+
+        // Process deferred NBT ejections (queued by validateAndEjectNbtMismatches).
+        // Deferred to tick to avoid racing with quickMoveStack which may overwrite
+        // the player inventory slot we return the item to.
+        if (!fabricator.pendingEjections.isEmpty()) {
+            java.util.Set<Integer> ejected = new java.util.HashSet<>();
+            for (int slot : fabricator.pendingEjections) {
+                ItemStack stack = fabricator.inventory.getStackInSlot(slot);
+                if (!stack.isEmpty()) {
+                    fabricator.ejectItemFromSlot(slot, stack);
+                }
+                ejected.add(slot);
+            }
+            fabricator.pendingEjections.removeAll(ejected);
         }
 
         // Phase 5: Re-check resources when Blueprint in input and inventory changes

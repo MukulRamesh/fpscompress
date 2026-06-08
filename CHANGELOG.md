@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the inventory keybinding (default 'E') while typing in the name field no longer closes
   the screen. The `keyPressed` override gives the focused `EditBox` priority and blocks
   the inventory keybinding from propagating to `AbstractContainerScreen`.
+- **Fabricator NBT mismatch ejection races with quickMoveStack**: Fixed a race condition
+  where `validateAndEjectNbtMismatches()` could eject an item back into the player's
+  inventory while `quickMoveStack` was simultaneously overwriting that same slot.
+  Ejections are now deferred to the next tick via a `pendingEjections` queue, and
+  player inventory insertion uses a 2-pass merge (existing partial stacks first, then
+  first empty slot) for safer item return.
 
 ### Added
 - **PreFab Naming System**: Players can assign custom names to PreFab blocks
