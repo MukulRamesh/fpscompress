@@ -97,15 +97,24 @@ public final class Dev2TestCommands {
                         )
                         .then(Commands.literal("give-test-blueprint")
                                 .executes(Dev2TestCommands::giveTestBlueprint)
-                                .then(Commands.argument("inputItem", StringArgumentType.string())
+                                .then(Commands.literal("list")
+                                        .then(Commands.argument("inputList", StringArgumentType.string())
+                                                .then(Commands.argument("outputList", StringArgumentType.string())
+                                                        .then(Commands.argument("costList", StringArgumentType.string())
+                                                                .executes(Dev2TestCommands::giveTestBlueprintList)
+                                                        )
+                                                )
+                                        )
+                                )
+                                .then(Commands.argument("inputItem", StringArgumentType.word())
                                     .then(Commands.argument("inputRate",
                                             DoubleArgumentType.doubleArg(0.0))
                                         .then(Commands.argument("outputItem",
-                                                StringArgumentType.string())
+                                                StringArgumentType.word())
                                             .then(Commands.argument("outputRate",
                                                     DoubleArgumentType.doubleArg(0.0))
                                                 .then(Commands.argument("costItem",
-                                                        StringArgumentType.string())
+                                                        StringArgumentType.word())
                                                     .then(Commands.argument("costCount",
                                                             LongArgumentType.longArg(1))
                                                         .executes(Dev2TestCommands
@@ -1040,6 +1049,167 @@ public final class Dev2TestCommands {
         return giveTestBlueprintInternal(context,
             "minecraft:dirt", 1.0, "minecraft:diamond", 1.0,
             "minecraft:grass_block", 1);
+    }
+
+    /**
+     * Give player a test Blueprint with multiple inputs/outputs/costs from comma-separated lists.
+     *
+     * <p>Command: /fps_dev2 give-test-blueprint list &lt;inputList&gt; &lt;outputList&gt; &lt;costList&gt;
+     * <p>Format: "item:rate,item:rate,..." for rates, "item:count,item:count,..." for costs
+     * <p>Example: /fps_dev2 give-test-blueprint list "" "minecraft:emerald:1.0" "minecraft:diamond:1"
+     */
+    private static int giveTestBlueprintList(CommandContext<CommandSourceStack> context) {
+        String inputListStr = StringArgumentType.getString(context, "inputList");
+        String outputListStr = StringArgumentType.getString(context, "outputList");
+        String costListStr = StringArgumentType.getString(context, "costList");
+        CommandSourceStack source = context.getSource();
+
+        try {
+            if (!(source.getEntity() instanceof ServerPlayer player)) {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] This command must be run by a player"));
+                return 0;
+            }
+
+            UUID uuid = UUID.randomUUID();
+            List<BlueprintData.ResourceRate> rates = new ArrayList<>();
+            List<BlueprintData.ResourceRequirement> costs = new ArrayList<>();
+
+            // Parse inputs (negative rates)
+            ListTag inputEntries = parseEquipmentList(inputListStr, true);
+            for (int i = 0; i < inputEntries.size(); i++) {
+                CompoundTag entry = inputEntries.getCompound(i);
+                rates.add(new BlueprintData.ResourceRate(
+                    entry.getString("resource"), -entry.getDouble("rate")));
+            }
+
+            // Parse outputs (positive rates)
+            ListTag outputEntries = parseEquipmentList(outputListStr, false);
+            for (int i = 0; i < outputEntries.size(); i++) {
+                CompoundTag entry = outputEntries.getCompound(i);
+                rates.add(new BlueprintData.ResourceRate(
+                    entry.getString("resource"), entry.getDouble("rate")));
+            }
+
+            // Parse costs
+            ListTag costEntries = parseCostList(costListStr);
+            for (int i = 0; i < costEntries.size(); i++) {
+                CompoundTag entry = costEntries.getCompound(i);
+                costs.add(new BlueprintData.ResourceRequirement(
+                    entry.getString("resource"), entry.getLong("count"), null));
+            }
+
+            if (rates.isEmpty() && costs.isEmpty()) {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] ERROR: Must specify at least one input/output or cost"));
+                return 0;
+            }
+
+            Map<UUID, List<BlueprintData.ResourceRate>> cachedRates = new HashMap<>();
+            cachedRates.put(uuid, rates);
+
+            BlueprintData data = new BlueprintData(
+                new ArrayList<>(), costs, cachedRates, 5, 5, 5, "Test Blueprint");
+
+            ItemStack blueprint = new ItemStack(FPSCompress.PREFAB_BLUEPRINT.get());
+            blueprint.set(FPSDataComponents.BLUEPRINT_DATA.get(), data.toNBT());
+
+            if (player.addItem(blueprint)) {
+                StringBuilder msg = new StringBuilder("§a[Dev2 Test] ✓ Test Blueprint given! ");
+                if (!rates.isEmpty()) {
+                    msg.append("Rates: ");
+                    for (int i = 0; i < rates.size(); i++) {
+                        if (i > 0) {
+                            msg.append(", ");
+                        }
+                        var r = rates.get(i);
+                        msg.append(String.format("%.1f %s/tick", Math.abs(r.getRate()), shortName(r.getResourceId())));
+                    }
+                }
+                if (!costs.isEmpty()) {
+                    msg.append(" | Cost: ");
+                    for (int i = 0; i < costs.size(); i++) {
+                        if (i > 0) {
+                            msg.append(", ");
+                        }
+                        var c = costs.get(i);
+                        msg.append(String.format("%d %s", c.count(), shortName(c.id())));
+                    }
+                }
+                source.sendSuccess(() -> Component.literal(msg.toString()), true);
+                return 1;
+            } else {
+                source.sendFailure(Component.literal(
+                    "§c[Dev2 Test] Failed to give item (inventory full?)"));
+                return 0;
+            }
+
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal(
+                String.format("§c[Dev2 Test] ERROR: %s", e.getMessage())));
+            source.sendFailure(Component.literal(
+                "§c  Rate format: \"item:rate,item:rate,...\""));
+            source.sendFailure(Component.literal(
+                "§c  Cost format: \"item:count,item:count,...\""));
+            return 0;
+        }
+    }
+
+    /**
+     * Parse a comma-separated list of "item:count" pairs into cost entries.
+     * Each entry creates a separate cost entry with resource and count.
+     *
+     * @param listStr The input string (e.g., "minecraft:diamond:1,minecraft:emerald:2")
+     * @return ListTag containing cost NBT (resource, count)
+     * @throws IllegalArgumentException if the format is invalid
+     */
+    private static ListTag parseCostList(String listStr) throws IllegalArgumentException {
+        ListTag costList = new ListTag();
+
+        if (listStr == null || listStr.trim().isEmpty()) {
+            return costList;
+        }
+
+        String[] entries = listStr.split(",");
+        for (String entry : entries) {
+            entry = entry.trim();
+            if (entry.isEmpty()) {
+                continue;
+            }
+
+            int lastColon = entry.lastIndexOf(':');
+            if (lastColon == -1 || lastColon == entry.length() - 1) {
+                throw new IllegalArgumentException(
+                    String.format("Invalid format for entry '%s' - expected 'item:count'", entry));
+            }
+
+            String itemId = entry.substring(0, lastColon);
+            String countStr = entry.substring(lastColon + 1);
+
+            if (!itemId.contains(":")) {
+                throw new IllegalArgumentException(
+                    String.format("Item ID '%s' must include namespace (e.g., 'minecraft:diamond')", itemId));
+            }
+
+            long count;
+            try {
+                count = Long.parseLong(countStr);
+                if (count <= 0) {
+                    throw new IllegalArgumentException(
+                        String.format("Count '%s' must be positive", countStr));
+                }
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                    String.format("Invalid count '%s' for item '%s' - must be a number", countStr, itemId));
+            }
+
+            CompoundTag costEntry = new CompoundTag();
+            costEntry.putString("resource", itemId);
+            costEntry.putLong("count", count);
+            costList.add(costEntry);
+        }
+
+        return costList;
     }
 
     /**

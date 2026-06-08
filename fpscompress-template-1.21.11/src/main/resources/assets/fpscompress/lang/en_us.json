@@ -25,6 +25,10 @@
   "item.fpscompress.prefab_blueprint.room_size": "Room Size: %sx%sx%s",
   "item.fpscompress.prefab_blueprint.rates_header": "Cached Production Rates:",
   "item.fpscompress.prefab_blueprint.rates_more": "...and %s more",
+  "item.fpscompress.prefab_blueprint.chat.empty": "This blueprint is blank. Scan a PreFab to populate it.",
+  "item.fpscompress.prefab_blueprint.chat.header": "=== PreFab Blueprint ===",
+  "item.fpscompress.prefab_blueprint.chat.resources_header": "Resource Costs:",
+  "item.fpscompress.prefab_blueprint.chat.rates_header": "Production Rates:",
 
   "fpscompress.message.upgrade_installed": "PreFab Upgrade installed!",
   "fpscompress.message.already_upgraded": "PreFab upgrade already installed!",

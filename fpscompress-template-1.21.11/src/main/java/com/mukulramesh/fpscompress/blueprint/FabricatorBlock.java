@@ -1,14 +1,10 @@
 package com.mukulramesh.fpscompress.blueprint;
 
-import com.mojang.logging.LogUtils;
 import com.mukulramesh.fpscompress.FPSCompress;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -22,7 +18,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 /**
  * Fabricator block - Scans PreFabs to create Blueprints, prints PreFabs from Blueprints.
@@ -38,7 +33,6 @@ import org.slf4j.Logger;
  * - Inventory persists when block is broken
  */
 public class FabricatorBlock extends Block implements EntityBlock {
-    private static final Logger LOGGER = LogUtils.getLogger();
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     public FabricatorBlock() {
@@ -112,30 +106,30 @@ public class FabricatorBlock extends Block implements EntityBlock {
     @Override
     public java.util.List<ItemStack> getDrops(BlockState state,
             net.minecraft.world.level.storage.loot.LootParams.Builder builder) {
-        // Survival mode: preserve inventory in dropped item
-        BlockEntity be = builder.getOptionalParameter(
-            net.minecraft.world.level.storage.loot.parameters.LootContextParams.BLOCK_ENTITY);
-        ItemStack stack = new ItemStack(FPSCompress.FABRICATOR_ITEM.get());
-
-        if (be instanceof FabricatorBlockEntity fabricator) {
-            CompoundTag nbt = fabricator.saveWithoutMetadata(builder.getLevel().registryAccess());
-            nbt.putString("id", "fpscompress:fabricator");
-            stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
-            LOGGER.debug("Fabricator dropped with inventory NBT preserved");
-        }
-
-        return java.util.List.of(stack);
+        // Drop a clean Fabricator item (inventory contents drop separately in onRemove)
+        return java.util.List.of(new ItemStack(FPSCompress.FABRICATOR_ITEM.get()));
     }
 
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos,
                            BlockState newState, boolean movedByPiston) {
-        // Drop items from inventory when block is broken
+        // Drop all inventory contents as item entities when block is broken
         if (!level.isClientSide() && !state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof FabricatorBlockEntity) {
-                // Items will drop via loot table
-                LOGGER.debug("Fabricator removed at {}", pos);
+            if (be instanceof FabricatorBlockEntity fabricator) {
+                var inventory = fabricator.getInventory();
+                for (int slot = 0; slot < inventory.getSlots(); slot++) {
+                    net.minecraft.world.item.ItemStack stack = inventory.getStackInSlot(slot);
+                    if (!stack.isEmpty()) {
+                        double x = pos.getX() + 0.5;
+                        double y = pos.getY() + 0.5;
+                        double z = pos.getZ() + 0.5;
+                        net.minecraft.world.entity.item.ItemEntity entity =
+                            new net.minecraft.world.entity.item.ItemEntity(
+                                level, x, y, z, stack.copy());
+                        level.addFreshEntity(entity);
+                    }
+                }
             }
         }
 

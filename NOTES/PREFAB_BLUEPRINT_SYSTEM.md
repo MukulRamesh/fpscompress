@@ -589,62 +589,110 @@ Integrated `InventoryScanner` to run parallel with `BlockScanner`, extracted cac
 
 ---
 
-## Phase 5: Printing Mode - Resource Detection & GUI
+## Phase 5: Printing Mode - Resource Detection & GUI ✅ COMPLETE
 
 **Goal**: Implement resource checking and create Fabricator GUI with Scan/Print buttons.
 
-### Tasks
+**Completion Date**: 2026-06-07  
+**Actual Effort**: Delivered together with Phase 4 in commit `56d294c`  
+**Commits**: `56d294c` (foundation) → `b0219d0` (race condition fix)
 
-1. **Create Fabricator Menu (Container)**
-   - Create `FabricatorMenu.java` extending `AbstractContainerMenu`
-   - Add slots for input (1), output (1), resources (27)
-   - Add data slots for sync:
-     - `scanState` (0 = idle, 1 = scanning, 2 = ready to print)
-     - `requiredResourceCount`, `availableResourceCount`
-   - Implement `quickMoveStack()` for shift-clicking
+### Implementation Summary
 
-2. **Create Fabricator Screen (GUI)**
-   - Create `FabricatorScreen.java` extending `AbstractContainerScreen<FabricatorMenu>`
-   - Render inventory slots (input/output/resources)
-   - Add "Scan" button (only visible when PreFab in input slot)
-   - Add "Print" button (only visible when Blueprint in input slot)
-   - Add resource checklist display:
-     - Show "X / Y resources satisfied"
-     - Green checkmark if resource available
-     - Red X if missing
-   - Use `PreFabConfigScreen.java` as reference for button patterns
+The Fabricator block is a dual-mode machine: **Scanning** (PreFab → Blueprint) and **Printing** (Blueprint + Resources → PreFab). The GUI uses a single **state-aware action button** that changes label and active state based on input contents and scan progress. Resource slots show **ghost items** for what's needed, with **color-coded status indicators** driven by a server-side bitmask.
 
-3. **Implement Resource Checking Logic**
-   - Add method `checkRequiredResources()` in `FabricatorBlockEntity`
-   - Read required resources from Blueprint NBT
-   - Add constant costs from config (e.g., 1x PreFab Upgrade Template)
-   - Iterate through resource slots, count available resources
-   - Return `Map<String, ResourceStatus>` (SATISFIED, MISSING)
-   - Update data slots for GUI sync
+**Key Design Decision**: Rather than separate Scan/Print buttons, a single action button adapts (Idle → Scan → Scanning... → Print → Resource Starved) based on context. This keeps the GUI simple and prevents invalid actions.
 
-4. **Connect Buttons to Backend**
-   - "Scan" button → Send packet to server → Call `startBlockScan()`
-   - "Print" button → Send packet to server → Call `startPrinting()` (Phase 6)
-   - Create packet classes: `ScanRequestPacket`, `PrintRequestPacket`
+**Print is a placeholder**: `triggerPrint()` validates resources but does not create a PreFab yet — that's Phase 6. The full print pipeline (resource consumption → carbon copy creation) is wired but stubbed.
 
-5. **Register Menu Type**
-   - Register `FabricatorMenu` in `FPSCompress.MENU_TYPES`
-   - Register screen in client setup: `MenuScreens.register(FabricatorMenu, FabricatorScreen::new)`
+### Scan State Machine
+
+```
+0 = IDLE           — No input, or input not recognized
+1 = READY_TO_SCAN  — Valid PreFab in input slot, output empty
+2 = SCANNING       — Async scan in progress (blocks + items)
+3 = READY_TO_PRINT — Blueprint in input slot, resources being checked
+```
+
+ContainerData syncs 5 fields server→client: `scanState`, `requiredResourceCount`, `availableResourceCount`, `prefabValidForScan` (bool), `satisfiedSlotMask` (bitmask).
+
+### Files Created (12 files)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `blueprint/FabricatorBlockEntity.java` | 1,435 | Main BE: inventory, scanning state machine, resource checking, NBT validation, deferred ejection |
+| `gui/FabricatorScreen.java` | 473 | Client GUI: action button, slot status indicators, ghost item rendering, tooltips |
+| `gui/FabricatorMenu.java` | 332 | Container: 65 slots (29 fab + 36 player), ContainerData sync, `quickMoveStack()` |
+| `blueprint/FabricatorBlock.java` | 144 | Block: horizontal facing, drops with NBT preservation, GUI opening via `openMenu()` |
+| `blueprint/NbtRequirement.java` | 329 | NBT matching engine: EXACT, SUBSET, LIST_SUBSET, RANGE strategies |
+| `blueprint/NbtRequirementRegistry.java` | 159 | Datapack-driven per-resource-type NBT requirement definitions (`data/<ns>/nbt_requirements/`) |
+| `network/ScanRequestPacket.java` | 68 | Client→Server: triggers `FabricatorBlockEntity.triggerScan()` |
+| `network/PrintRequestPacket.java` | 77 | Client→Server: triggers `FabricatorBlockEntity.triggerPrint()` (Phase 6 placeholder) |
+| `blueprint/BlueprintData.java` | 365 | Data model: `ResourceRequirement` (id, count, NBT) + `ResourceRate` (id, rate), schema v2 |
+| `blueprint/PreFabBlueprintItem.java` | 211 | Item: tooltips showing resource counts, NBT requirements, cached rates |
+| `scanner/BlockScanner.java` | 300 | Async NBT-aware block scanning with `NbtRequirement.extractNbt()` |
+| `scanner/InventoryScanner.java` | 181+ | Refactored for NBT-aware item scanning with BLOCK_ENTITY_DATA extraction |
+
+### Files Modified (7+ files)
+
+- **`FPSCompress.java`**: Registered Fabricator block, item, BE type, menu type, Blueprint item, ScanRequestPacket, PrintRequestPacket, BLUEPRINT_DATA component
+- **`FPSCompressClient.java`**: `MenuScreens.register(FabricatorMenu, FabricatorScreen::new)`
+- **`FPSDataComponents.java`**: Added `BLUEPRINT_DATA` DataComponent using CompoundTag codec
+- **`Config.java`**: Added `blueprintExcludedBlocks` server-side config (default excludes CM walls)
+- **`Dev2TestCommands.java`**: `/fps_dev2 give-test-blueprint` command with custom rates and costs
+- **`en_us.json`**: Blueprint-related translation keys (GUI strings, button labels, tooltips)
+- **Asset files**: `fabricator.json` (block model, blockstate, item, loot table), `prefab_blueprint.png` texture
+
+### Key Architecture Details
+
+**Inventory Layout** (29 Fabricator slots + 36 player = 65 total):
+- Slot 0: Input (accepts PreFab OR Blueprint items)
+- Slot 1: Output (output-only: Blueprint from scan, PreFab from print)
+- Slots 2–28: Resource slots (27 for printing materials)
+- Slots 29–64: Player inventory + hotbar
+
+**Resource Slot Filtering**: When a Blueprint is in the input slot, `checkRequiredResources()` sets per-slot `FilteredItemStackHandler` filters. Each requirement gets a dedicated slot — only that exact item type is accepted. Filters are cleared on Blueprint removal.
+
+**Slot Status Indicators** (client-side rendering):
+- **Green** (solid): Requirement satisfied (count ≥ required, NBT matches if applicable)
+- **Yellow** (blink): Partial — some items present but not enough (≈2.5s sine wave)
+- **Red** (blink): Empty — no items in slot; ghost item icon rendered showing what's needed
+- NBT-required slots use the server-side `satisfiedSlotMask` bitmask for authoritative status
+
+**NBT-Aware Resource Checking**: Items with NBT requirements (e.g., PreFab blocks with specific roomCode) are validated via `NbtRequirement.subset()` matching against `BLOCK_ENTITY_DATA`. The `satisfiedSlotMask` bitmask communicates per-slot NBT satisfaction from server to client.
+
+**NBT Mismatch Ejection**: Items with wrong/missing NBT are ejected from resource slots. Uses a **deferred ejection system** to avoid racing with `quickMoveStack`:
+1. `checkRequiredResources()` calls `validateAndEjectNbtMismatches()` which **queues** bad slots into `pendingEjections`
+2. `tick()` processes the queue safely after `quickMoveStack` completes
+3. 2-pass player inventory merge: try merging into existing partial stacks first, then place into first empty slot
+4. Falls back to world drop if player inventory is full
+5. `rejectingNbtMismatch` guard flag prevents infinite recursion from ejection → `onContentsChanged` → re-check
+
+### Bugs Found & Fixed
+
+- **reqIndex compaction bug** (`56d294c`): `satisfiedSlotMask` bitmask was misaligned with client-side slot indices. For-each loop only incremented `reqIndex` on satisfied requirements, compacting the bitmask. Fixed by converting to indexed for-loop so `reqIndex` increments unconditionally (even after `continue`).
+- **NBT mismatch ejection race condition** (`b0219d0`): `validateAndEjectNbtMismatches()` could eject items into player inventory while `quickMoveStack` was simultaneously overwriting the same slot with `setByPlayer(EMPTY)`. Fixed by deferring ejections to next tick via `pendingEjections` queue.
+
+### What's Deferred to Phase 6
+
+- `triggerPrint()` is a **placeholder** — validates resources but does not consume them or create a PreFab
+- Actual PreFab carbon copy creation (`createCarbonCopyPrefab()`)
+- Resource consumption logic (`consumeRequiredResources()`)
+- `cc_*` roomCode generation for printed PreFabs
+- Constant cost config entries (blueprintConstantCosts, blueprintResourceMultiplier)
 
 ### Validation
 
-- **Linting**: Run `./gradlew clean compileJava checkstyleMain spotbugsMain`
+- **Linting**: `./gradlew clean compileJava checkstyleMain spotbugsMain` — all passing
 - **In-game test**:
-  - Right-click Fabricator → GUI opens
-  - Insert PreFab → "Scan" button appears
-  - Click "Scan" → Button disables, progress shown
-  - Wait for scan → Blueprint appears in output slot
-  - Insert Blueprint → "Print" button appears
-  - Insert some (but not all) required resources → Check resource list shows partial progress
-  - Insert all required resources → "Print" button enables (green)
-  - Close/reopen GUI → State preserved
-
-### Estimated Time: 5-6 days
+  - Right-click Fabricator → 176×222 GUI with input/output slots and 3×9 resource grid
+  - Insert PreFab → Button shows "Scan" (green, active)
+  - Click "Scan" → Button shows "Scanning..." (gray, disabled); Blueprint appears in output
+  - Insert Blueprint → Resource slots populate with filters; button shows "Print" or "Resource Starved"
+  - Fill resource slots → Count label updates: "Blueprint Resources: X / Y"
+  - All resources satisfied → "Print" button enables (green); click sends PrintRequestPacket
+  - Wrong/missing NBT items → Auto-ejected to player inventory (deferred, race-safe)
+  - Close/reopen GUI → State preserved via ContainerData sync
 
 ---
 

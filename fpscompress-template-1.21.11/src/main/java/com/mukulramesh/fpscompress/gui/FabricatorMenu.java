@@ -32,11 +32,13 @@ import net.neoforged.neoforge.items.SlotItemHandler;
  *
  * <p>ContainerData indices (synced server→client):
  * <ul>
- *   <li>0: scanState — 0=idle, 1=ready_to_scan, 2=scanning, 3=ready_to_print</li>
+ *   <li>0: scanState — 0=idle, 1=ready_to_scan, 2=scanning, 3=ready_to_print, 4=printing</li>
  *   <li>1: requiredResourceCount — total resources needed by blueprint</li>
  *   <li>2: availableResourceCount — how many are satisfied</li>
  *   <li>3: prefabValidForScan — 0=invalid/none, 1=valid PreFab ready</li>
  *   <li>4: satisfiedSlotMask — bitmask of satisfied resource slots</li>
+ *   <li>5: printingProgress — current tick in print cycle</li>
+ *   <li>6: printDuration — total ticks needed (from config)</li>
  * </ul>
  */
 public class FabricatorMenu extends AbstractContainerMenu {
@@ -69,7 +71,7 @@ public class FabricatorMenu extends AbstractContainerMenu {
     public FabricatorMenu(int containerId, Inventory playerInventory, BlockPos pos) {
         super(FPSCompress.FABRICATOR_MENU.get(), containerId);
         this.fabricatorPos = pos;
-        this.containerData = new SimpleContainerData(5);
+        this.containerData = new SimpleContainerData(7);
 
         // Get the Fabricator's ItemStackHandler (server) or use a dummy (client)
         BlockEntity be = playerInventory.player.level().getBlockEntity(pos);
@@ -230,6 +232,26 @@ public class FabricatorMenu extends AbstractContainerMenu {
         return (containerData.get(4) & (1 << reqIndex)) != 0;
     }
 
+    /**
+     * Get the current printing progress tick.
+     * Valid only when scanState == 4 (PRINTING).
+     *
+     * @return Current progress tick (0 → printDuration)
+     */
+    public int getPrintingProgress() {
+        return containerData.get(5);
+    }
+
+    /**
+     * Get the total print duration in ticks (from config).
+     * Valid only when scanState == 4 (PRINTING).
+     *
+     * @return Total ticks needed for printing
+     */
+    public int getPrintDuration() {
+        return containerData.get(6);
+    }
+
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = this.slots.get(index);
@@ -328,5 +350,26 @@ public class FabricatorMenu extends AbstractContainerMenu {
     public boolean isOutputSlotEmpty() {
         Slot slot = this.slots.get(OUTPUT_SLOT);
         return !slot.hasItem();
+    }
+
+    /**
+     * Check if the output slot is blocked from accepting more printed PreFabs.
+     * PreFabs with the same roomCode stack (up to 64), so the slot is only
+     * blocked when full OR occupied by a different item type.
+     *
+     * @return true if printing cannot place into the output slot
+     */
+    public boolean isOutputSlotBlocked() {
+        Slot slot = this.slots.get(OUTPUT_SLOT);
+        if (!slot.hasItem()) {
+            return false;
+        }
+        ItemStack stack = slot.getItem();
+        // PreFabs stack — only blocked when full
+        if (stack.is(FPSCompress.PREFAB_ITEM.get())) {
+            return stack.getCount() >= stack.getMaxStackSize();
+        }
+        // Different item type — blocked
+        return true;
     }
 }

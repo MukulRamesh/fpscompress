@@ -158,6 +158,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fabricator GUI strings, scan/print button labels, blueprint tooltips
   - Files modified: `en_us.json`
 
+### Added
+- **Auto-Printing Pipeline (Phase 6)**: Fabricator prints PreFabs automatically when resources are satisfied
+  - No manual button press required — printing starts automatically on each tick when all resources present
+  - `scanState` 4 (PRINTING) synced to client via ContainerData for progress bar rendering
+  - `printingProgress` and `printDuration` tracked and synced to client for vanilla furnace arrow animation
+  - Configurable print duration: `blueprintPrintTicks` (default 20 ticks = 1 second)
+  - Output slot supports PreFab stacking (same roomCode stacks up to 64)
+  - `isOutputSlotBlocked()` checks for full stacks and incompatible item types
+  - Files modified: `FabricatorBlockEntity.java`, `FabricatorMenu.java`, `FabricatorScreen.java`
+
+- **Blueprint Right-Click Chat Display**: Right-click a Blueprint item in hand to view full contents in chat
+  - Displays source PreFab name, room dimensions (X×Y×Z), resource costs, and all production rates
+  - System messages format (bold gold header, green section headers, white entries with yellow counts)
+  - All rates displayed (no limit — chat scrolls), sorted by rate (outputs first, then inputs)
+  - Empty/blank Blueprints show a gray "This blueprint is blank" message
+  - Uses `sendSystemMessage()` for unlimited display (vs. `displayClientMessage` action bar)
+  - Files modified: `PreFabBlueprintItem.java`, `en_us.json`
+
+- **Fabricator Custom Textures**: Distinct visual identity for the Fabricator block
+  - New texture files: `fabricator_top.png`, `fabricator_bottom.png`, `fabricator_side.png`
+  - Updated `prefab_blueprint.png` item texture
+
+- **Dev2 Multi-Input Blueprint Command**: `/fps_dev2 give-test-blueprint list <inputList> <outputList> <costList>`
+  - Comma-separated list format: `"item:rate,item:rate,..."` for rates, `"item:count,item:count,..."` for costs
+  - Example: `/fps_dev2 give-test-blueprint list "" "minecraft:emerald:1.0" "minecraft:diamond:1"`
+  - Multi-item inputs (negative rates) and outputs (positive rates) with proper UUID-based storage
+  - Separate `parseCostList()` helper for cost parsing with validation
+  - Files modified: `Dev2TestCommands.java`
+
+### Changed
+- **Fabricator Model**: Changed from `orientable` (magenta/purple concrete placeholders) to `cube_bottom_top` with custom textures
+  - Model now references `fpscompress:block/fabricator_top`, `fabricator_bottom`, `fabricator_side`
+  - Files modified: `models/block/fabricator.json`
+
+- **Fabricator Survival Drops**: Inventory contents now properly drop as item entities when broken
+  - `getDrops()` simplified to return a clean Fabricator item (no NBT baggage)
+  - `onRemove()` spawns `ItemEntity` for each non-empty slot at block position
+  - Prevents item loss when breaking Fabricator in survival mode
+  - Files modified: `FabricatorBlock.java`
+
+- **Printing Progress Visualization**: Vanilla furnace arrow sprite fills during print cycle
+  - `drawProgressArrow()` renders `container/furnace/burn_progress` sprite between input and output slots
+  - During PRINTING: fills left→right proportional to `printingProgress / printDuration`
+  - During SCANNING: subtle pulse animation (sine wave at 25-50% fill)
+  - No outline drawn when idle (avoids color-bleed artifacts from `setColor` RGB dimming)
+  - Files modified: `FabricatorScreen.java`
+
+- **Fabricator Mineable Tag**: Fabricator block added to `mineable/pickaxe.json` tag
+  - Allows Fabricator to be mined with pickaxe in survival mode
+  - Files modified: `data/minecraft/tags/block/mineable/pickaxe.json`
+
+### Fixed
+- **Print Failure Messages**: `PrintRequestPacket` now provides specific failure reasons
+  - "output slot is occupied" when output has incompatible item
+  - "insert a Blueprint in the input slot" when no Blueprint present
+  - "check resource requirements" for unsatisfied resource slots
+  - Previous generic "cannot print" message was unhelpful for debugging
+  - Files modified: `PrintRequestPacket.java`
+
+- **Output Slot Stacking**: `onActionButtonPressed()` now checks `isOutputSlotBlocked()` instead of `isOutputSlotEmpty()`
+  - PreFabs with matching roomCode can stack (up to 64) — no longer falsely shows "Output occupied"
+  - Different items in output slot still block printing
+  - Files modified: `FabricatorScreen.java`, `FabricatorMenu.java`
+
+### Cleanup
+- **Removed `.aider*` Files**: Deleted AI assistant configuration files from repository
+  - Removed: `.aider.chat.history.md`, `.aider.conf.yml`, `.aider.input.history`, `.aider.model.metadata.json`, `.aiderignore`
+
+- **Removed Unused Imports**: Cleaned up unused `LOGGER`, `DataComponents`, `CompoundTag`, `CustomData` imports from `FabricatorBlock.java`
+
+### Documentation
+- **Blueprint System Notes**: Updated `NOTES/PREFAB_BLUEPRINT_SYSTEM.md` with Phase 5 completion documentation
+  - Phase 5 marked as COMPLETE with implementation summary and design decisions
+  - Documented GUI state machine (Idle → Scan → Scanning → Print → Resource Starved)
+
+- **Development Notes**: Updated `NOTES/notes.md` with Phase 6 reminder for auto-printing pipeline
+
 ---
 
 

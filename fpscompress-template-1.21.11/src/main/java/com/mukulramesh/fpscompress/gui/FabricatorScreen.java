@@ -2,7 +2,6 @@ package com.mukulramesh.fpscompress.gui;
 
 import com.mukulramesh.fpscompress.blueprint.BlueprintData;
 import com.mukulramesh.fpscompress.component.FPSDataComponents;
-import com.mukulramesh.fpscompress.network.PrintRequestPacket;
 import com.mukulramesh.fpscompress.network.ScanRequestPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -117,15 +116,13 @@ public class FabricatorScreen extends AbstractContainerScreen<FabricatorMenu> {
      * Delegates to scan or print based on current input contents.
      */
     private void onActionButtonPressed() {
+        // Only scan is manual — printing starts automatically via tick()
         if (menu.hasPreFabInInput()) {
             PacketDistributor.sendToServer(
                 new ScanRequestPacket(menu.getFabricatorPos())
             );
-        } else if (menu.hasBlueprintInInput()) {
-            PacketDistributor.sendToServer(
-                new PrintRequestPacket(menu.getFabricatorPos())
-            );
         }
+        // Print is automatic — no manual trigger needed
     }
 
     /**
@@ -136,6 +133,7 @@ public class FabricatorScreen extends AbstractContainerScreen<FabricatorMenu> {
         int scanState = menu.getScanState();
         boolean hasPreFab = menu.hasPreFabInInput();
         boolean hasBlueprint = menu.hasBlueprintInInput();
+        boolean outputBlocked = menu.isOutputSlotBlocked();
         boolean outputEmpty = menu.isOutputSlotEmpty();
         int requiredCount = menu.getRequiredResourceCount();
         int availableCount = menu.getAvailableResourceCount();
@@ -163,7 +161,7 @@ public class FabricatorScreen extends AbstractContainerScreen<FabricatorMenu> {
         if (hasPreFab) {
             // PreFab in input slot — check server validation
             boolean valid = menu.isPrefabValid();
-            if (!outputEmpty) {
+            if (outputBlocked) {
                 label = "Output occupied";
                 active = false;
             } else if (!valid) {
@@ -176,14 +174,19 @@ public class FabricatorScreen extends AbstractContainerScreen<FabricatorMenu> {
                 label = "Scan";
                 active = true;
             }
-        } else if (hasBlueprint && scanState == 3) {
-            // Blueprint in input slot — server validated
-            if (!outputEmpty) {
+        } else if (hasBlueprint && (scanState == 3 || scanState == 4)) {
+            // Blueprint in input slot — printing is automatic
+            if (outputBlocked) {
                 label = "Output occupied";
                 active = false;
+            } else if (scanState == 4) {
+                // Printing in progress
+                label = "Printing...";
+                active = false;
             } else if (availableCount >= requiredCount && requiredCount > 0) {
-                label = "Print";
-                active = true;
+                // Resources satisfied — auto-printing will start
+                label = "Printing...";
+                active = false;
             } else {
                 label = "Resource Starved";
                 active = false;
@@ -227,8 +230,8 @@ public class FabricatorScreen extends AbstractContainerScreen<FabricatorMenu> {
         drawSlotBg(graphics, lx + 116, ty + 20,
             SLOT_HIGHLIGHT, SLOT_SHADOW, SLOT_OUTPUT_INNER);
 
-        // Arrow between input and output
-        graphics.drawString(font, "→", lx + 80, ty + 22, 0xFF404040, false);
+        // Arrow between input and output — fills based on printing/scanning progress
+        drawProgressArrow(graphics, lx + 80, ty + 22);
 
         // Slots 2-28: Resource slots (3 rows of 9)
         for (int row = 0; row < 3; row++) {
@@ -303,6 +306,50 @@ public class FabricatorScreen extends AbstractContainerScreen<FabricatorMenu> {
         graphics.fill(x, y + height - 1, x + width, y + height, color);
         graphics.fill(x, y, x + 1, y + height, color);
         graphics.fill(x + width - 1, y, x + width, y + height, color);
+    }
+
+    /** Vanilla furnace arrow progress sprite (fills left→right as smelting progresses). */
+    private static final ResourceLocation ARROW_PROGRESS_SPRITE =
+        ResourceLocation.withDefaultNamespace("container/furnace/burn_progress");
+
+    /** Sprite dimensions for the furnace arrow. */
+    private static final int ARROW_WIDTH = 24;
+    private static final int ARROW_HEIGHT = 17;
+
+    /**
+     * Draw the vanilla furnace progress arrow between input and output slots.
+     * Fills based on printing progress (scanState 4) or pulses during
+     * scanning (scanState 2).
+     *
+     * @param graphics The graphics context
+     * @param x Left edge screen X
+     * @param y Top edge screen Y
+     */
+    private void drawProgressArrow(GuiGraphics graphics, int x, int y) {
+        float progress = 0f;
+        int scanState = menu.getScanState();
+
+        if (scanState == 4) {
+            int current = menu.getPrintingProgress();
+            int total = menu.getPrintDuration();
+            if (total > 0) {
+                progress = Math.min(1.0f, (float) current / (float) total);
+            } else {
+                progress = 1.0f;
+            }
+        } else if (scanState == 2) {
+            float raw = (float) Math.sin(System.currentTimeMillis() / 400.0);
+            progress = 0.25f + raw * 0.25f;
+        }
+
+        int filledWidth = Math.round((float) ARROW_WIDTH * progress);
+
+        // Only draw the arrow when there is actual progress — no empty outline
+        // since setColor RGB dimming bleeds a dark rectangle around the sprite.
+        if (filledWidth > 0) {
+            graphics.blitSprite(ARROW_PROGRESS_SPRITE, ARROW_WIDTH, ARROW_HEIGHT,
+                0, 0, x, y, filledWidth, ARROW_HEIGHT);
+        }
     }
 
     @Override

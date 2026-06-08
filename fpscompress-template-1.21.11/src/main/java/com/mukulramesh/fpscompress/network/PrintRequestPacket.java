@@ -5,6 +5,7 @@ import com.mukulramesh.fpscompress.blueprint.FabricatorBlockEntity;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -58,17 +59,27 @@ public record PrintRequestPacket(BlockPos fabricatorPos) implements CustomPacket
                 return;
             }
 
-            // Trigger print (Phase 5: placeholder validation)
+            // Trigger print (Phase 6: real resource consumption + carbon copy creation)
             boolean success = fabricator.triggerPrint();
 
             if (success) {
                 serverPlayer.displayClientMessage(
-                    Component.literal("§aPrinting started! Check output slot."),
+                    Component.literal("§aPreFab printed successfully! Check output slot."),
                     true
                 );
             } else {
+                // Determine specific failure reason for better feedback
+                String errorMsg = "§cCannot print - ";
+                ItemStack outputStack = fabricator.getOutputSlot();
+                if (!outputStack.isEmpty()) {
+                    errorMsg += "output slot is occupied";
+                } else if (fabricator.getInputSlot().isEmpty()) {
+                    errorMsg += "insert a Blueprint in the input slot";
+                } else {
+                    errorMsg += "check resource requirements";
+                }
                 serverPlayer.displayClientMessage(
-                    Component.literal("§cCannot print - check resource requirements"),
+                    Component.literal(errorMsg),
                     true
                 );
             }

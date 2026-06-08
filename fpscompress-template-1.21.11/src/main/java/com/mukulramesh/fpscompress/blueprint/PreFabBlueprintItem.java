@@ -6,10 +6,14 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -77,6 +81,104 @@ public class PreFabBlueprintItem extends Item {
 
         // Line 3+: Cached rates (if present)
         addCachedRates(data, tooltipComponents);
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
+        ItemStack stack = player.getItemInHand(usedHand);
+
+        if (level.isClientSide()) {
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        }
+
+        CompoundTag nbt = stack.get(FPSDataComponents.BLUEPRINT_DATA.get());
+        if (nbt == null) {
+            player.displayClientMessage(
+                Component.translatable("item.fpscompress.prefab_blueprint.chat.empty")
+                    .withStyle(ChatFormatting.GRAY), false);
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        }
+
+        BlueprintData data = BlueprintData.fromNBT(nbt);
+        if (data.isEmpty()) {
+            player.displayClientMessage(
+                Component.translatable("item.fpscompress.prefab_blueprint.chat.empty")
+                    .withStyle(ChatFormatting.GRAY), false);
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        }
+
+        // === Header ===
+        String name = data.getSourcePrefabName();
+        if (name != null && !name.isEmpty()) {
+            player.sendSystemMessage(Component.literal("=== " + name + " ===")
+                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        } else {
+            player.sendSystemMessage(Component.translatable(
+                "item.fpscompress.prefab_blueprint.chat.header")
+                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        }
+
+        // Room size
+        player.sendSystemMessage(Component.translatable(
+            "item.fpscompress.prefab_blueprint.room_size",
+            Component.literal(String.valueOf(data.getRoomSizeX())).withStyle(ChatFormatting.AQUA),
+            Component.literal(String.valueOf(data.getRoomSizeY())).withStyle(ChatFormatting.AQUA),
+            Component.literal(String.valueOf(data.getRoomSizeZ())).withStyle(ChatFormatting.AQUA)
+        ).withStyle(ChatFormatting.GRAY));
+
+        // === Resource Costs ===
+        List<BlueprintData.ResourceRequirement> blockResources = data.getBlockResources();
+        List<BlueprintData.ResourceRequirement> itemResources = data.getItemResources();
+
+        if (!blockResources.isEmpty() || !itemResources.isEmpty()) {
+            player.sendSystemMessage(Component.translatable(
+                "item.fpscompress.prefab_blueprint.chat.resources_header")
+                .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+
+            for (BlueprintData.ResourceRequirement req : blockResources) {
+                String displayId = req.id().contains(":")
+                    ? req.id().substring(req.id().indexOf(':') + 1) : req.id();
+                player.sendSystemMessage(Component.literal("  - ")
+                    .withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(displayId).withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" x" + req.count()).withStyle(ChatFormatting.YELLOW)));
+            }
+
+            for (BlueprintData.ResourceRequirement req : itemResources) {
+                String displayId = req.id().contains(":")
+                    ? req.id().substring(req.id().indexOf(':') + 1) : req.id();
+                player.sendSystemMessage(Component.literal("  - ")
+                    .withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(displayId).withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" x" + req.count()).withStyle(ChatFormatting.YELLOW)));
+            }
+        }
+
+        // === Production Rates ===
+        Map<UUID, List<BlueprintData.ResourceRate>> cachedRates = data.getCachedRates();
+        if (!cachedRates.isEmpty()) {
+            player.sendSystemMessage(Component.translatable(
+                "item.fpscompress.prefab_blueprint.chat.rates_header")
+                .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+
+            // Flatten all rates from all UUIDs into single list
+            List<RateEntry> allRates = new ArrayList<>();
+            for (List<BlueprintData.ResourceRate> rateList : cachedRates.values()) {
+                for (BlueprintData.ResourceRate rate : rateList) {
+                    allRates.add(new RateEntry(rate.getResourceId(), rate.getRate()));
+                }
+            }
+
+            // Sort by rate (outputs first, then inputs)
+            Collections.sort(allRates, (a, b) -> Double.compare(b.getRate(), a.getRate()));
+
+            // Display ALL rates in chat (no limit — chat scrolls)
+            for (RateEntry entry : allRates) {
+                player.sendSystemMessage(formatRateLine(entry.getResourceId(), entry.getRate()));
+            }
+        }
+
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
     /**
