@@ -7,7 +7,7 @@
     {
       "type": "text",
       "title": "Recalibrating Rates",
-      "text": "$(bold)When to recalibrate$(): $(li)Factory structure needs to change $(li)Need to upgrade machines $(li)Different input resources (iron ore → gold ore)$(br2)$(bold)How to recalibrate$(): $(li)Right-click PreFab (enter config menu) $(li)Wait 60 seconds $(li)Right-click again (stop simulation from menu) $(li)New rates measured and cached."
+      "text": "$(bold)When to recalibrate$(): $(li)Factory structure needs to change $(li)Need to upgrade machines $(li)Different input resources (iron ore → gold ore)$(br2)$(bold)How to recalibrate$(): $(li)Right-click PreFab with empty hand (enter control menu) $(li)Start new simulation $(li)Wait 60 seconds $(li)Right-click with empty hand again (stop simulation from menu) $(li)New rates measured and cached."
     },
     {
       "type": "text",

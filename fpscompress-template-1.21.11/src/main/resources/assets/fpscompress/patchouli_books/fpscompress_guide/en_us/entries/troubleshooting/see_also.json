@@ -2,7 +2,7 @@
   "name": "See Also",
   "icon": "minecraft:redstone_torch",
   "category": "fpscompress:troubleshooting",
-  "sortnum": 10,
+  "sortnum": 11,
   "pages": [
     {
       "type": "text",

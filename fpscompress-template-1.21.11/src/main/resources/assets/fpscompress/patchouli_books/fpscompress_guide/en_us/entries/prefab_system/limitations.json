@@ -2,7 +2,7 @@
   "name": "Limitations",
   "icon": "fpscompress:prefab_machine",
   "category": "fpscompress:prefab_system",
-  "sortnum": 9,
+  "sortnum": 10,
   "pages": [
     {
       "type": "text",

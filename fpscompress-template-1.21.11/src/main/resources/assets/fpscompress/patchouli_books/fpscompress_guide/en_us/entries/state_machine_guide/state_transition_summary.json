@@ -6,7 +6,7 @@
   "pages": [
     {
       "type": "text",
-      "text": "$(li)$(bold)BUILDING:$() Right-click - SIMULATING $(li)$(bold)SIMULATING:$() Right-click - CACHED $(li)$(bold)SIMULATING:$() Right-click - BUILDING $(li)$(bold)CACHED:$() Input/output problem - HALTED $(li)$(bold)CACHED:$() Right-click - SIMULATING $(li)$(bold)HALTED:$() Fix - SIMULATING"
+      "text": "$(li)$(bold)BUILDING:$() Right-click (empty hand) → Start simulation - SIMULATING $(li)$(bold)SIMULATING:$() Right-click (empty hand) → Stop simulation - CACHED $(li)$(bold)SIMULATING:$() Right-click (empty hand) → Reset - BUILDING $(li)$(bold)CACHED:$() Input/output problem - HALTED $(li)$(bold)CACHED:$() Right-click (empty hand) → Restart simulation - SIMULATING $(li)$(bold)HALTED:$() Fix issue - CACHED$(br2)$(bold)Note:$() \"Right-click (empty hand)\" means right-clicking with an empty hand or any non-wrench item to open the control menu. The Simulation Wrench is only for face configuration (Shift+Right-click)."
     }
   ]
 }

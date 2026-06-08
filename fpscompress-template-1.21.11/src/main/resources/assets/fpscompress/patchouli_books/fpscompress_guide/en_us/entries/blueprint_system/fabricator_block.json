@@ -1,0 +1,37 @@
+{
+  "name": "Fabricator Block",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "text",
+      "text": "The Fabricator is a block that scans PreFabs into Blueprints and prints new PreFabs from Blueprints."
+    },
+    {
+      "type": "text",
+      "title": "GUI Layout",
+      "text": "┌──────────────────────────────────┐ │          Fabricator              │ │                                  │ │  [Input Slot]  →→→  [Output]    │ │                                  │ │  [Resource Slots 1-27]          │ │  ┌──┐ ┌──┐ ┌──┐     ┌──┐      │ │  │  │ │  │ │  │ ... │  │      │ │  └──┘ └──┘ └──┘     └──┘      │ │                                  │ │  [Scan Button]  [Print Button]  │ └──────────────────────────────────┘$(br2)$(bold)Input Slot$() (top-left): Place a PreFab item or Blueprint item here.$(br2)$(bold)Output Slot$() (top-right): Completed Blueprints (from scanning) or new PreFabs (from printing) appear here. Output-only — you cannot place items here.$(br2)$(bold)Resource Slots$() (27 slots): During printing, place the required blocks and items here. Each slot shows: $(li)$(bold)Green background$() — Resource requirement satisfied (correct item + NBT match if required) $(li)$(bold)Yellow blinking$() — Correct item but insufficient count $(li)$(bold)Red blinking$() — Wrong item or missing NBT $(li)$(bold)Ghost item$() — Empty slot shows what resource is needed$(br2)$(bold)Scan Button$(): Scans the PreFab in the input slot, creating a Blueprint in the output slot.$(br2)$(bold)Print Button$(): Prints a new PreFab from the Blueprint in the input slot. Requires resources in the resource slots.$(br2)$(bold)Progress Arrow$(): Between input and output slots. Fills during scanning (pulse animation) and printing (proportional fill)."
+    },
+    {
+      "type": "text",
+      "title": "How Scanning Works",
+      "text": "$(li)Place a $(bold)PreFab item$() (in CACHED state with production data) in the input slot $(li)The Fabricator validates the PreFab: $(li)Must be in CACHED state (has measured production rates) $(li)Must not contain blacklisted blocks (see PreFab System) $(li)Click $(bold)Scan$() (or the scan happens automatically) $(li)The Fabricator performs an $(bold)async room scan$(): $(li)Counts all blocks and items inside the PreFab's CM room $(li)Extracts NBT data for NBT-required blocks/items (see NBT-Aware Scanning below) $(li)Reads cached production rates from the PreFab $(li)The result is written to a $(bold)PreFab Blueprint$() item in the output slot$(br2)$(bold)Scan caching$(): After the first scan, results are cached in the PreFab's NBT. Re-inserting the same PreFab uses cached data instantly — no repeat async scan needed. The cache clears when the PreFab enters BUILDING state."
+    },
+    {
+      "type": "text",
+      "title": "How Printing Works",
+      "text": "$(li)Place a $(bold)PreFab Blueprint$() in the input slot $(li)The resource slots populate with $(bold)ghost items$() showing required resources $(li)Place the required blocks and items in the resource slots $(li)When all resources are satisfied (correct item + count + NBT), printing starts automatically $(li)A progress arrow fills over `blueprintPrintTicks` (default: 20 ticks = 1 second) $(li)A new $(bold)carbon copy PreFab$() appears in the output slot: $(li)Same production rates as the original $(li)Same room code (stacks with other copies) $(li)Named \"CC of <original name>\"$(br2)$(bold)Stacking$(): Multiple copies of the same Blueprint stack up to 64. PreFabs with matching room codes also stack."
+    },
+    {
+      "type": "text",
+      "title": "Scan State Machine",
+      "text": "The Fabricator cycles through these states:$(br2)$(li)$(bold)$(bold)Idle$() (0):$() No active scan or print $(li)$(bold)$(bold)Scanning$() (1):$() Async room scan in progress $(li)$(bold)$(bold)Resource Starved$() (2):$() Blueprint loaded but resources missing $(li)$(bold)$(bold)Ready to Print$() (3):$() All resources satisfied, waiting to print $(li)$(bold)$(bold)Printing$() (4):$() Auto-printing in progress"
+    },
+    {
+      "type": "text",
+      "title": "Config Options",
+      "text": "In `fpscompress-server.toml`:$(br2)[blueprint]     # Ticks to complete a print (default: 20 = 1 second)     blueprintPrintTicks = 20$(br2)    # Whether the PreFab item is consumed when scanning (default: false)     prefabConsumedOnScan = false$(br2)When `prefabConsumedOnScan` is `false` (default), the PreFab stays in the input slot after scanning — you can create multiple Blueprints from the same PreFab without re-inserting it.$(br2)---"
+    }
+  ]
+}

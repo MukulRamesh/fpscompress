@@ -1,0 +1,33 @@
+{
+  "name": "For Modpack Developers",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Adding Custom NBT Requirements",
+      "text": "$(li)$(bold)Create a datapack$() (or add to your existing datapack):       datapacks/my_nbt_config/    └── data/        └── <your_namespace>/            └── nbt_requirements/                ├── blocks/                │   └── your_block.json                └── items/                    └── your_item.json     $(li)$(bold)Write the JSON file$() following the format above.$(br2)$(li)$(bold)Apply the datapack$() — either: $(li)Place it in the world's `datapacks/` folder $(li)Use `/reload` to hot-reload without restarting$(br2)$(li)$(bold)Verify loading$() — Check the game log for:       [NbtRequirementRegistry] Loaded X NBT requirements from datapacks"
+    },
+    {
+      "type": "text",
+      "title": "Overriding Defaults",
+      "text": "Datapacks load $(bold)after$() mod resources. If your datapack defines a requirement for the same `resource_id` as a mod default, your version takes precedence (last-loaded wins). This lets you:$(br2)$(li)$(bold)Relax requirements$() — Remove fields from the `match` map $(li)$(bold)Tighten requirements$() — Add additional fields to track $(li)$(bold)Disable tracking$() — Create an empty `\"match\": {}` (item is tracked by type only)"
+    },
+    {
+      "type": "text",
+      "title": "Finding NBT Paths",
+      "text": "Use in-game tools to inspect NBT structure:$(br2)$(li)Press $(bold)F3+H$() to enable advanced tooltips — hover over items to see NBT $(li)For blocks, use commands:       /data get block ~ ~ ~ $(li)Navigate nested NBT using dot notation: `BlockEntityTag.Config.Upgrades`$(br2)$(bold)Tip$(): NBT paths are $(bold)case-sensitive$(). `BlockEntityTag` ≠ `blockentitytag`."
+    },
+    {
+      "type": "text",
+      "title": "Testing Your Configuration",
+      "text": "$(li)Add your JSON file to a datapack $(li)Run `/reload` $(li)Check the log for `Loaded NBT requirement for <your_id>` $(li)Scan a factory containing your block/item $(li)Verify the blueprint contains correct NBT (right-click Blueprint to view in chat) $(li)Test printing — try inserting an item with wrong NBT to confirm rejection"
+    },
+    {
+      "type": "text",
+      "title": "Troubleshooting",
+      "text": "$(bold)\"NBT requirement not loaded\"$(): $(li)JSON syntax valid? (Use a JSON validator) $(li)File in correct directory? (`nbt_requirements/blocks/` or `nbt_requirements/items/`) $(li)`resource_id` matches registry name exactly? (Case-sensitive) $(li)Ran `/reload` after adding the file?$(br2)$(bold)\"NBT not extracted during scanning\"$(): $(li)NBT paths case-sensitive? Check with F3+H or `/data get` $(li)Does the NBT field actually exist on the scanned block/item? $(li)Block has a BlockEntity? (Blocks without BlockEntity have no NBT)$(br2)$(bold)\"Items wrongly rejected during printing\"$(): $(li)Are you tracking transient fields (UUIDs, timestamps)? Add them to `ignore` $(li)Using `exact` when `subset` would be more appropriate? $(li)Check the `match` paths — do they reach the right level of nesting?$(br2)---"
+    }
+  ]
+}

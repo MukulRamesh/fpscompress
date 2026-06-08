@@ -2,7 +2,7 @@
   "name": "Debug Commands",
   "icon": "minecraft:redstone_torch",
   "category": "fpscompress:troubleshooting",
-  "sortnum": 7,
+  "sortnum": 8,
   "pages": [
     {
       "type": "text",

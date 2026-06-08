@@ -1,0 +1,13 @@
+{
+  "name": "Block Blacklist",
+  "icon": "fpscompress:prefab_machine",
+  "category": "fpscompress:prefab_system",
+  "sortnum": 9,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Preventing Unwanted Blocks",
+      "text": "Server owners can blacklist specific blocks from being placed inside PreFab rooms. This is useful for preventing blocks that could bypass or break the factory system (e.g., teleporters, dimensional storage).$(br2)$(bold)Config option$(): `prefabRoomBlacklistedBlocks` in `fpscompress-server.toml`$(br2)[prefab]     # Default: prevents bedrock placement (stops players escaping rooms)     prefabRoomBlacklistedBlocks = [\"minecraft:bedrock\"]$(br2)$(bold)Glob pattern support$(): $(li)`\"mekanism:*\"` — blocks all blocks from the Mekanism mod $(li)`\"$(italic)entangloporter$()\"` — blocks any entangloporter from any mod $(li)`\"enderchests:*\"` — blocks all blocks from the EnderChests mod $(li)`\"minecraft:bedrock\"` — blocks specific blocks$(br2)$(bold)Behavior$(): $(li)Players cannot place blacklisted blocks while inside a PreFab room (action bar warning shown) $(li)Simulation will abort if blacklisted blocks are detected during scanning (chat message lists violations) $(li)Only applies to PreFab rooms — regular Compact Machine rooms are not affected"
+    }
+  ]
+}

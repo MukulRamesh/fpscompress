@@ -27,8 +27,9 @@ CATEGORY_CONFIG = [
     {"file": "Importer-Exporter-Guide.md", "id": "importer_exporter_guide", "name": "Importers & Exporters", "description": "Input and output gate mechanics", "icon": "fpscompress:importer", "sortnum": 4},
     {"file": "State-Machine-Guide.md", "id": "state_machine_guide", "name": "State Machine", "description": "PreFab states and transitions", "icon": "minecraft:clock", "sortnum": 5},
     {"file": "Cached-Production.md", "id": "cached_production", "name": "Cached Production", "description": "Fractional math and caching system", "icon": "minecraft:hopper", "sortnum": 6},
-    {"file": "Advanced-Setup.md", "id": "advanced_setup", "name": "Advanced Setup", "description": "Complex factory patterns and optimization", "icon": "minecraft:nether_star", "sortnum": 7},
-    {"file": "Troubleshooting.md", "id": "troubleshooting", "name": "Troubleshooting", "description": "Common issues and solutions", "icon": "minecraft:redstone_torch", "sortnum": 8},
+    {"file": "Blueprint-System.md", "id": "blueprint_system", "name": "Blueprint System", "description": "Scanning factories, printing copies, and NBT-aware configuration", "icon": "fpscompress:prefab_blueprint", "sortnum": 7},
+    {"file": "Advanced-Setup.md", "id": "advanced_setup", "name": "Advanced Setup", "description": "Complex factory patterns and optimization", "icon": "minecraft:nether_star", "sortnum": 8},
+    {"file": "Troubleshooting.md", "id": "troubleshooting", "name": "Troubleshooting", "description": "Common issues and solutions", "icon": "minecraft:redstone_torch", "sortnum": 9},
 ]
 
 

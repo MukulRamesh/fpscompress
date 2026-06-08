@@ -12,7 +12,7 @@
     {
       "type": "text",
       "title": "Core Features",
-      "text": "$(li)$(l:face_configuration/opening_the_gui)Face Configuration$() - Configuring PreFab faces step-by-step $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - Understanding BUILDING/SIMULATING/CACHED/HALTED states $(li)$(l:cached_production/what_is_cached_production)Cached Production$() - How virtual production works"
+      "text": "$(li)$(l:face_configuration/opening_the_gui)Face Configuration$() - Configuring PreFab faces step-by-step $(li)$(l:state_machine_guide/state_overview)State Machine Guide$() - Understanding BUILDING/SIMULATING/CACHED/HALTED states $(li)$(l:cached_production/what_is_cached_production)Cached Production$() - How virtual production works $(li)$(l:blueprint_system/overview)Blueprint System$() - Scanning factories, printing copies, and NBT-aware configuration"
     },
     {
       "type": "text",

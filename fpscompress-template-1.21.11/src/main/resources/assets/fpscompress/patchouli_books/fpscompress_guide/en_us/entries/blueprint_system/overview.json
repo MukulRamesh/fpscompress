@@ -1,0 +1,17 @@
+{
+  "name": "Overview",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "text",
+      "text": "The Blueprint system has three parts:$(br2)$(li)$(bold)Fabricator Block$() — Scans PreFabs and prints Blueprints $(li)$(bold)PreFab Blueprint Item$() — Stores scanned factory data (production rates, resource costs, NBT) $(li)$(bold)NBT-Aware Scanning$() — Data pack-driven system for tracking essential NBT fields"
+    },
+    {
+      "type": "text",
+      "title": "Why Blueprints?",
+      "text": "Without Blueprints, every factory must be built by hand. Blueprints let you:$(br2)$(li)$(bold)Duplicate factories$() — Scan a working factory, print exact copies $(li)$(bold)Share factories$() — Trade Blueprint items with other players $(li)$(bold)Archive designs$() — Store factory layouts as items $(li)$(bold)Scale production$() — Print multiple copies of proven designs"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Blacklist Issues",
+  "icon": "minecraft:redstone_torch",
+  "category": "fpscompress:troubleshooting",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Problem: \"Can't place a block inside a PreFab room\"",
+      "text": "$(bold)Cause$(): The block is on the `prefabRoomBlacklistedBlocks` config list.$(br2)$(bold)Solution$(): $(li)Check `fpscompress-server.toml` → `[prefab]` → `prefabRoomBlacklistedBlocks` $(li)Remove the block from the list, or use a different block $(li)Glob patterns like `mekanism:*` block all blocks from a mod — narrow the pattern if needed"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Simulation aborts with 'blacklisted block(s) found'\"",
+      "text": "$(bold)Cause$(): A blacklisted block exists inside the PreFab room.$(br2)$(bold)Solution$(): $(li)Enter the PreFab room (BUILDING state) $(li)Find and remove the blacklisted block(s) listed in the chat message $(li)Alternatively, remove the block from the config blacklist $(li)Restart the simulation"
+    },
+    {
+      "type": "text",
+      "title": "Problem: \"Block is blacklisted in PreFab but I can place it in a regular CM room\"",
+      "text": "$(bold)This is intentional.$() The blacklist only applies to PreFab rooms, not regular Compact Machine rooms. If you want to restrict blocks in all CM rooms, configure the Compact Machines mod separately.$(br2)---"
+    }
+  ]
+}

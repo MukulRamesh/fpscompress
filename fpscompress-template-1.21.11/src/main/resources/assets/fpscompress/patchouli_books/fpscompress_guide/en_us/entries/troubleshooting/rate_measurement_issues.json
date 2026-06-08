@@ -2,7 +2,7 @@
   "name": "Rate Measurement Issues",
   "icon": "minecraft:redstone_torch",
   "category": "fpscompress:troubleshooting",
-  "sortnum": 6,
+  "sortnum": 7,
   "pages": [
     {
       "type": "text",

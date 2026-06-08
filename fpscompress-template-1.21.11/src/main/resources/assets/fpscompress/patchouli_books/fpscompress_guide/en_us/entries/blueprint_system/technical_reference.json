@@ -1,0 +1,28 @@
+{
+  "name": "Technical Reference",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Schema Versioning",
+      "text": "Blueprint data uses $(bold)schema version 2$(): $(li)$(bold)v1$() (legacy): `Map<String, Long>` — resource ID → count (no NBT) $(li)$(bold)v2$() (current): `List<ResourceRequirement>` — id + count + optional NBT$(br2)Old v1 blueprints load with `null` NBT for all resources (any item of matching type accepted)."
+    },
+    {
+      "type": "text",
+      "title": "NBT Path Notation",
+      "text": "Paths use dot notation with `$(italic)` for list wildcards:$(br2)$(li)$(bold)`roomCode`:$() `nbt.getString(\"roomCode\")` $(li)$(bold)`BlockEntityTag.roomCode`:$() `nbt.getCompound(\"BlockEntityTag\").getString(\"roomCode\")` $(li)$(bold)`importerExporterRates.$().rates`:$() Each list element's `rates` sub-list $(li)$(bold)`Config.Upgrades.SpeedTier`:$() `nbt.getCompound(\"Config\").getCompound(\"Upgrades\").getInt(\"SpeedTier\")`"
+    },
+    {
+      "type": "text",
+      "title": "Performance",
+      "text": "$(li)NBT extraction is fast — tracking a few dozen fields has negligible cost $(li)Registry lookups are cached on first access $(li)Scanning runs asynchronously (doesn't freeze the server) $(li)Use `subset`/`list_subset` over `exact` where possible (more robust to unrelated NBT changes)"
+    },
+    {
+      "type": "text",
+      "title": "Key Classes",
+      "text": "$(li)$(bold)`FabricatorBlockEntity`:$() GUI inventory, scan/print logic, resource validation $(li)$(bold)`PreFabBlueprintItem`:$() Blueprint item with tooltips and right-click display $(li)$(bold)`BlueprintData`:$() Data record for blueprint contents (schema v2) $(li)$(bold)`NbtRequirement`:$() Record with matching engine (exact, subset, list_subset, range) $(li)$(bold)`NbtRequirementRegistry`:$() Singleton — loads JSON from datapacks, provides lookups $(li)$(bold)`BlockScanner`:$() Async block scanning with NBT extraction $(li)$(bold)`InventoryScanner`:$() Async inventory scanning with NBT extraction $(li)$(bold)`BlueprintScanCache`:$() Caches scan results in PreFab NBT for instant re-scans$(br2)---"
+    }
+  ]
+}

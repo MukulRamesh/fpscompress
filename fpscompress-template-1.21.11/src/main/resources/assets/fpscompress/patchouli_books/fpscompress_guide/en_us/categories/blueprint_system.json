@@ -1,0 +1,6 @@
+{
+  "name": "Blueprint System",
+  "description": "Scanning factories, printing copies, and NBT-aware configuration",
+  "icon": "fpscompress:prefab_blueprint",
+  "sortnum": 7
+}

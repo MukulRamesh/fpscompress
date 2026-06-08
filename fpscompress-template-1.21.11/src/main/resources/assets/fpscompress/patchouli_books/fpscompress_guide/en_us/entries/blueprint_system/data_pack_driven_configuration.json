@@ -1,0 +1,37 @@
+{
+  "name": "Data Pack-Driven Configuration",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "text",
+      "text": "NBT requirements are configured through $(bold)JSON files in datapacks$(). This means modpack developers can add, override, or remove NBT tracking without modifying the mod."
+    },
+    {
+      "type": "text",
+      "title": "Directory Structure",
+      "text": "data/   <namespace>/     nbt_requirements/       blocks/         $(italic).json     ← NBT requirements for placed blocks       items/         $().json     ← NBT requirements for inventory items$(br2)FPSCompress ships with: data/fpscompress/nbt_requirements/blocks/prefab.json"
+    },
+    {
+      "type": "text",
+      "title": "JSON Format",
+      "text": "Each file defines NBT matching rules for a single resource:$(br2){   \"resource_id\": \"modid:item_or_block_name\",   \"match\": {     \"path.to.field\": \"strategy\",     \"path.to.nested.field\": {       \"strategy\": \"strategy_name\",       \"ignore\": [\"transient_key\"],       \"min\": 0.0,       \"max\": 100.0     }   } }$(br2)$(bold)`resource_id`$() (required): The namespaced registry ID of the block or item.$(br2)$(bold)`match`$() (required): A map of NBT paths to matching rules. Each path uses $(bold)dot notation$() (e.g., `\"BlockEntityTag.roomCode\"`). Use `$(italic)` as a wildcard for list element paths (e.g., `\"importerExporterRates.$().rates\"`).$(br2)#### Match Rule Formats$(br2)Each match value can be a $(bold)shorthand string$() or an $(bold)object$():$(br2)$(bold)String shorthand$() (simple cases): \"path.to.field\": \"exact\"$(br2)$(bold)Object form$() (with options): \"path.to.field\": {   \"strategy\": \"list_subset\",   \"ignore\": [\"uuid\", \"timestamp\"],   \"min\": 0.0,   \"max\": 100.0 }"
+    },
+    {
+      "type": "text",
+      "title": "Match Strategies",
+      "text": "$(li)$(bold)`exact`:$() Values must match exactly - Simple fields (strings, numbers) $(li)$(bold)`subset`:$() Required fields must exist in available; extra fields in available are OK - Compound tags where you care about specific sub-fields $(li)$(bold)`list_subset`:$() Every element in the required list must have a match in the available list (order-independent) - Lists of items/rates where order doesn't matter $(li)$(bold)`range`:$() Numeric value must fall within `[min, max]` - Energy levels, durability, progress values$(br2)$(bold)Default behavior$(): If no match rule is specified for a path, compound tags use `subset` and primitive tags use `exact`."
+    },
+    {
+      "type": "text",
+      "title": "The `ignore` Field",
+      "text": "Use `ignore` to skip $(bold)transient$() or $(bold)volatile$() keys that differ between otherwise-identical items:$(br2){   \"resource_id\": \"fpscompress:prefab_machine\",   \"match\": {     \"importerExporterRates\": {       \"strategy\": \"list_subset\",       \"ignore\": [\"uuid\"]     }   } }$(br2)This says: \"Compare `importerExporterRates` lists element-by-element, but skip the `uuid` field inside each element.\" UUIDs are assigned per-Importer/Exporter and differ between copies — ignoring them allows carbon copies to match.$(br2)Common things to ignore: $(li)`uuid` — Unique identifiers that differ per instance $(li)`timestamp` — Creation/modification times $(li)`x`, `y`, `z` — Block positions (differ between copies)"
+    },
+    {
+      "type": "text",
+      "title": "Real Examples",
+      "text": "$(bold)Example 1: PreFab Block$() (shipped with the mod)$(br2)File: `data/fpscompress/nbt_requirements/blocks/prefab.json`$(br2){   \"resource_id\": \"fpscompress:prefab_machine\",   \"match\": {     \"importerExporterRates\": {       \"strategy\": \"list_subset\",       \"ignore\": [\"uuid\"]     },     \"importerExporterRates.*.rates\": \"list_subset\"   } }$(br2)This ensures: $(li)The `importerExporterRates` list in a printed PreFab must match the blueprint's rates element-by-element $(li)UUIDs are ignored (carbon copies get new UUIDs for their own Importers/Exporters) $(li)The inner `rates` sub-list within each entry also uses `list_subset` matching$(br2)$(bold)Example 2: Enchanted Book$() (hypothetical — add via datapack)$(br2)File: `data/minecraft/nbt_requirements/items/enchanted_book.json`$(br2){   \"resource_id\": \"minecraft:enchanted_book\",   \"match\": {     \"StoredEnchantments\": \"list_subset\"   } }$(br2)Ensures a blueprint requiring an Efficiency V book won't accept a Sharpness III book.$(br2)$(bold)Example 3: Machine with Upgrades$() (hypothetical — add via datapack)$(br2)File: `data/examplemod/nbt_requirements/blocks/super_furnace.json`$(br2){   \"resource_id\": \"examplemod:super_furnace\",   \"match\": {     \"BlockEntityTag.Upgrades.SpeedTier\": \"exact\",     \"BlockEntityTag.Upgrades.EfficiencyTier\": \"exact\",     \"BlockEntityTag.EnergyStored\": {       \"strategy\": \"range\",       \"min\": 0.0,       \"max\": 1000000.0     }   } }$(br2)Ensures blueprints require matching speed/efficiency upgrade tiers but accepts any energy level (as long as it's within the machine's capacity).$(br2)---"
+    }
+  ]
+}

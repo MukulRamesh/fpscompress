@@ -1,0 +1,23 @@
+{
+  "name": "PreFab Blueprint Item",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Item Name",
+      "text": "A Blueprint's display name comes from the source PreFab: $(li)Named PreFab: \"Iron Smelter\" → Blueprint named \"Iron Smelter\" $(li)Unnamed PreFab: Blueprint shows default \"PreFab Blueprint\" name"
+    },
+    {
+      "type": "text",
+      "title": "Tooltip",
+      "text": "Hovering over a Blueprint shows: $(li)$(bold)Source$(): Original PreFab name (or room code) $(li)$(bold)Room dimensions$(): X×Y×Z size of the factory room $(li)$(bold)Resources required$(): List of blocks and items needed for printing $(li)Items with NBT requirements show a `[NBT]` marker $(li)$(bold)Production rates$(): Input rates (negative, consumed) and output rates (positive, produced) $(li)Sorted by rate, outputs first"
+    },
+    {
+      "type": "text",
+      "title": "Right-Click Chat Display",
+      "text": "Right-click a Blueprint in hand to view its full contents in chat:$(br2)$(li)Source PreFab name and room dimensions $(li)Complete resource cost list (all items, unlimited — chat scrolls) $(li)Full production rate list (all rates shown) $(li)Color-coded: gold headers, green section titles, white entries$(br2)Empty/blank Blueprints show: \"This blueprint is blank.\"$(br2)---"
+    }
+  ]
+}

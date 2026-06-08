@@ -27,7 +27,7 @@
     {
       "type": "text",
       "title": "Transitions",
-      "text": "$(bold)From CACHED to HALTED$(): $(li)Input starved (can't extract from Overworld chest) $(li)Output blocked (can't insert to Overworld chest) $(li)Automatic transition, no player action$(br2)$(bold)From CACHED to SIMULATING$(): $(li)Right-click PreFab with Simulation Wrench $(li)Used to recalibrate rates (if you need to make factory changes)$(br2)---"
+      "text": "$(bold)From CACHED to HALTED$(): $(li)Input starved (can't extract from Overworld chest) $(li)Output blocked (can't insert to Overworld chest) $(li)Automatic transition, no player action$(br2)$(bold)From CACHED to SIMULATING$(): $(li)Right-click PreFab with empty hand (or non-wrench item) $(li)Open control menu and restart simulation $(li)Used to recalibrate rates (if you need to make factory changes)$(br2)---"
     }
   ]
 }

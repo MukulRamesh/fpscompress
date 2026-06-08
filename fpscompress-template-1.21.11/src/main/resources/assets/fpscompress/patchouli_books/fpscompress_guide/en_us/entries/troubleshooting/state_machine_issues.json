@@ -22,7 +22,7 @@
     {
       "type": "text",
       "title": "Problem: \"PreFab stuck in HALTED\"",
-      "text": "$(bold)Cause$(): Underlying issue not fixed$(br2)$(bold)Steps to recover$(): $(li)$(bold)Diagnose$(): Check input/output chests $(li)$(bold)Fix$(): Restock inputs, clear outputs $(li)$(bold)Resume$(): Right-click with wrench → Goes to SIMULATING $(li)$(bold)Wait$(): Let simulate for 10-30 seconds $(li)$(bold)Finish$(): Right-click again → Back to CACHED$(br2)---"
+      "text": "$(bold)Cause$(): Underlying issue not fixed$(br2)$(bold)Steps to recover$(): $(li)$(bold)Diagnose$(): Check input/output chests $(li)$(bold)Fix$(): Restock inputs, clear outputs $(li)$(bold)Resume$(): Right-click with wrench → Goes to SIMULATING $(li)$(bold)Wait$(): Let simulate for 10-30 seconds $(li)$(bold)Finish$(): Right-click again → Back to CACHED$(br2)---$(br2)---"
     }
   ]
 }

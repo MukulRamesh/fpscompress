@@ -1,0 +1,23 @@
+{
+  "name": "NBT-Aware Scanning",
+  "icon": "fpscompress:prefab_blueprint",
+  "category": "fpscompress:blueprint_system",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "text",
+      "title": "Why NBT Matters",
+      "text": "Most blocks and items only need their $(bold)type$() and $(bold)count$() in a blueprint (e.g., \"64× Stone\"). But some items are $(bold)functionally different$() even when they share the same item ID — their NBT data determines what they actually do.$(br2)$(bold)Example: PreFab Blocks$()$(br2)A PreFab producing 100 diamonds/tick and a PreFab producing 1 dirt/tick are both `fpscompress:prefab_machine` items. Without NBT tracking, a blueprint would accept either one interchangeably — but their cached production rates are completely different.$(br2)NBT-aware scanning ensures blueprints only accept items with matching NBT for the fields that matter."
+    },
+    {
+      "type": "text",
+      "title": "How It Works",
+      "text": "$(li)$(bold)JSON schemas$() define which blocks/items have important NBT fields (see Data Pack Configuration below) $(li)$(bold)During scanning$(), the Fabricator checks each block/item against the NBT registry $(li)If a match is found, the specified NBT fields are extracted and stored in the blueprint $(li)$(bold)During printing$(), the Fabricator validates that provided resources match both the item ID $(bold)and$() the required NBT fields $(li)Items with wrong or missing NBT are automatically $(bold)rejected$() (returned to player inventory or dropped)"
+    },
+    {
+      "type": "text",
+      "title": "What Gets Tracked",
+      "text": "By default, FPSCompress ships with one NBT requirement:$(br2)$(li)$(bold)`fpscompress:prefab_machine`:$() `importerExporterRates` (list subset, ignoring UUIDs) - Ensures printed PreFabs have matching cached production rates$(br2)You can add more via datapacks (see below).$(br2)---"
+    }
+  ]
+}

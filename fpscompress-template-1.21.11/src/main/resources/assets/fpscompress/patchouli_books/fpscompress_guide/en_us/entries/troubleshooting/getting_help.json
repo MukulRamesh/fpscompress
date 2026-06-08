@@ -2,7 +2,7 @@
   "name": "Getting Help",
   "icon": "minecraft:redstone_torch",
   "category": "fpscompress:troubleshooting",
-  "sortnum": 9,
+  "sortnum": 10,
   "pages": [
     {
       "type": "text",

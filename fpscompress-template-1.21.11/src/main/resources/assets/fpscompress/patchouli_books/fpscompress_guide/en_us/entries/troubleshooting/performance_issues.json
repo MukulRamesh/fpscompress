@@ -2,7 +2,7 @@
   "name": "Performance Issues",
   "icon": "minecraft:redstone_torch",
   "category": "fpscompress:troubleshooting",
-  "sortnum": 5,
+  "sortnum": 6,
   "pages": [
     {
       "type": "text",
