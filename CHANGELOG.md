@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PreFab Consumed on Scan Config**: Server-side config option to control whether PreFab items
+  are consumed when scanned in the Fabricator
+  - `prefabConsumedOnScan` config option (default: `false`, PreFab stays in input slot)
+  - When `true`: PreFab consumed after scanning (one scan per PreFab, legacy behavior)
+  - When `false`: PreFab stays in input slot after scanning (can be reused)
+  - Config version bumped 1→2 for auto-migration of stale TOML files
+  - `hasScannedCurrentPrefab` flag prevents accidental re-scan without re-insertion
+  - Files modified: `Config.java`, `FabricatorBlockEntity.java`
+
+### Changed
+- **Fabricator Resource Check Optimization**: Replaced fixed 20-tick periodic re-check with
+  exponential backoff + inventory fingerprinting
+  - **Exponential Backoff**: Check interval starts at 20 ticks (1s), doubles on no-change
+    up to max 100 ticks (5s) — avoids constant NBT scanning on idle Fabricators
+  - **Inventory Fingerprint**: Lightweight hash of resource slot contents (item ID + count)
+    compared before running the expensive NBT-aware `checkRequiredResources()`
+  - **Immediate Checks Preserved**: `onContentsChanged()` still fires instant re-checks
+    when items change and resets backoff to minimum interval
+  - **Zero Overhead When Idle**: If inventory fingerprint matches, the full NBT scan is
+    skipped entirely — just a hash comparison
+  - Files modified: `FabricatorBlockEntity.java`
+
 ### Fixed
 - **PreFab name field closes screen on 'E' key**: Fixed `PreFabStatusScreen` so pressing
   the inventory keybinding (default 'E') while typing in the name field no longer closes

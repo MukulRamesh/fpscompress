@@ -1,5 +1,6 @@
 package com.mukulramesh.fpscompress.blueprint;
 
+import com.mukulramesh.fpscompress.Config;
 import com.mukulramesh.fpscompress.FPSCompress;
 import com.mukulramesh.fpscompress.component.FPSDataComponents;
 import com.mukulramesh.fpscompress.portal.MachineState;
@@ -70,7 +71,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
     private Map<String, CompoundTag> scannedBlockNbt = new HashMap<>(); // Phase 5: NBT tracking
     private Map<String, Long> scannedItems = new HashMap<>(); // Phase 4: Item scanning
     private Map<String, CompoundTag> scannedItemNbt = new HashMap<>(); // Phase 5: NBT tracking
-    private boolean hasScannedCurrentPrefab = false; // Prevent infinite scan loop
+
 
     // Phase 3: Validation state
     private boolean prefabValidForScan = false;
@@ -84,14 +85,29 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
     private int availableResourceCount = 0;
     private int satisfiedSlotMask = 0; // bitmask: bit N=1 means slot N+2 satisfied
     private boolean rejectingNbtMismatch = false; // guard against recursive ejection
+
+    // Phase 5: Resource check optimization — exponential backoff + fingerprint
+    private int periodicCheckCooldown = 0;
+    private int currentCheckInterval = 20; // doubles on no-change up to 100 (5s)
+    private static final int MIN_CHECK_INTERVAL = 20;
+    private static final int MAX_CHECK_INTERVAL = 100; // 5 seconds
+    private long lastResourceFingerprint = 0;
     private final java.util.Set<Integer> pendingEjections = new java.util.HashSet<>();
     @Nullable
     @SuppressFBWarnings("EI_EXPOSE_REP2")
     private Player lastInteractingPlayer = null; // for returning rejected items to player
 
+    // Phase 6: Auto-printing state machine
+    private boolean printingActive = false;
+    private int printingProgress = 0;
+    private int printDuration = 1;
+    @Nullable
+    private String currentBlueprintHash = null;
+
     // Phase 5: ContainerData for GUI sync
     // Index 0: scanState, 1: requiredResourceCount, 2: availableResourceCount,
-    //        3: prefabValidForScan, 4: satisfiedSlotMask
+    //        3: prefabValidForScan, 4: satisfiedSlotMask, 5: printingProgress,
+    //        6: printDuration
     private final net.minecraft.world.inventory.ContainerData fabricatorData =
         new net.minecraft.world.inventory.ContainerData() {
             @Override
@@ -102,6 +118,8 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
                     case 2 -> availableResourceCount;
                     case 3 -> prefabValidForScan ? 1 : 0;
                     case 4 -> satisfiedSlotMask;
+                    case 5 -> printingProgress;
+                    case 6 -> printDuration;
                     default -> 0;
                 };
             }
@@ -113,7 +131,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
 
             @Override
             public int getCount() {
-                return 5;
+                return 7;
             }
         };
 
@@ -160,6 +178,26 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
     public void setOutputSlot(ItemStack stack) {
         inventory.setStackInSlot(1, stack);
         setChanged();
+    }
+
+    /**
+     * Check whether the output slot is blocked from accepting newly printed items.
+     * PreFabs with the same roomCode stack (up to 64), so the slot is
+     * only blocked when full or occupied by a different item type.
+     *
+     * @return true if the output slot cannot accept more printed PreFabs
+     */
+    private boolean isOutputSlotBlocked() {
+        ItemStack current = getOutputSlot();
+        if (current.isEmpty()) {
+            return false;
+        }
+        // PreFabs stack — only blocked when full
+        if (current.is(FPSCompress.PREFAB_ITEM.get())) {
+            return current.getCount() >= current.getMaxStackSize();
+        }
+        // Different item type — blocked
+        return true;
     }
 
     /**
@@ -319,11 +357,6 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
             return false;
         }
 
-        // Haven't already scanned this PreFab
-        if (hasScannedCurrentPrefab) {
-            return false;
-        }
-
         // Input slot has valid PreFab
         if (!prefabValidForScan) {
             return false;
@@ -433,7 +466,6 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         scannedBlockNbt.clear();  // Phase 5: Clear NBT templates
         scannedItems.clear();
         scannedItemNbt.clear();   // Phase 5: Clear NBT templates
-        hasScannedCurrentPrefab = true; // Mark as scanned to prevent re-scan
         setChanged();
 
         FPSCompress.LOGGER.info("Starting block and item scan for room: {}", roomCode);
@@ -596,9 +628,15 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         ItemStack blueprint = new ItemStack(FPSCompress.PREFAB_BLUEPRINT.get());
         blueprint.set(FPSDataComponents.BLUEPRINT_DATA.get(), blueprintData.toNBT());
 
-        // Place in output slot and consume input
+        // Place in output slot and consume input (if configured)
         setOutputSlot(blueprint);
-        inventory.setStackInSlot(0, ItemStack.EMPTY); // Clear input slot
+
+        // Cache scan results in PreFab NBT for future fast-path re-scans
+        if (!Config.SERVER.getPrefabConsumedOnScan()) {
+            BlueprintScanCache.writeToPrefab(prefabStack, blockRequirements, itemRequirements);
+        } else {
+            inventory.setStackInSlot(0, ItemStack.EMPTY);
+        }
         setChanged();
 
         FPSCompress.LOGGER.info("Blueprint created successfully");
@@ -790,6 +828,104 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         );
     }
 
+    // ===== Phase 6: Carbon Copy PreFab Creation =====
+
+    /**
+     * Generate a short deterministic room code from blueprint data.
+     * Uses the NBT hash so that identical blueprints produce identical
+     * room codes, allowing carbon copy PreFabs to stack.
+     *
+     * <p>Format: "cc_" + 8-char hex hash (matches fake_* test PreFab format)
+     *
+     * @param blueprint The blueprint data to hash
+     * @return Deterministic room code (e.g., "cc_a1b2c3d4")
+     */
+    private static String generateCarbonCopyRoomCode(BlueprintData blueprint) {
+        int hash = blueprint.toNBT().toString().hashCode();
+        return "cc_" + String.format("%08x", hash);
+    }
+
+    /**
+     * Create a carbon copy PreFab ItemStack from a Blueprint.
+     *
+     * <p>Builds complete NBT for a PreFab that operates in CACHED mode
+     * without any physical room linkage. The carbon copy inherits cached
+     * rates from the blueprint and starts with all faces DISABLED.
+     *
+     * @param blueprint The blueprint data to copy rates from
+     * @return ItemStack of PreFab item with full NBT, ready to place
+     */
+    private ItemStack createCarbonCopyPrefab(BlueprintData blueprint) {
+        CompoundTag nbt = new CompoundTag();
+
+        // Schema version
+        nbt.putInt("schemaVersion", 2);
+
+        // Carbon copy room code — deterministic hash from blueprint data
+        // Same blueprint → same roomCode → PreFab items stack
+        String ccRoomCode = generateCarbonCopyRoomCode(blueprint);
+        nbt.putString("roomCode", ccRoomCode);
+
+        // State: always CACHED (rates are known from blueprint)
+        nbt.putString("state", "CACHED");
+
+        // Room dimensions from blueprint
+        nbt.putInt("roomSizeX", blueprint.getRoomSizeX());
+        nbt.putInt("roomSizeY", blueprint.getRoomSizeY());
+        nbt.putInt("roomSizeZ", blueprint.getRoomSizeZ());
+
+        // Custom name (if present on source blueprint)
+        String sourceName = blueprint.getSourcePrefabName();
+        if (sourceName != null && !sourceName.isEmpty()) {
+            nbt.putString("prefabName", sourceName);
+        }
+
+        // Copy importerExporterRates from blueprint (UUID-based, schema v2)
+        Map<UUID, List<BlueprintData.ResourceRate>> cachedRates = blueprint.getCachedRates();
+        if (!cachedRates.isEmpty()) {
+            ListTag uuidRatesList = new ListTag();
+            for (Map.Entry<UUID, List<BlueprintData.ResourceRate>> uuidEntry : cachedRates.entrySet()) {
+                CompoundTag uuidTag = new CompoundTag();
+                uuidTag.putUUID("uuid", uuidEntry.getKey());
+
+                ListTag ratesList = new ListTag();
+                for (BlueprintData.ResourceRate rate : uuidEntry.getValue()) {
+                    CompoundTag rateTag = new CompoundTag();
+                    rateTag.putString("id", rate.getResourceId());
+                    rateTag.putDouble("rate", rate.getRate());
+                    ratesList.add(rateTag);
+                }
+                uuidTag.put("rates", ratesList);
+                uuidRatesList.add(uuidTag);
+            }
+            nbt.put("importerExporterRates", uuidRatesList);
+        }
+
+        // All 6 faces default to DISABLED (player configures after placing)
+        CompoundTag facesTag = new CompoundTag();
+        for (Direction dir : Direction.values()) {
+            CompoundTag faceTag = new CompoundTag();
+            faceTag.putString("mode", "DISABLED");
+            faceTag.putString("filter", "ALL");
+            facesTag.put(dir.getName(), faceTag);
+        }
+        nbt.put("faceConfigs", facesTag);
+
+        // Display preferences (defaults)
+        nbt.putString("displayMode", "PER_TICK");
+        nbt.putBoolean("useAutoNormalize", true);
+        nbt.putInt("autoNormalizedTicks", 1);
+        nbt.putString("autoNormalizedDisplayMode", "PER_TICK");
+
+        // Package as PreFab item — must include the BlockEntity type ID
+        nbt.putString("id", "fpscompress:prefab");
+        ItemStack prefabStack = new ItemStack(FPSCompress.PREFAB_ITEM.get());
+        prefabStack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(nbt));
+
+        FPSCompress.LOGGER.info("Created carbon copy PreFab: {}", ccRoomCode);
+        return prefabStack;
+    }
+
     // ===== MenuProvider Implementation =====
 
     @Override
@@ -805,6 +941,72 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         return new com.mukulramesh.fpscompress.gui.FabricatorMenu(containerId, playerInventory, worldPosition);
     }
 
+    // ===== Phase 6: Requirement Building =====
+
+    /**
+     * Build the combined list of all resource requirements for a blueprint,
+     * including block resources, item resources (with multiplier), and
+     * constant costs from config.
+     *
+     * <p>Shared by {@link #checkRequiredResources()} and
+     * {@link #consumeRequiredResources()}.
+     *
+     * @param blueprint the parsed blueprint data
+     * @return combined list of requirements (may be truncated to fit resource slots)
+     */
+    private List<BlueprintData.ResourceRequirement> buildAllRequirements(BlueprintData blueprint) {
+        List<BlueprintData.ResourceRequirement> allReqs = new ArrayList<>();
+
+        // Apply resource multiplier to scanned block counts
+        double multiplier = Config.SERVER.getBlueprintResourceMultiplier();
+        for (BlueprintData.ResourceRequirement req : blueprint.getBlockResources()) {
+            long adjusted = multiplier != 1.0
+                ? Math.max(1, Math.round((double) req.count() * multiplier))
+                : req.count();
+            allReqs.add(new BlueprintData.ResourceRequirement(req.id(), adjusted, req.nbt()));
+        }
+        for (BlueprintData.ResourceRequirement req : blueprint.getItemResources()) {
+            long adjusted = multiplier != 1.0
+                ? Math.max(1, Math.round((double) req.count() * multiplier))
+                : req.count();
+            allReqs.add(new BlueprintData.ResourceRequirement(req.id(), adjusted, req.nbt()));
+        }
+
+        // Add constant costs from config
+        int constantCostCount = 0;
+        List<? extends String> constantCosts = Config.SERVER.getBlueprintConstantCosts();
+        for (String costStr : constantCosts) {
+            String[] parts = costStr.split(":");
+            if (parts.length >= 3) {
+                String itemId = parts[0] + ":" + parts[1];
+                try {
+                    long count = Long.parseLong(parts[2]);
+                    allReqs.add(new BlueprintData.ResourceRequirement(itemId, count, null));
+                    constantCostCount++;
+                } catch (NumberFormatException e) {
+                    FPSCompress.LOGGER.warn("[Fabricator] Invalid constant cost count: {}", costStr);
+                }
+            } else {
+                FPSCompress.LOGGER.warn("[Fabricator] Malformed constant cost entry: {}", costStr);
+            }
+        }
+
+        // Truncate if total requirements exceed available resource slots
+        int maxSlots = TOTAL_SLOTS - RESOURCE_START;
+        if (allReqs.size() > maxSlots) {
+            FPSCompress.LOGGER.warn("[Fabricator] Truncating {} requirements to {} resource slots",
+                allReqs.size(), maxSlots);
+            allReqs = allReqs.subList(0, maxSlots);
+        }
+
+        FPSCompress.LOGGER.info("[Fabricator] Requirements: {} block + {} item + {} constant = {} total"
+                + " (multiplier={})",
+            blueprint.getBlockResources().size(), blueprint.getItemResources().size(),
+            constantCostCount, allReqs.size(), multiplier);
+
+        return allReqs;
+    }
+
     // ===== Phase 5: Scan State =====
 
     /**
@@ -817,8 +1019,11 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         if (scanningBlocks) {
             return 2; // Scanning in progress
         }
+        if (printingActive) {
+            return 4; // Printing in progress (auto)
+        }
         if (hasBlueprintInInput) {
-            return 3; // Ready to print
+            return 3; // Ready to print (resources being filled)
         }
         if (prefabValidForScan) {
             return 1; // PreFab ready for scan
@@ -857,48 +1062,149 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
             return false;
         }
 
-        // Check can start scan
+        // Block if async scan already in progress
+        if (scanningBlocks) {
+            return false;
+        }
+
+        // FAST PATH: PreFab already has cached scan data — use it directly
+        if (BlueprintScanCache.loadFromPrefab(inputStack, scannedBlocks, scannedBlockNbt,
+                scannedItems, scannedItemNbt)) {
+            setChanged();
+            createBlueprintFromScan();
+            return true;
+        }
+
+        // No cached data — run full async scan
         if (!canStartBlockScan()) {
             return false;
         }
 
-        // Start the scan
+        // Start the scan (will cache result in PreFab NBT on completion)
         startBlockScan();
         return true;
     }
 
     /**
      * Trigger printing (called by PrintRequestPacket handler).
-     * Phase 5: Placeholder implementation.
-     * Phase 6: Will implement actual PreFab carbon copy creation.
      *
-     * @return true if printing conditions met, false otherwise
+     * <p>Phase 6: Printing is now automatic — this method is kept for
+     * backward compatibility with the network packet but is a no-op.
+     * Actual printing is driven by {@link #tick(Level, BlockPos, BlockState, FabricatorBlockEntity)}.
+     *
+     * @return true if conditions would allow printing, false otherwise
      */
     public boolean triggerPrint() {
         if (level == null || level.isClientSide()) {
             return false;
         }
+        // Auto-printing handles everything — just validate conditions
+        return hasBlueprintInInput
+            && !isOutputSlotBlocked()
+            && availableResourceCount > 0
+            && availableResourceCount >= requiredResourceCount;
+    }
 
-        // Check blueprint in input slot
-        if (!hasBlueprintInInput) {
-            return false;
+    // ===== Phase 6: Auto-Printing =====
+
+    /**
+     * Start the auto-printing process.
+     *
+     * <p>Called automatically by tick() when all resources are satisfied.
+     * Snaps the print duration from config and resets progress.
+     */
+    private void startPrinting() {
+        printingActive = true;
+        printingProgress = 0;
+        printDuration = Config.SERVER.getBlueprintPrintTicks();
+        if (printDuration < 0) {
+            printDuration = 0;
+        }
+        setChanged();
+        FPSCompress.LOGGER.info("Auto-printing started — {} ticks to complete", printDuration);
+    }
+
+    /**
+     * Complete the printing process.
+     *
+     * <p>Called by tick() when {@code printingProgress >= printDuration}.
+     * Consumes resources from slots and creates the carbon copy PreFab
+     * in the output slot.
+     */
+    private void completePrinting() {
+        // Read blueprint data from input slot
+        ItemStack blueprintStack = getInputSlot();
+        CompoundTag nbt = blueprintStack.get(FPSDataComponents.BLUEPRINT_DATA.get());
+        if (nbt == null) {
+            FPSCompress.LOGGER.error("Print completion failed: Blueprint has no data");
+            printingActive = false;
+            printingProgress = 0;
+            return;
         }
 
-        // Check output slot is empty
-        if (!getOutputSlot().isEmpty()) {
-            return false;
+        BlueprintData blueprint = BlueprintData.fromNBT(nbt);
+        if (blueprint.isEmpty()) {
+            FPSCompress.LOGGER.error("Print completion failed: Blueprint data is empty");
+            printingActive = false;
+            printingProgress = 0;
+            return;
         }
 
-        // Check all resources are satisfied
-        if (availableResourceCount < requiredResourceCount || requiredResourceCount == 0) {
-            return false;
+        // Consume required resources from resource slots
+        if (!consumeRequiredResources()) {
+            FPSCompress.LOGGER.error("Print completion failed: Resource consumption error");
+            printingActive = false;
+            printingProgress = 0;
+            return;
         }
 
-        // Phase 5: Placeholder - printing not yet implemented
-        // Phase 6 will consume resources and create PreFab
-        FPSCompress.LOGGER.info("Print requested - Phase 6 will implement actual printing");
+        // Create carbon copy PreFab and stack into output slot
+        ItemStack carbonCopy = createCarbonCopyPrefab(blueprint);
+        ItemStack current = getOutputSlot();
+        if (!current.isEmpty()
+                && ItemStack.isSameItemSameComponents(current, carbonCopy)) {
+            // Stack onto existing matching PreFab
+            int space = current.getMaxStackSize() - current.getCount();
+            int toAdd = Math.min(space, carbonCopy.getCount());
+            current.grow(toAdd);
+            setChanged();
+        } else {
+            setOutputSlot(carbonCopy);
+        }
 
-        return true;
+        // Reset printing state
+        printingActive = false;
+        printingProgress = 0;
+        printDuration = Config.SERVER.getBlueprintPrintTicks();
+        if (printDuration < 0) {
+            printDuration = 0;
+        }
+        currentBlueprintHash = null;
+
+        FPSCompress.LOGGER.info("Carbon copy PreFab printed successfully via auto-printing");
+    }
+
+    /**
+     * Compute a lightweight fingerprint of resource slot contents.
+     *
+     * <p>Hashes item ID + count per slot to detect inventory changes without
+     * running the expensive NBT-aware {@link #checkRequiredResources()}.
+     * Two identical fingerprints mean the same items at the same counts —
+     * no need to re-scan NBT.
+     *
+     * @return hash fingerprint of resource slots 2-28
+     */
+    private long computeResourceFingerprint() {
+        long hash = 1;
+        for (int slot = RESOURCE_START; slot < TOTAL_SLOTS; slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (!stack.isEmpty()) {
+                String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                hash = 31 * hash + id.hashCode();
+                hash = 31 * hash + stack.getCount();
+            }
+        }
+        return hash;
     }
 
     /**
@@ -935,13 +1241,8 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
             return;
         }
 
-        // Combine block and item requirements
-        List<BlueprintData.ResourceRequirement> allReqs = new ArrayList<>();
-        allReqs.addAll(blueprint.getBlockResources());
-        allReqs.addAll(blueprint.getItemResources());
-
-        FPSCompress.LOGGER.info("[Fabricator ResCheck] Blueprint has {} block + {} item = {} total requirements",
-            blueprint.getBlockResources().size(), blueprint.getItemResources().size(), allReqs.size());
+        // Build combined requirements (block + item + constant costs, with multiplier)
+        List<BlueprintData.ResourceRequirement> allReqs = buildAllRequirements(blueprint);
 
         requiredResourceCount = allReqs.size();
 
@@ -956,7 +1257,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
                 net.minecraft.world.item.Item reqItem = BuiltInRegistries.ITEM.get(
                     ResourceLocation.parse(req.id()));
                 if (reqItem != net.minecraft.world.item.Items.AIR) {
-                    inventory.setSlotFilter(slot, reqItem);
+                    inventory.setSlotFilter(slot, reqItem, (int) req.count());
                 }
                 slot++;
             }
@@ -1056,6 +1357,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
 
         availableResourceCount = satisfied;
         satisfiedSlotMask = mask;
+        lastResourceFingerprint = computeResourceFingerprint();
         FPSCompress.LOGGER.info("[Fabricator ResCheck] === END: {}/{} satisfied ===",
             availableResourceCount, requiredResourceCount);
     }
@@ -1179,6 +1481,82 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
         rejectingNbtMismatch = false;
     }
 
+    // ===== Phase 6: Resource Consumption for Printing =====
+
+    /**
+     * Consume required resources from the resource slots during printing.
+     *
+     * <p>Re-reads blueprint data, applies the resource multiplier to scanned counts,
+     * adds constant costs from config, then extracts items from each mapped resource slot.
+     * Also handles blueprint consumption if {@code blueprintReusable} is false.
+     *
+     * @return true if all resources were successfully consumed, false on error
+     */
+    private boolean consumeRequiredResources() {
+        ItemStack blueprintStack = getInputSlot();
+        if (blueprintStack.isEmpty()) {
+            return false;
+        }
+
+        CompoundTag nbt = blueprintStack.get(FPSDataComponents.BLUEPRINT_DATA.get());
+        if (nbt == null) {
+            return false;
+        }
+
+        BlueprintData blueprint = BlueprintData.fromNBT(nbt);
+        if (blueprint.isEmpty()) {
+            return false;
+        }
+
+        // Build combined requirements (block + item + constant costs, with multiplier)
+        List<BlueprintData.ResourceRequirement> allReqs = buildAllRequirements(blueprint);
+
+        // Consume from each mapped resource slot
+        boolean rejectingWas = rejectingNbtMismatch;
+        rejectingNbtMismatch = true; // guard against onContentsChanged re-check
+        try {
+            for (int reqIndex = 0; reqIndex < allReqs.size(); reqIndex++) {
+                int slot = RESOURCE_START + reqIndex;
+                if (slot >= TOTAL_SLOTS) {
+                    break;
+                }
+
+                BlueprintData.ResourceRequirement req = allReqs.get(reqIndex);
+                ItemStack stackInSlot = inventory.getStackInSlot(slot);
+
+                if (stackInSlot.isEmpty() || (long) stackInSlot.getCount() < req.count()) {
+                    FPSCompress.LOGGER.error("Resource consumption failed for {}: "
+                        + "need {} but have {} in slot {}",
+                        req.id(), req.count(),
+                        stackInSlot.isEmpty() ? 0 : stackInSlot.getCount(), slot);
+                    return false;
+                }
+
+                inventory.extractItem(slot, (int) req.count(), false);
+                FPSCompress.LOGGER.debug("Consumed {} x{} from slot {}",
+                    req.id(), req.count(), slot);
+            }
+        } finally {
+            rejectingNbtMismatch = rejectingWas;
+        }
+
+        // Clear blueprint-related state
+        inventory.clearAllFilters();
+        hasBlueprintInInput = false;
+        requiredResourceCount = 0;
+        availableResourceCount = 0;
+        satisfiedSlotMask = 0;
+
+        // Consume blueprint if not reusable
+        if (!Config.SERVER.getBlueprintReusable()) {
+            inventory.setStackInSlot(INPUT_SLOT, ItemStack.EMPTY);
+            FPSCompress.LOGGER.info("Blueprint consumed (reusable=false)");
+        }
+
+        setChanged();
+        return true;
+    }
+
     // ===== NBT Persistence =====
 
     @Override
@@ -1225,6 +1603,14 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
                 itemNbtTag.put(entry.getKey(), entry.getValue());
             }
             tag.put("scannedItemNbt", itemNbtTag);
+        }
+
+        // Phase 6: Save printing state
+        tag.putBoolean("printingActive", printingActive);
+        tag.putInt("printingProgress", printingProgress);
+        tag.putInt("printDuration", printDuration);
+        if (currentBlueprintHash != null) {
+            tag.putString("currentBlueprintHash", currentBlueprintHash);
         }
     }
 
@@ -1275,6 +1661,14 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
                 scannedItemNbt.put(key, itemNbtTag.getCompound(key));
             }
         }
+
+        // Phase 6: Load printing state
+        printingActive = tag.getBoolean("printingActive");
+        printingProgress = tag.getInt("printingProgress");
+        printDuration = tag.getInt("printDuration");
+        if (tag.contains("currentBlueprintHash")) {
+            currentBlueprintHash = tag.getString("currentBlueprintHash");
+        }
     }
 
     // ===== Client Sync =====
@@ -1321,7 +1715,6 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
             // Input slot empty - reset scan state
             fabricator.prefabValidForScan = false;
             fabricator.validationError = null;
-            fabricator.hasScannedCurrentPrefab = false;
         }
 
         // Phase 5: Check blueprint in input slot for resource tracking
@@ -1354,10 +1747,59 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
             fabricator.pendingEjections.removeAll(ejected);
         }
 
-        // Phase 5: Re-check resources when Blueprint in input and inventory changes
-        if (fabricator.hasBlueprintInInput && fabricator.getLevel() != null
-                && fabricator.getLevel().getGameTime() % 20 == 0) {
-            fabricator.checkRequiredResources();
+        // Phase 5: Periodic resource re-check with exponential backoff + fingerprint
+        // Only runs full NBT-aware check when inventory actually changed
+        if (fabricator.hasBlueprintInInput && !fabricator.scanningBlocks) {
+            fabricator.periodicCheckCooldown--;
+            if (fabricator.periodicCheckCooldown <= 0) {
+                long fingerprint = fabricator.computeResourceFingerprint();
+                if (fingerprint != fabricator.lastResourceFingerprint) {
+                    fabricator.checkRequiredResources();
+                    fabricator.currentCheckInterval = MIN_CHECK_INTERVAL;
+                } else {
+                    // No change — back off
+                    fabricator.currentCheckInterval =
+                        Math.min(fabricator.currentCheckInterval * 2, MAX_CHECK_INTERVAL);
+                }
+                fabricator.lastResourceFingerprint = fingerprint;
+                fabricator.periodicCheckCooldown = fabricator.currentCheckInterval;
+            }
+        }
+
+        // Phase 6: Auto-printing state machine
+        if (fabricator.hasBlueprintInInput && !fabricator.scanningBlocks
+                && !fabricator.isOutputSlotBlocked()
+                && fabricator.availableResourceCount > 0
+                && fabricator.availableResourceCount >= fabricator.requiredResourceCount) {
+            // All conditions met — auto-start or continue printing
+            if (!fabricator.printingActive) {
+                // Track blueprint hash for deterministic roomCode
+                ItemStack bp = fabricator.getInputSlot();
+                CompoundTag bpNbt = bp.get(FPSDataComponents.BLUEPRINT_DATA.get());
+                if (bpNbt != null) {
+                    fabricator.currentBlueprintHash = String.format("%08x",
+                        bpNbt.toString().hashCode());
+                }
+                fabricator.startPrinting();
+            }
+
+            // Progress the printing timer
+            if (fabricator.printingActive) {
+                if (fabricator.printingProgress >= fabricator.printDuration) {
+                    fabricator.completePrinting();
+                } else {
+                    fabricator.printingProgress++;
+                }
+            }
+        } else if (fabricator.printingActive
+                && (!fabricator.hasBlueprintInInput
+                    || fabricator.isOutputSlotBlocked()
+                    || fabricator.availableResourceCount < fabricator.requiredResourceCount)) {
+            // Conditions lost during printing — cancel
+            FPSCompress.LOGGER.info("Auto-printing cancelled — conditions no longer met");
+            fabricator.printingActive = false;
+            fabricator.printingProgress = 0;
+            fabricator.currentBlueprintHash = null;
         }
     }
 
@@ -1429,6 +1871,7 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
      */
     class FilteredItemStackHandler extends ItemStackHandler {
         private final Map<Integer, net.minecraft.world.item.Item> slotFilters = new HashMap<>();
+        private final Map<Integer, Integer> slotLimits = new HashMap<>();
 
         FilteredItemStackHandler(int size) {
             super(size);
@@ -1441,15 +1884,22 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
             // Skip while ejecting to prevent infinite recursion
             if (slot >= RESOURCE_START && hasBlueprintInInput && !rejectingNbtMismatch) {
                 checkRequiredResources();
+                // Reset backoff on inventory change — keep checks frequent while
+                // the player is actively inserting resources
+                currentCheckInterval = MIN_CHECK_INTERVAL;
+                periodicCheckCooldown = MIN_CHECK_INTERVAL;
+                lastResourceFingerprint = computeResourceFingerprint();
             }
         }
 
-        void setSlotFilter(int slot, net.minecraft.world.item.Item item) {
+        void setSlotFilter(int slot, net.minecraft.world.item.Item item, int maxCount) {
             slotFilters.put(slot, item);
+            slotLimits.put(slot, maxCount);
         }
 
         void clearAllFilters() {
             slotFilters.clear();
+            slotLimits.clear();
         }
 
         net.minecraft.world.item.Item getSlotFilter(int slot) {
@@ -1472,8 +1922,12 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
 
         @Override
         public int getSlotLimit(int slot) {
-            // Resource slots have unlimited capacity
+            // Resource slots: use blueprint-driven capacity when a filter is set
             if (slot >= RESOURCE_START) {
+                Integer limit = slotLimits.get(slot);
+                if (limit != null) {
+                    return limit;
+                }
                 return Integer.MAX_VALUE;
             }
             return super.getSlotLimit(slot);
