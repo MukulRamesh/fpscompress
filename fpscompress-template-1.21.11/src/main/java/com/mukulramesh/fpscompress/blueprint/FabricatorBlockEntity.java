@@ -913,9 +913,6 @@ public class FabricatorBlockEntity extends BlockEntity implements MenuProvider {
 
         // Display preferences (defaults)
         nbt.putString("displayMode", "PER_TICK");
-        nbt.putBoolean("useAutoNormalize", true);
-        nbt.putInt("autoNormalizedTicks", 1);
-        nbt.putString("autoNormalizedDisplayMode", "PER_TICK");
 
         // Package as PreFab item — must include the BlockEntity type ID
         nbt.putString("id", "fpscompress:prefab");

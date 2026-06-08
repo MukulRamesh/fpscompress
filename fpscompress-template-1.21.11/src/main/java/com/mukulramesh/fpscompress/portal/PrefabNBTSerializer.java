@@ -162,10 +162,6 @@ public class PrefabNBTSerializer {
         if (entity.focusedResourceId != null) {
             tag.putString("focusedResourceId", entity.focusedResourceId);
         }
-        tag.putInt("autoNormalizedTicks", entity.autoNormalizedTicks);
-        tag.putBoolean("useAutoNormalize", entity.useAutoNormalize);
-        tag.putString("autoNormalizedDisplayMode", entity.autoNormalizedDisplayMode.name());
-
         // TRANSIENT FIELDS (not saved for PreFab-as-Item portability):
         // - deltaTracker (only valid during active simulation)
         // - simulationStartTick (recalculate on simulation start)
@@ -292,26 +288,6 @@ public class PrefabNBTSerializer {
             // Validation: Ensure focused item actually exists in cached rates
             // (will be validated later in validateLoadedData() after rates are loaded)
             entity.focusedResourceId = focusedId;
-        }
-
-        if (tag.contains("autoNormalizedTicks")) {
-            int ticks = tag.getInt("autoNormalizedTicks");
-            entity.autoNormalizedTicks = Math.max(1, ticks); // Must be >= 1
-        }
-
-        if (tag.contains("useAutoNormalize")) {
-            entity.useAutoNormalize = tag.getBoolean("useAutoNormalize");
-        }
-
-        if (tag.contains("autoNormalizedDisplayMode")) {
-            try {
-                entity.autoNormalizedDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.valueOf(
-                    tag.getString("autoNormalizedDisplayMode"));
-            } catch (IllegalArgumentException e) {
-                FPSCompress.LOGGER.warn("Invalid autoNormalizedDisplayMode '{}', resetting to PER_TICK",
-                    tag.getString("autoNormalizedDisplayMode"));
-                entity.autoNormalizedDisplayMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
-            }
         }
 
         // Load blueprint scan data cache (if present)

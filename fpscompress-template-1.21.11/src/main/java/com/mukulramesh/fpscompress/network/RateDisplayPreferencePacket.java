@@ -23,9 +23,7 @@ import java.util.Optional;
 public record RateDisplayPreferencePacket(
     BlockPos prefabPos,
     RateDisplayMode displayMode,
-    @Nullable String focusedResourceId,
-    int autoNormalizedTicks,
-    boolean useAutoNormalize
+    @Nullable String focusedResourceId
 ) implements CustomPacketPayload {
 
     public static final Type<RateDisplayPreferencePacket> TYPE =
@@ -49,18 +47,13 @@ public record RateDisplayPreferencePacket(
             DISPLAY_MODE_CODEC.encode(buf, packet.displayMode);
             ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8).encode(buf,
                 Optional.ofNullable(packet.focusedResourceId));
-            ByteBufCodecs.VAR_INT.encode(buf, packet.autoNormalizedTicks);
-            ByteBufCodecs.BOOL.encode(buf, packet.useAutoNormalize);
         },
         buf -> {
             BlockPos prefabPos = BlockPos.STREAM_CODEC.decode(buf);
             RateDisplayMode displayMode = DISPLAY_MODE_CODEC.decode(buf);
             String focusedResourceId = ByteBufCodecs.optional(ByteBufCodecs.STRING_UTF8)
                 .decode(buf).orElse(null);
-            int autoNormalizedTicks = ByteBufCodecs.VAR_INT.decode(buf);
-            boolean useAutoNormalize = ByteBufCodecs.BOOL.decode(buf);
-            return new RateDisplayPreferencePacket(prefabPos, displayMode, focusedResourceId,
-                autoNormalizedTicks, useAutoNormalize);
+            return new RateDisplayPreferencePacket(prefabPos, displayMode, focusedResourceId);
         }
     );
 
@@ -81,8 +74,6 @@ public record RateDisplayPreferencePacket(
                 if (be instanceof PrefabBlockEntity prefab) {
                     prefab.setCurrentDisplayMode(packet.displayMode);
                     prefab.setFocusedResourceId(packet.focusedResourceId);
-                    prefab.setAutoNormalizedTicks(packet.autoNormalizedTicks);
-                    prefab.setUseAutoNormalize(packet.useAutoNormalize);
                     // Next tick: StatusGuiSyncPacket will sync to all clients via broadcastChanges()
                 }
             }

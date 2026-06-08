@@ -3,7 +3,6 @@ package com.mukulramesh.fpscompress.portal;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import com.mukulramesh.fpscompress.FPSCompress;
-import com.mukulramesh.fpscompress.gui.RateNormalizer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -168,18 +167,10 @@ public class RateCalculationEngine {
         }
         FPSCompress.LOGGER.info("▶ Aggregate rates (for GUI): {} resources", entity.cachedRates.size());
 
-        // Auto-normalize rates for better display
-        if (!entity.cachedRates.isEmpty()) {
-            RateNormalizer.NormalizationResult autoResult =
-                RateNormalizer.autoNormalize(entity.cachedRates);
-            entity.autoNormalizedTicks = autoResult.normalizedTicks();
-            entity.currentDisplayMode = autoResult.suggestedMode();
-            entity.autoNormalizedDisplayMode = autoResult.suggestedMode(); // Store original mode
-            entity.focusedResourceId = null; // Clear focus on new simulation
-            entity.useAutoNormalize = true; // Enable auto-normalize by default
-            FPSCompress.LOGGER.info("Auto-normalized: {} ticks, mode {}",
-                entity.autoNormalizedTicks, entity.currentDisplayMode.name());
-        }
+        // Reset display preferences for new simulation
+        entity.currentDisplayMode =
+            com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
+        entity.focusedResourceId = null;
     }
 
     /**

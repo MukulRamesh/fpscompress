@@ -63,10 +63,6 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     private com.mukulramesh.fpscompress.gui.RateDisplayMode syncedDisplayMode =
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
     private String syncedFocusedResourceId = null;
-    private int syncedAutoNormalizedTicks = 1;
-    private boolean syncedUseAutoNormalize = true;
-    private com.mukulramesh.fpscompress.gui.RateDisplayMode syncedAutoNormalizedDisplayMode =
-        com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
     private String syncedPrefabName = null;
 
     // Tooltip hover areas (set during rendering)
@@ -119,9 +115,6 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                                  long simulationRequiredTicks,
                                  com.mukulramesh.fpscompress.gui.RateDisplayMode displayMode,
                                  String focusedResourceId,
-                                 int autoNormalizedTicks,
-                                 boolean useAutoNormalize,
-                                 com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode,
                                  String prefabName) {
     // CHECKSTYLE.ON: ParameterNumber
         this.syncedState = state;
@@ -137,9 +130,6 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         this.syncedSimulationRequiredTicks = simulationRequiredTicks;
         this.syncedDisplayMode = displayMode;
         this.syncedFocusedResourceId = focusedResourceId;
-        this.syncedAutoNormalizedTicks = autoNormalizedTicks;
-        this.syncedUseAutoNormalize = useAutoNormalize;
-        this.syncedAutoNormalizedDisplayMode = autoNormalizedDisplayMode;
 
         // Only update name box if value changed AND box doesn't have focus
         // (prevents overwriting text while user is typing)
@@ -461,19 +451,6 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
         if (syncedFocusedResourceId != null) {
             return "⏱ Per Item";
         }
-
-        // Show auto-normalized value with time frame when in auto mode
-        if (syncedUseAutoNormalize && syncedAutoNormalizedTicks > 1) {
-            String timeFrame = switch (syncedDisplayMode) {
-                case PER_TICK -> syncedAutoNormalizedTicks == 1 ? "Tick" : "Ticks";
-                case PER_SECOND -> syncedAutoNormalizedTicks == 1 ? "Second" : "Seconds";
-                case PER_MINUTE -> syncedAutoNormalizedTicks == 1 ? "Minute" : "Minutes";
-                case PER_HOUR -> syncedAutoNormalizedTicks == 1 ? "Hour" : "Hours";
-            };
-            return "⏱ " + syncedAutoNormalizedTicks + " " + timeFrame;
-        }
-
-        // Manual mode: just show time scale
         return "⏱ " + syncedDisplayMode.getDisplayName();
     }
 
@@ -483,31 +460,16 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
      * Sends packet to server to update preference.
      */
     private void cycleTimeScale() {
-        boolean nextUseAuto;
-        com.mukulramesh.fpscompress.gui.RateDisplayMode nextMode;
-
-        if (syncedUseAutoNormalize) {
-            // Auto → Per Tick (start manual cycling)
-            nextUseAuto = false;
-            nextMode = com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
-        } else if (syncedDisplayMode == com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_HOUR) {
-            // Per Hour → Auto (wrap around, restore original auto mode)
-            nextUseAuto = true;
-            nextMode = syncedAutoNormalizedDisplayMode; // Restore original auto mode
-        } else {
-            // Per Tick/Second/Minute → Next manual mode
-            nextUseAuto = false;
-            nextMode = syncedDisplayMode.next();
-        }
+        // Simple cycle: Per Tick → Per Second → Per Minute → Per Hour → Per Tick
+        com.mukulramesh.fpscompress.gui.RateDisplayMode nextMode =
+            syncedDisplayMode.next();
 
         // Clear item normalization when changing time scale
         PacketDistributor.sendToServer(
             new com.mukulramesh.fpscompress.network.RateDisplayPreferencePacket(
                 menu.getPrefabPos(),
                 nextMode,
-                null, // Clear focused item
-                syncedAutoNormalizedTicks, // Keep auto-normalized value
-                nextUseAuto
+                null // Clear focused item
             )
         );
     }
@@ -538,6 +500,17 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         // Don't call super - we'll draw our own labels
+
+        // Reset tooltip hit areas each frame to prevent stale values
+        // from a previous tab render leaking when switching tabs.
+        stateY = 0;
+        stateHeight = 0;
+        simulationTimeY = 0;
+        simulationTimeHeight = 0;
+        cachedTicksY = 0;
+        cachedTicksHeight = 0;
+        itemStatsY = 0;
+        itemStatsHeight = 0;
 
         // Render content based on selected tab
         if (selectedTab == TAB_CONTROL) {
@@ -698,29 +671,17 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
     private java.util.Map<String, Double> transformRatesForDisplay(
             java.util.Map<String, Double> baseRates,
             com.mukulramesh.fpscompress.gui.RateDisplayMode mode,
-            String focusedItem,
-            int normalizedTicks,
-            boolean useAutoNormalize) {
+            String focusedItem) {
 
-        java.util.Map<String, Double> transformed = new java.util.HashMap<>();
-
-        if (focusedItem != null) {
-            // Item normalization mode: scale to "per 1 unit of focused item"
-            transformed = com.mukulramesh.fpscompress.gui.RateNormalizer.normalizeToItem(
-                baseRates, focusedItem);
-        } else if (useAutoNormalize && normalizedTicks > 1) {
-            // Auto-normalization mode: multiply by LCM ticks
-            for (java.util.Map.Entry<String, Double> entry : baseRates.entrySet()) {
-                transformed.put(entry.getKey(), entry.getValue() * normalizedTicks);
-            }
-        } else {
-            // No normalization (manual mode), just copy
-            transformed.putAll(baseRates);
-        }
+        // Apply item-focused normalization if a resource is selected
+        java.util.Map<String, Double> normalized = (focusedItem != null)
+            ? com.mukulramesh.fpscompress.gui.RateNormalizer.normalizeToItem(
+                baseRates, focusedItem)
+            : baseRates;
 
         // Apply time scale conversion
         java.util.Map<String, Double> result = new java.util.HashMap<>();
-        for (java.util.Map.Entry<String, Double> entry : transformed.entrySet()) {
+        for (java.util.Map.Entry<String, Double> entry : normalized.entrySet()) {
             double convertedRate = entry.getValue() * mode.getMultiplier();
             result.put(entry.getKey(), convertedRate);
         }
@@ -746,15 +707,15 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
             stateColor + syncedState.name() + " §7Resources"
         );
         graphics.drawString(font, headerText, 10, startY, 0xFFFFFF, false);
+        stateY = startY;
+        stateHeight = 10;
         startY += 40; // Increased spacing for buttons
 
         // Apply display transformation to cached rates
         java.util.Map<String, Double> displayRates = transformRatesForDisplay(
             syncedCachedRates,
             syncedDisplayMode,
-            syncedFocusedResourceId,
-            syncedAutoNormalizedTicks,
-            syncedUseAutoNormalize
+            syncedFocusedResourceId
         );
 
         // Separate resources by consumed (negative rate) vs produced (positive rate)
@@ -981,33 +942,24 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
 
                 // Toggle behavior: click focused item to unfocus
                 if (clickedId.equals(syncedFocusedResourceId)) {
-                    // Unfocus and return to auto-normalize
-                    com.mukulramesh.fpscompress.gui.RateNormalizer.NormalizationResult autoResult =
-                        com.mukulramesh.fpscompress.gui.RateNormalizer.autoNormalize(syncedCachedRates);
-
+                    // Unfocus and return to current display mode
                     PacketDistributor.sendToServer(
                         new com.mukulramesh.fpscompress.network.RateDisplayPreferencePacket(
                             menu.getPrefabPos(),
-                            autoResult.suggestedMode(),
-                            null, // Clear focus
-                            autoResult.normalizedTicks(),
-                            true // Return to auto-normalize
+                            syncedDisplayMode,
+                            null // Clear focus
                         )
                     );
                 } else {
                     // Focus on clicked item
                     Double clickedRate = syncedCachedRates.get(clickedId);
                     if (clickedRate != null && clickedRate != 0.0) {
-                        int normalizedTicks = (int) Math.ceil(1.0 / Math.abs(clickedRate));
-
                         // Reset to per-tick for clarity
                         PacketDistributor.sendToServer(
                             new com.mukulramesh.fpscompress.network.RateDisplayPreferencePacket(
                                 menu.getPrefabPos(),
                                 com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK,
-                                clickedId,
-                                normalizedTicks,
-                                false // Manual mode when focusing item
+                                clickedId
                             )
                         );
                     }
@@ -1107,23 +1059,14 @@ public class PreFabStatusScreen extends AbstractContainerScreen<PreFabStatusMenu
                 String rateColor = displayRate > 0 ? "§a" : "§c";
                 String rateStr = syncedDisplayMode.formatRate(displayRate); // Use mode's formatter
 
-                // Show appropriate rate unit based on normalization mode
+                // Show appropriate rate unit based on mode
                 String rateUnit;
                 if (syncedFocusedResourceId != null) {
                     // Item-focused: show "per 1 Item Name"
                     String focusedItemName = getLocalizedName(syncedFocusedResourceId);
                     rateUnit = "per 1 " + focusedItemName;
-                } else if (syncedUseAutoNormalize && syncedAutoNormalizedTicks > 1) {
-                    // Auto-normalized: show "per X ticks/seconds/minutes/hours"
-                    String timeFrame = switch (syncedDisplayMode) {
-                        case PER_TICK -> syncedAutoNormalizedTicks == 1 ? "tick" : "ticks";
-                        case PER_SECOND -> syncedAutoNormalizedTicks == 1 ? "second" : "seconds";
-                        case PER_MINUTE -> syncedAutoNormalizedTicks == 1 ? "minute" : "minutes";
-                        case PER_HOUR -> syncedAutoNormalizedTicks == 1 ? "hour" : "hours";
-                    };
-                    rateUnit = "per " + syncedAutoNormalizedTicks + " " + timeFrame;
                 } else {
-                    // Manual mode: show "per tick/second/minute/hour"
+                    // Time scale mode: show "per tick/second/minute/hour"
                     rateUnit = syncedDisplayMode.getDisplayName()
                         .toLowerCase(java.util.Locale.ROOT);
                 }

@@ -820,11 +820,7 @@ public final class Dev2TestCommands {
             allRates.put(exporter.getString("resource"), exporter.getDouble("rate")); // Positive for produced
         }
 
-        com.mukulramesh.fpscompress.gui.RateNormalizer.NormalizationResult autoResult =
-            com.mukulramesh.fpscompress.gui.RateNormalizer.autoNormalize(allRates);
-
-        nbt.putString("displayMode", autoResult.suggestedMode().name());
-        nbt.putInt("autoNormalizedTicks", autoResult.normalizedTicks());
+        nbt.putString("displayMode", "PER_TICK");
         // focusedResourceId intentionally not set (null by default)
 
         // Block entity ID

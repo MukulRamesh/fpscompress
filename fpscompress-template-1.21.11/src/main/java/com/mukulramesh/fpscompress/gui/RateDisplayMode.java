@@ -58,15 +58,50 @@ public enum RateDisplayMode {
     }
 
     /**
-     * Format a per-tick rate as a string with 2 decimal places in this time scale.
-     * Uses locale-specific formatting for thousands separators.
+     * Format a per-tick rate as a compact string in this time scale.
+     * Uses K/M/B/T/Q/Qi/Sx/Sp/Oc/No/Dc suffixes for values ≥ 1000.
+     *
+     * <p>Examples:
+     * <ul>
+     *   <li>42.50 → "42.50"</li>
+     *   <li>1200.00 → "1.20K"</li>
+     *   <li>1234567.00 → "1.23M"</li>
+     *   <li>5000000000.00 → "5.00B"</li>
+     * </ul>
      *
      * @param perTickRate Rate in per-tick format
-     * @return Formatted string (e.g., "10.00", "23,998.40")
+     * @return Compact formatted string (e.g., "10.00", "1.20K")
      */
     public String formatRate(double perTickRate) {
         double converted = convert(perTickRate);
-        return String.format("%.2f", converted);
+        return compactFormat(converted);
+    }
+
+    /** Suffixes for compact number formatting (short scale, through decillion). */
+    private static final String[] COMPACT_SUFFIXES = {
+        "", "K", "M", "B", "T", "Q", "Qi", "Sx", "Sp", "Oc", "No", "Dc"
+    };
+
+    /**
+     * Format a number with compact suffixes (K, M, B, T, Q, ...) for values ≥ 1000.
+     * Values below 1000 are shown with 2 decimal places.
+     *
+     * @param value The value to format
+     * @return Compact formatted string
+     */
+    static String compactFormat(double value) {
+        double abs = Math.abs(value);
+        if (abs < 1000.0) {
+            return String.format("%.2f", value);
+        }
+        int tier = 0;
+        double scaled = abs;
+        while (scaled >= 1000.0 && tier < COMPACT_SUFFIXES.length - 1) {
+            scaled /= 1000.0;
+            tier++;
+        }
+        String sign = value < 0 ? "-" : "";
+        return sign + String.format("%.2f%s", scaled, COMPACT_SUFFIXES[tier]);
     }
 
     /**

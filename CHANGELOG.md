@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-06-08
 
+### Changed
+- **Rate Display Simplified**: Removed LCM-based auto-normalization in favor of compact formatting
+  - Removed `autoNormalizedTicks`, `useAutoNormalize`, and `autoNormalizedDisplayMode` from
+    `PrefabBlockEntity` (3 fields), `DisplayPreferenceManager` (6 methods), `PrefabNBTSerializer`
+    (save/load), `RateDisplayPreferencePacket` (5→3 params), and `StatusGuiSyncPacket` (17→14 params)
+  - Time scale button now cycles linearly through modes: Per Tick → Per Second → Per Minute →
+    Per Hour → Per Tick (no more auto/manual mode distinction)
+  - Removed ~140 lines of LCM/fraction/gcd math from `RateNormalizer` (only item-focused
+    normalization retained via `normalizeToItem()`)
+  - `RateCalculationEngine` now resets display to PER_TICK on new simulation instead of computing
+    auto-normalized values
+  - `Dev2TestCommands` and `FabricatorBlockEntity` simplified to use PER_TICK defaults
+  - Files modified: `RateDisplayMode.java`, `RateNormalizer.java`, `PrefabBlockEntity.java`,
+    `DisplayPreferenceManager.java`, `PrefabNBTSerializer.java`, `RateCalculationEngine.java`,
+    `RateDisplayPreferencePacket.java`, `StatusGuiSyncPacket.java`, `PreFabStatusScreen.java`,
+    `PreFabStatusMenu.java`, `FabricatorBlockEntity.java`, `Dev2TestCommands.java`
+
+### Added
+- **Compact Rate Formatting**: Large rate values now use engineering suffixes for readability
+  - Values ≥ 1000 display with compact suffixes: K (thousand), M (million), B (billion),
+    T (trillion), Q (quadrillion), Qi (quintillion), Sx (sextillion), Sp (septillion),
+    Oc (octillion), No (nonillion), Dc (decillion)
+  - Examples: "1,200.00" → "1.20K", "1,234,567.00" → "1.23M", "5,000,000,000.00" → "5.00B"
+  - Values below 1000 retain 2-decimal precision (e.g., "42.50")
+  - Implemented in `RateDisplayMode.compactFormat()` with sign preservation for negative rates
+  - Files modified: `RateDisplayMode.java`
+
+### Fixed
+- **Stale Tooltip Hit Areas**: Fixed tooltip hit areas persisting after tab switches in Status GUI
+  - `PreFabStatusScreen.renderLabels()` now resets all tooltip coordinate tracking variables
+    (`stateY`, `stateHeight`, `simulationTimeY`, `simulationTimeHeight`, `cachedTicksY`,
+    `cachedTicksHeight`, `itemStatsY`, `itemStatsHeight`) to 0 at the start of each frame
+  - Prevents tooltips rendered on one tab from appearing when switching to another tab
+  - Files modified: `PreFabStatusScreen.java`
+
 ### Added
 - **PreFab Room Block Blacklist**: Prevents players from placing blacklisted blocks inside PreFab rooms
   - **Config-driven**: New `prefabRoomBlacklistedBlocks` config option (TOML list) — server owners

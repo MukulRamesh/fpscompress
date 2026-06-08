@@ -113,10 +113,6 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
         com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK;
     @Nullable
     String focusedResourceId = null; // null = no focus
-    int autoNormalizedTicks = 1; // LCM result (1 = no normalization)
-    boolean useAutoNormalize = true; // true = use auto-normalized display (default)
-    com.mukulramesh.fpscompress.gui.RateDisplayMode autoNormalizedDisplayMode =
-        com.mukulramesh.fpscompress.gui.RateDisplayMode.PER_TICK; // Original mode from auto-normalize
 
     // Custom name assigned by player (null = no name, show default)
     @Nullable
@@ -565,60 +561,6 @@ public class PrefabBlockEntity extends BlockEntity implements MenuProvider {
      */
     public void setFocusedResourceId(@Nullable String id) {
         displayManager.setFocusedResourceId(id);
-    }
-
-    /**
-     * Get auto-normalized ticks (LCM result).
-     *
-     * @return Normalized ticks (1 = no normalization)
-     */
-    public int getAutoNormalizedTicks() {
-        return displayManager.getAutoNormalizedTicks();
-    }
-
-    /**
-     * Set auto-normalized ticks (LCM result).
-     *
-     * @param ticks Normalized ticks (minimum 1)
-     */
-    public void setAutoNormalizedTicks(int ticks) {
-        displayManager.setAutoNormalizedTicks(ticks);
-    }
-
-    /**
-     * Get whether to use auto-normalized display.
-     *
-     * @return true if using auto-normalize, false for manual time scale
-     */
-    public boolean getUseAutoNormalize() {
-        return displayManager.getUseAutoNormalize();
-    }
-
-    /**
-     * Set whether to use auto-normalized display.
-     *
-     * @param use true to use auto-normalize, false for manual time scale
-     */
-    public void setUseAutoNormalize(boolean use) {
-        displayManager.setUseAutoNormalize(use);
-    }
-
-    /**
-     * Get the original auto-normalized display mode (from LCM calculation).
-     *
-     * @return Display mode suggested by auto-normalize
-     */
-    public com.mukulramesh.fpscompress.gui.RateDisplayMode getAutoNormalizedDisplayMode() {
-        return displayManager.getAutoNormalizedDisplayMode();
-    }
-
-    /**
-     * Set the original auto-normalized display mode.
-     *
-     * @param mode Display mode from auto-normalize
-     */
-    public void setAutoNormalizedDisplayMode(com.mukulramesh.fpscompress.gui.RateDisplayMode mode) {
-        displayManager.setAutoNormalizedDisplayMode(mode);
     }
 
     /**

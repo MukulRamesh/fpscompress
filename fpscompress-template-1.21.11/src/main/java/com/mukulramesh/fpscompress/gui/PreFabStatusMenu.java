@@ -96,9 +96,6 @@ public class PreFabStatusMenu extends AbstractContainerMenu {
                             prefabEntity.getSimulationRequiredTicks(),
                             prefabEntity.getCurrentDisplayMode(),
                             prefabEntity.getFocusedResourceId(),
-                            prefabEntity.getAutoNormalizedTicks(),
-                            prefabEntity.getUseAutoNormalize(),
-                            prefabEntity.getAutoNormalizedDisplayMode(),
                             prefabEntity.getPrefabName()
                         )
                     );
