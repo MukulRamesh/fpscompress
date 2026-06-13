@@ -25,130 +25,75 @@ This TODO list is organized with **pending tasks at the top** for quick referenc
 
 ### Core System Improvements
 
-### PreFab Blueprint System (Scanner & Printer)
+### PreFab Input/Output NBT Tracking (Rate System)
 **Status**: Not started
-**Goal**: Scan PreFab factories to create blueprints, then print copies with resource costs
+**Goal**: Track NBT/component data of items flowing through PreFabs during SIMULATING, and reproduce accurate NBT during CACHED production
 
-**Block: Fabricator** (dual-mode operation)
+**Problem**: The rate measurement and cached production systems currently track items only by their base resource ID (e.g., `minecraft:iron_ingot`), discarding all NBT/component data. This creates two issues:
 
-**Mode 1: Scanning (PreFab → Blueprint)**
-- Input: PreFab item (with cached rates and room linkage. FAKE rooms (roomcode prepended with fake_) and Carbon Copies (roomcode prepended with cc_) are not valid for scanning)
-- Player clicks "Scan" button in GUI.
-- Scans CM room for:
-  - All blocks (type, position, blockstate, NBT data)
-  - All items in inventories (using existing InventoryScanner)
-  - Room dimensions (sizeX, sizeY, sizeZ)
-- Stores scan data in new item: **PreFab Blueprint**
-- Blueprint contains:
-  - Cached rates (copied from input PreFab)
-  - Full block list (resource ID → count)
-  - Full item list (resource ID → count)
-  - Room dimensions
-  - NOT NEEDED: Structure NBT (since exact reconstruction is not needed)
-- Output: PreFab Blueprint item (input PreFab consumed)
+1. **NBT loss during CACHED output**: `CachedTransferHandler.transferCachedOutput()` creates bare `new ItemStack(item, amount)` — all NBT is lost
+2. **NBT-blind input matching**: `CachedTransferHandler.transferCachedInput()` compares only `stack.getItem()`, not NBT — cannot distinguish NBT variants of the same item type
 
-**Mode 2: Printing (Blueprint + Resources → PreFab)**
-- Input: PreFab Blueprint item
-- GUI displays required resources:
-  - All blocks from scan (e.g., 200x Stone, 50x Glass, 10x Chest)
-  - All items from scan (e.g., 64x Coal, 32x Iron Ore)
-  - Constant costs (configurable): 1x PreFab Upgrade Template, 1x Compact Machine, 8x Diamond, etc.
-- Player inserts resources into adjacent inventory
-- When all resources present, the player may click the "Print" button. (Adjacent inventories are only checked on button click)
-- Player clicks "Print" → Block consumes resources and produces:
-  - **Carbon Copy PreFab** (Carbon Copy of original Prefab):
-    - Has cached rates from blueprint
-    - Has "fake" room linkage (roomCode = cc_XXXXX, roomCenter = null)
-    - State = CACHED (ready to use immediately)
-    - Can be placed anywhere or inserted into Fractal Factory
-- Blueprint is NOT consumed (reusable template)
+**Affected code** (line references):
+- `CachedTransferHandler.java:64` — `new ItemStack(item, amount)` without NBT
+- `CachedTransferHandler.java:195` — `inSlot.getItem() != item` (item type only)
+- `ResourceDeltaTracker.java` — Tracks `Map<String, Long>` keyed by resource ID only
+- `PrefabNBTSerializer.java` — Rate NBT stores only `{id, rate}`, no NBT field
+- `TransportTickHandler.java:141,226` — Delta recording strips NBT to resource ID string
+- `InventoryScanningService.java` — Buffer scanning reduces ItemStacks to resource IDs
+
+**Impact**: Items with NBT data (enchanted items, written books, named items, custom components, etc.) lose their NBT when going through the caching pipeline. A factory that produces enchanted books during SIMULATING will produce plain books during CACHED.
 
 **Implementation**:
-- [ ] Create `PreFabScannerBlock` and `PreFabScannerBlockEntity`
-- [ ] Add inventory slots:
-  - [ ] 1 input slot (accepts PreFab OR Blueprint)
-  - [ ] 1 output slot (outputs Blueprint OR PreFab)
-  - [ ] 27+ resource slots (for printing materials)
-- [ ] Create new item: `PreFabBlueprintItem`
-  - [ ] Custom item with NBT data storage
-  - [ ] Tooltip shows required resources summary
-  - [ ] Tooltip shows cached rates preview
-  - [ ] Optional: Fancy texture (rolled-up blueprint aesthetic)
-- [ ] Scanning logic:
-  - [ ] Detect PreFab in input slot
-  - [ ] GUI shows "Scan" button (manual trigger to avoid lag)
-  - [ ] On button click:
-    - [ ] Read roomCode from PreFab
-    - [ ] Load CM dimension and locate room
-    - [ ] Perform async scan (blocks + items, reuse InventoryScanner)
-    - [ ] Generate PreFab Blueprint item with scan data
-    - [ ] Place blueprint in output slot
-    - [ ] Consume input PreFab
-    - [ ] Chat feedback: "Blueprint created: X blocks, Y items"
-- [ ] Printing logic:
-  - [ ] Detect Blueprint in input slot
-  - [ ] Read required resources from blueprint NBT
-  - [ ] Add constant costs from config (PreFab Upgrade Template, etc.)
-  - [ ] GUI shows resource checklist:
-    - [ ] Green checkmark if resource present in inventory
-    - [ ] Red X if missing (shows needed vs. available)
-    - [ ] Progress bar: "15/20 resources satisfied"
-  - [ ] Enable "Print" button when all resources present
-  - [ ] On button click:
-    - [ ] Consume all required resources from inventory
-    - [ ] Create new PreFab item with:
-      - [ ] Cached rates from blueprint
-      - [ ] No room linkage (roomCode = null)
-      - [ ] State = CACHED
-      - [ ] Schema version = 1
-    - [ ] Place PreFab in output slot
-    - [ ] Keep blueprint in input slot (reusable)
-    - [ ] Chat feedback: "PreFab printed successfully"
-- [ ] Configuration:
-  - [ ] Add config option for constant costs (default: 1x PreFab Upgrade Template)
-  - [ ] Add config option for resource multiplier (e.g., 0.5x = half resources needed)
-  - [ ] Add config option to enable/disable blueprint reusability
-- [ ] Visual/Audio feedback:
-  - [ ] Scanning: Progress bar with spinning animation
-  - [ ] Printing: Crafting animation with particle effects
-  - [ ] Sound effects for scan/print completion
-- [ ] NBT serialization:
-  - [ ] Blueprint item stores all scan data
-  - [ ] Scanner block stores current mode and progress
-- [ ] Test cases:
-  - [ ] Scan simple PreFab (5x5x5 room) → Creates blueprint
-  - [ ] Print from blueprint with sufficient resources → Creates PreFab copy
-  - [ ] Print with insufficient resources → Button disabled
-  - [ ] Printed PreFab has identical rates to original
-  - [ ] Printed PreFab has no room linkage (can't enter CM room)
-  - [ ] Insert printed PreFab into Fractal Factory → Works normally
-  - [ ] Break scanner block mid-scan → Cancels cleanly
+- [ ] **Extend rate storage to include NBT variants**:
+  - [ ] Create `NbtAwareResourceKey` record: `String resourceId + Optional<CompoundTag> nbt`
+  - [ ] Change `importerExporterRates` from `Map<UUID, Map<String, Double>>` to `Map<UUID, Map<NbtAwareResourceKey, Double>>`
+  - [ ] Bump schema version: 2 → 3 in `PrefabNBTSerializer`
+  - [ ] Add NBT data to rate serialization format: `{id: string, nbt: compound?, rate: double}`
+- [ ] **Update ResourceDeltaTracker for NBT-aware tracking**:
+  - [ ] Change `recordImport()`/`recordExport()` to accept NBT data (extract from ItemStack)
+  - [ ] Store NBT alongside resource counts in delta maps
+  - [ ] Update `calculateRatesAndTransition()` to compute per-NBT-variant rates
+- [ ] **Update CachedTransferHandler for NBT-aware production**:
+  - [ ] `transferCachedOutput()`: Create ItemStacks with proper NBT using `DataComponentPatch` or `ItemStack.applyComponents()`
+  - [ ] `transferCachedInput()`: Match items by both type AND NBT (use `ItemStack.matches()` or `ItemStack.isSameItemSameComponents()`)
+  - [ ] Handle NBT variant exhaustion (if specific NBT variant not available, try fallback or HALT)
+- [ ] **Update TransportTickHandler delta recording**:
+  - [ ] Extract NBT from transported ItemStacks before recording deltas
+  - [ ] Use `ItemStack.getComponentsPatch()` or equivalent to capture component data
+- [ ] **Update inventory/buffer scanning** for NBT-aware initial/final state:
+  - [ ] `scanImporterBuffer()`/`scanExporterBuffer()`: Preserve NBT when counting buffer contents
+  - [ ] `captureInitialState()`/`captureFinalState()`: Store NBT-aware counts
+- [ ] **NBT schema migration** (v2 → v3):
+  - [ ] Auto-migrate old `Map<String, Double>` rates to `Map<NbtAwareResourceKey, Double>` (NBT = empty)
+  - [ ] Backward-compatible loading: old saves with plain resource IDs still work
+  - [ ] PreFabs with v2 NBT (no item NBT stored) re-simulate if NBT variants required
+- [ ] **Performance considerations**:
+  - [ ] NBT hashing: `NbtAwareResourceKey` needs proper `equals()`/`hashCode()` (CompoundTag comparison is expensive)
+  - [ ] Consider limiting tracked NBT variants per resource (configurable, default 32) to prevent NBT bloat
+  - [ ] Use `DataComponentMap` (1.21.5+) instead of raw `CompoundTag` for cleaner API
+- [ ] **GUI updates**:
+  - [ ] Status GUI: Show NBT summary in rate display (e.g., "Enchanted Book (Sharpness V): 0.5/tick")
+  - [ ] Rate display: Distinguish NBT variants in resource list
+- [ ] **Test cases**:
+  - [ ] Enchanted book factory: SIMULATING with enchanted books → CACHED produces same enchantments
+  - [ ] Written book factory: Preserves author/title/content
+  - [ ] Named item factory: Preserves custom names
+  - [ ] Mixed NBT variants: Multiple enchantments tracked independently
+  - [ ] Backward compatibility: Old PreFabs (v2 NBT) still work after migration
+  - [ ] NBT variant exhaustion: HALT correctly when specific NBT variant unavailable
 
-**Use Cases**:
-- **Mass production**: Scan one PreFab, print many copies for Fractal Factories
-- **Trading**: Share blueprints with other players (blueprint is tradeable)
-- **Backups**: Create blueprints of valuable factories before modifying
-- **Resource sink**: Printing requires rebuilding the factory (balances automation)
-- **Fractional Factory fuel**: Printed PreFabs can be "eaten" by Fractal Factories
+**Design Decisions**:
+- **Why track NBT per resource ID instead of per ItemStack**: Avoids NBT explosion (millions of unique variants). Groups by meaningful NBT only
+- **Why `Optional<CompoundTag> nbt` instead of full `ItemStack`**: Storage efficiency — ItemStack carries count/slot metadata not relevant to rate tracking
+- **Why schema v3 instead of v2 extension**: NBT-aware keys fundamentally change the data model; explicit schema bump ensures clean migration path
+- **Why limit NBT variants**: Prevents malicious NBT bloat (player could inject millions of unique NBT variants to crash server)
 
-**Integration with Fractal Factory**:
-1. Build factory in CM room, configure PreFab
-2. Run simulation, get CACHED rates
-3. Scan PreFab → Creates blueprint
-4. Print blueprint multiple times (consumes resources each time)
-5. Insert printed PreFabs into Fractal Factory
-6. Fractal Factory absorbs rates, produces autonomously
+**Estimated effort**: 1-2 weeks
+**Priority**: MEDIUM-HIGH (core fidelity issue — factories should produce the same items in both modes)
 
-**Design Rationale**:
-- **Why separate scan/print**: Scanning is expensive (async), printing is cheap (local inventory check)
-- **Why consume PreFab on scan**: Prevents scanning same PreFab repeatedly (blueprint is the reusable copy)
-- **Why require full resources**: Balances automation power (can't duplicate factories for free)
-- **Why no room linkage on printed PreFabs**: Prevents CM room conflicts (multiple PreFabs can't link to same room)
-- **Why CACHED state on printed PreFabs**: Ready to use immediately (no re-simulation needed)
-- **Why reusable blueprints**: Encourages blueprint trading/sharing
-
-**Estimated effort**: 2-3 weeks
-**Priority**: MEDIUM-HIGH (enables Fractal Factory mass production, good progression system)
+**Dependencies**: None (standalone feature)
+**Blocks**: Future anti-cheat validation (NBT tracking enables detecting hidden storage exploits)
 
 ### PreFab Face Visualization
 **Status**: Not started
@@ -1437,6 +1382,92 @@ This TODO list is organized with **pending tasks at the top** for quick referenc
 **Breaking Changes**:
 - NBT tag renamed: `FilterItem` → `FrequencyItem` (old saves lose frequency settings)
 - Acceptable for pre-release (0.2.0-alpha) stage
+
+---
+
+### Fabricator Block (Blueprint Scanner & Printer)
+**Status**: ✅ **COMPLETE** (v0.5.0, 2026-06-08)
+**Goal**: Scan PreFab factories to create blueprints, then auto-print Carbon Copy PreFabs with resource costs
+
+**Block: Fabricator** (dual-mode, 29-slot inventory)
+- Slot 0: Input (accepts PreFab or Blueprint)
+- Slot 1: Output (Carbon Copy PreFab)
+- Slots 2–28: 27 resource slots (blocks + items for printing)
+- IO automation: `IORestrictedHandler` — hoppers insert into resource slots, extract from output only
+
+**Mode 1: Scanning (PreFab → Blueprint)**
+- Input: PreFab item with cached rates and room linkage
+  - FAKE rooms (`fake_*` roomCodes) and Carbon Copies (`cc_*` roomCodes) rejected
+- Player clicks "Scan" button in GUI (manual trigger to avoid lag)
+- Async tick-spreading scans CM room:
+  - All blocks: type, position, blockstate, NBT (via `BlockScanner` + `NbtRequirement`)
+  - All items in inventories (via `InventoryScanner` + `NbtRequirement`)
+  - Room dimensions (stored in PreFab NBT, avoids expensive wall scanning)
+- Blueprint scan data is cached in PreFab NBT (`BlueprintScanCache`) for instant re-scans
+- Output: `PreFabBlueprintItem` in output slot
+- PreFab consumed on scan: Configurable via `prefabConsumedOnScan` (default: `false` — stays in input)
+- Chat feedback: "Blueprint created: X blocks, Y items"
+
+**Mode 2: Printing (Blueprint + Resources → Carbon Copy PreFab)**
+- Input: `PreFabBlueprintItem`
+- GUI displays required resources via ghost items with colored status indicators:
+  - Solid green: Resource satisfied (count + NBT match)
+  - Yellow blink: Partially satisfied
+  - Red blink: Missing
+- Player inserts resources into Fabricator's 27 resource slots (not adjacent inventories)
+- Printing is **fully automatic** in `tick()` — no manual button press needed
+- Auto-printing pipeline:
+  - Resources checked with exponential backoff (20–100 ticks)
+  - `printingProgress` tracked via `ContainerData` (0 → `printDuration`)
+  - Vanilla furnace arrow animation fills between input/output slots during print
+  - Configurable duration: `blueprintPrintTicks` (default: 20 ticks = 1s)
+- Output: **Carbon Copy PreFab** (`roomCode = cc_XXXXXXXX`, deterministic hash from blueprint NBT)
+  - Has cached rates from blueprint
+  - `roomCenter = null` (no real room)
+  - State = CACHED (ready to use immediately)
+  - Stackable in output slot with other PreFabs sharing the same blueprint `roomCode`
+- Blueprint stays in input slot if `blueprintReusable = true` (default)
+- Chat feedback: "Carbon Copy PreFab printed successfully"
+
+**NBT-Aware Resource Matching** (datapack-driven):
+- `NbtRequirementRegistry` loads JSON from `data/<modid>/nbt_requirements/blocks/<block_id>.json`
+- 4 match strategies: `exact`, `subset`, `list_subset`, `range`
+- Resource slots filtered to only accept items matching blueprint requirements
+- NBT-mismatched items deferred-ejected (avoids `quickMoveStack` race conditions)
+- Block exclusion: `blueprintExcludedBlocks` config (default: CM walls)
+- Room blacklist: `prefabRoomBlacklistedBlocks` with glob patterns (default: `minecraft:bedrock`)
+
+**Implemented**:
+- [x] `FabricatorBlock.java` and `FabricatorBlockEntity.java` (1933 lines — main workhorse)
+- [x] `FabricatorMenu.java` (65 slots with intelligent `quickMoveStack` routing)
+- [x] `FabricatorScreen.java` (ghost items, slot coloring, NBT indicators, progress arrow)
+- [x] `PreFabBlueprintItem.java` with NBT data storage, tooltips, custom texture
+- [x] `BlueprintData.java` (schema v2, `ResourceRequirement` with optional NBT, `ResourceRate`)
+- [x] `BlockScanner.java` — async tick-spreading block scan with NBT extraction
+- [x] `InventoryScanner.java` — async tick-spreading inventory scan with NBT extraction
+- [x] `NbtRequirement.java` + `NbtRequirementRegistry.java` — datapack-driven NBT matching
+- [x] `BlueprintScanCache.java` — caches scan data in PreFab NBT for instant re-scans
+- [x] `ScanRequestPacket.java` + `PrintRequestPacket.java` — client→server network packets
+- [x] 7 `ContainerData` sync fields: scanState, requiredCount, availableCount, prefabValidForScan, satisfiedSlotMask, printingProgress, printDuration
+- [x] Config options: `blueprintExcludedBlocks`, `blueprintConstantCosts`, `blueprintResourceMultiplier`, `blueprintReusable`, `prefabConsumedOnScan`, `blueprintPrintTicks`, `prefabRoomBlacklistedBlocks`
+- [x] NBT requirement JSON: `data/fpscompress/nbt_requirements/blocks/prefab.json` (`list_subset` strategy)
+- [x] IO handler for hopper/pipe automation (insert→resources, extract→output)
+- [x] Deterministic carbon copy room codes (`cc_XXXXXXXX` hash from blueprint NBT)
+- [x] Deferred NBT ejection queue (avoids race conditions)
+- [x] Exponential backoff for resource checks (20–100 ticks)
+- [x] Custom textures: fabricator (top/bottom/side), blueprint item
+- [x] Patchouli documentation: `blueprint_system` category with entries
+- [x] Context-aware action button: "Idle" / "Scan" / "Scanning..." / "Invalid PreFab" / "Output occupied" / "Printing..." / "Resource Starved"
+
+**Design Rationale**:
+- **Why "Fabricator" not "Scanner"**: Block does both scan AND print — "Fabricator" captures the dual role
+- **Why automatic printing**: Removes busywork of watching resource slots and pressing a button; printing starts the moment resources are satisfied
+- **Why PreFab NOT consumed on scan by default**: Players want to scan without losing their factory; consume-on-scan is an opt-in challenge mode
+- **Why resources in Fabricator slots (not adjacent inventory)**: Gives clear visual feedback via ghost items; works with IO handler for automation
+- **Why datapack-driven NBT requirements**: Different mods have different NBT schemas; JSON configs let server admins and modpack authors add support without code changes
+- **Why deterministic `cc_` room codes**: Carbon Copies from the same blueprint share a room code → stack in output slot; different blueprints → different codes
+- **Why CACHED state on Carbon Copies**: Ready to use immediately — no re-simulation needed; rates were already validated during the original scan
+- **Why blueprint scan caching**: Scanning a CM room is expensive (tick-spread over many ticks); caching in PreFab NBT makes re-scans instant
 
 ---
 
